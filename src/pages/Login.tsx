@@ -1,19 +1,17 @@
 import { type FormEvent, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function Login() {
-  const { login, user } = useAuth()
+  const { login, user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (user) {
-    navigate('/', { replace: true })
-    return null
-  }
+  if (authLoading) return null
+  if (user) return <Navigate to="/" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()

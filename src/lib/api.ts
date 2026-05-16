@@ -17,7 +17,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (res.status === 401) {
     localStorage.removeItem('ar_token')
     localStorage.removeItem('ar_user')
-    window.location.href = '/login'
     throw new Error('Unauthorized')
   }
 

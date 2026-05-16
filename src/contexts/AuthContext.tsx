@@ -13,8 +13,13 @@ const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('ar_user')
-    return stored ? (JSON.parse(stored) as User) : null
+    try {
+      const stored = localStorage.getItem('ar_user')
+      return stored ? (JSON.parse(stored) as User) : null
+    } catch {
+      localStorage.removeItem('ar_user')
+      return null
+    }
   })
   const [permissions, setPermissions] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
