@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider } from './contexts/AuthContext'
 import { AuthGuard } from './components/AuthGuard'
 import { NavBar } from './components/NavBar'
+import { PersistentIframes } from './components/PersistentIframes'
 import { Login } from './pages/Login'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
@@ -13,6 +14,7 @@ function Layout() {
   return (
     <>
       <NavBar />
+      <PersistentIframes />
       <Outlet />
     </>
   )
