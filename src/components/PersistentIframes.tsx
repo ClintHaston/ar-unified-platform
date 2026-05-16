@@ -21,6 +21,19 @@ function LiveFrame({ src, title, active }: { src: string; title: string; active:
     }
   }, [active, src])
 
+  // Block all postMessages originating from this iframe — we don't use
+  // cross-frame communication and the embedded tools (e.g. Manus Previewer)
+  // send messages that would otherwise reach Vite HMR or other listeners.
+  useEffect(() => {
+    function block(event: MessageEvent) {
+      if (ref.current?.contentWindow && event.source === ref.current.contentWindow) {
+        event.stopImmediatePropagation()
+      }
+    }
+    window.addEventListener('message', block, true)
+    return () => window.removeEventListener('message', block, true)
+  }, [])
+
   return (
     <div className="page-frame" style={{ display: active ? undefined : 'none' }}>
       <iframe ref={ref} title={title} allow="fullscreen" />
