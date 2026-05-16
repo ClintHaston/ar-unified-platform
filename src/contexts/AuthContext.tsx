@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, type User } from '../lib/api'
 
 interface AuthState {
@@ -41,28 +41,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('ar_token')
         localStorage.removeItem('ar_user')
         setUser(null)
+        setPermissions({})
       })
       .finally(() => setLoading(false))
   }, [])
 
-  async function login(email: string, password: string) {
+  const login = useCallback(async (email: string, password: string) => {
     const res = await api.login(email, password)
     localStorage.setItem('ar_token', res.token)
     localStorage.setItem('ar_user', JSON.stringify(res.user))
     setUser(res.user)
     const perms = await api.permissionsMe()
     setPermissions(perms.permissions)
-  }
+  }, [])
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem('ar_token')
     localStorage.removeItem('ar_user')
     setUser(null)
     setPermissions({})
-  }
+  }, [])
+
+  const value = useMemo(
+    () => ({ user, permissions, loading, login, logout }),
+    [user, permissions, loading, login, logout]
+  )
 
   return (
-    <AuthContext.Provider value={{ user, permissions, loading, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )
