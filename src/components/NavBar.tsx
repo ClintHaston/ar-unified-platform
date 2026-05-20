@@ -22,7 +22,7 @@ export function NavBar() {
 
   return (
     <nav className="nav">
-      <span className="nav-brand bebas">Asset-Resource</span>
+      <span className="nav-brand bebas">ASSET <span className="nav-brand-accent">RE:SOURCE</span></span>
 
       <div className="nav-tabs">
         {TABS.map((tab) => {

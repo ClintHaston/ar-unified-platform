@@ -29,9 +29,13 @@ export function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <div className="login-logo bebas">Asset-Resource</div>
-        <div className="login-sub">Unified Platform</div>
+      <div className="login-glow" />
+      <div className="login-inner">
+        <div className="login-logo-area">
+          <div className="login-logo bebas">ASSET <span className="login-logo-gold">RE:SOURCE</span></div>
+          <div className="login-sub">Unified Platform</div>
+        </div>
+        <div className="login-card">
         <form onSubmit={handleSubmit}>
           <div className="form-field">
             <label className="form-label">Email</label>
@@ -59,6 +63,7 @@ export function Login() {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+        </div>
       </div>
     </div>
   )
