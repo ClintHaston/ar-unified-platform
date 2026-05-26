@@ -1,4 +1,4 @@
-const BASE = 'https://web-production-0eddb.up.railway.app'
+const BASE = import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 
 function getToken(): string | null {
   return localStorage.getItem('ar_token')
