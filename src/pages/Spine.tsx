@@ -26,10 +26,30 @@ interface SpineEvent {
   checked_at: string
 }
 
+interface SpineRun {
+  job_name: string
+  status: string
+  cost_usd: number
+  detail: string
+  started_at: string
+}
+
+interface SpineApproval {
+  id: number
+  title: string
+  description: string | null
+  action_type: string
+  status: string
+  created_at: string
+  result: string | null
+}
+
 interface SpineHealth {
   checks: SpineCheck[]
   activity: SpineEvent[]
   approvals_pending: number
+  spend?: { today_usd: number; cap_usd: number }
+  recent_runs?: SpineRun[]
 }
 
 const COLORS: Record<CheckStatus, string> = {
@@ -106,6 +126,44 @@ export function Spine() {
   const nodes = data ? layoutNodes(data.checks) : []
   const reds = nodes.filter(n => n.status === 'red').length
 
+  const [showApprovals, setShowApprovals] = useState(false)
+  const [approvals, setApprovals] = useState<SpineApproval[]>([])
+  const [actionMsg, setActionMsg] = useState<string | null>(null)
+
+  const authHeaders = (): Record<string, string> => {
+    const t = localStorage.getItem('ar_token')
+    return t ? { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' } : {}
+  }
+
+  const loadApprovals = async () => {
+    try {
+      const r = await fetch(`${BASE}/spine/approvals`, { headers: authHeaders() })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      setApprovals(((await r.json()) as { approvals: SpineApproval[] }).approvals)
+    } catch (e) {
+      setActionMsg('Could not load approvals: ' + (e instanceof Error ? e.message : 'error'))
+    }
+  }
+
+  const decide = async (id: number, verb: 'approve' | 'reject') => {
+    setActionMsg(null)
+    try {
+      const r = await fetch(`${BASE}/spine/approvals/${id}/${verb}`, {
+        method: 'POST', headers: authHeaders(),
+      })
+      const body = await r.json()
+      if (!r.ok) throw new Error(body.detail ?? `HTTP ${r.status}`)
+      setActionMsg(`#${id} ${verb}d: ${body.result}`)
+      await loadApprovals()
+    } catch (e) {
+      setActionMsg(`#${id} ${verb} failed: ` + (e instanceof Error ? e.message : 'error'))
+    }
+  }
+
+  const spend = data?.spend
+  const spendPct = spend && spend.cap_usd > 0 ? Math.min(spend.today_usd / spend.cap_usd, 1) : 0
+  const spendColor = spendPct >= 1 ? '#E74C3C' : spendPct >= 0.8 ? '#C8922A' : '#2ECC71'
+
   return (
     <div style={{ background: '#1A2B47', minHeight: 'calc(100vh - 56px)', color: '#D1D9E6', fontFamily: 'Arial, sans-serif' }}>
       <style>{`
@@ -124,12 +182,31 @@ export function Spine() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ minWidth: 190, textAlign: 'center' }}>
+            <div style={{ fontSize: 17, fontWeight: 'bold', color: spendColor }}>
+              ${(spend?.today_usd ?? 0).toFixed(2)}
+              <span style={{ color: '#A8BDD4', fontWeight: 'normal', fontSize: 13 }}>
+                {' '}of ${(spend?.cap_usd ?? 0).toFixed(2)} today
+              </span>
+            </div>
+            <div style={{ height: 7, background: '#2C3E50', borderRadius: 4, marginTop: 4 }}>
+              <div style={{
+                height: 7, borderRadius: 4, width: `${Math.max(spendPct * 100, 2)}%`,
+                background: spendColor,
+              }} className={spendPct >= 1 ? 'spine-glow-red' : undefined} />
+            </div>
+            <div style={{ fontSize: 10, color: '#A8BDD4', marginTop: 2 }}>
+              {spendPct >= 1 ? 'CAP HIT, MODEL JOBS PAUSED' : 'DAILY SPEND'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', cursor: 'pointer' }}
+            onClick={() => { setShowApprovals(s => !s); if (!showApprovals) loadApprovals() }}>
             <div style={{
               width: 44, height: 44, borderRadius: 22, lineHeight: '44px', fontWeight: 'bold', fontSize: 17,
               background: (data?.approvals_pending ?? 0) > 0 ? '#C8922A' : '#2C3E50',
               color: (data?.approvals_pending ?? 0) > 0 ? '#1A2B47' : '#A8BDD4',
-            }}>{data?.approvals_pending ?? 0}</div>
+            }} className={(data?.approvals_pending ?? 0) > 0 ? 'spine-glow-amber' : undefined}
+            >{data?.approvals_pending ?? 0}</div>
             <div style={{ fontSize: 10, color: '#A8BDD4', marginTop: 2 }}>APPROVALS</div>
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -141,6 +218,50 @@ export function Spine() {
           </div>
         </div>
       </div>
+
+      {showApprovals && (
+        <div style={{
+          margin: '12px 24px 0', background: '#16233B', border: '1px solid #2C3E50',
+          borderRadius: 8, padding: '12px 16px',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8 }}>
+            Approval queue
+          </div>
+          {actionMsg && <div style={{ fontSize: 12, color: '#C8922A', marginBottom: 8 }}>{actionMsg}</div>}
+          {approvals.length === 0 && <div style={{ fontSize: 12, color: '#A8BDD4' }}>Nothing here.</div>}
+          {approvals.map(a => (
+            <div key={a.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+              padding: '10px 0', borderTop: '1px solid #22314D', flexWrap: 'wrap',
+            }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontSize: 13, color: '#FFFFFF' }}>
+                  #{a.id} {a.title}
+                  <span style={{
+                    marginLeft: 8, fontSize: 10, padding: '2px 7px', borderRadius: 9,
+                    background: a.status === 'pending' ? '#C8922A' : '#2C3E50',
+                    color: a.status === 'pending' ? '#1A2B47' : '#A8BDD4',
+                  }}>{a.status.toUpperCase()}</span>
+                </div>
+                {a.description && <div style={{ fontSize: 11.5, color: '#A8BDD4', marginTop: 3 }}>{a.description}</div>}
+                {a.result && <div style={{ fontSize: 11, color: '#2ECC71', marginTop: 3 }}>{a.result}</div>}
+              </div>
+              {a.status === 'pending' && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => decide(a.id, 'approve')} style={{
+                    background: '#2ECC71', color: '#1A2B47', border: 'none', borderRadius: 6,
+                    padding: '10px 18px', fontWeight: 'bold', fontSize: 13, cursor: 'pointer',
+                  }}>Approve</button>
+                  <button onClick={() => decide(a.id, 'reject')} style={{
+                    background: 'transparent', color: '#E74C3C', border: '1px solid #E74C3C',
+                    borderRadius: 6, padding: '10px 18px', fontWeight: 'bold', fontSize: 13, cursor: 'pointer',
+                  }}>Reject</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <svg viewBox="0 0 1200 620" style={{ width: '100%', maxHeight: 'calc(100vh - 220px)', display: 'block' }}>
         {/* wires */}
@@ -187,6 +308,31 @@ export function Spine() {
           </g>
         ))}
       </svg>
+
+      {/* recent job runs */}
+      {(data?.recent_runs?.length ?? 0) > 0 && (
+        <div style={{
+          borderTop: '1px solid #2C3E50', padding: '8px 24px', display: 'flex', gap: 18,
+          overflowX: 'auto', whiteSpace: 'nowrap', background: '#182642', alignItems: 'center',
+        }}>
+          <span style={{ fontSize: 10, color: '#A8BDD4', flexShrink: 0, fontWeight: 'bold' }}>RUNS</span>
+          {data!.recent_runs!.map((r, i) => (
+            <span key={i} style={{ fontSize: 11.5, color: '#D1D9E6', flexShrink: 0 }}>
+              <span style={{
+                display: 'inline-block', width: 9, height: 9, borderRadius: 5, marginRight: 6,
+                verticalAlign: 'middle',
+                background: r.status === 'success' ? '#2ECC71'
+                  : r.status === 'paused_cap' || r.status === 'stopped_budget' ? '#C8922A' : '#E74C3C',
+              }} />
+              <b>{r.job_name}</b>{' '}
+              <span style={{ color: '#A8BDD4' }}>
+                {new Date(r.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>{' '}
+              ${r.cost_usd.toFixed(2)} {r.status !== 'success' ? r.status : ''}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* heartbeat strip */}
       <div style={{
