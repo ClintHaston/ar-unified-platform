@@ -9,6 +9,7 @@ import { Deals } from './pages/Deals'
 import { Leads } from './pages/Leads'
 import { SalesCommand } from './pages/SalesCommand'
 import { Admin } from './pages/Admin'
+import { Spine } from './pages/Spine'
 
 function Layout() {
   return (
@@ -48,6 +49,10 @@ export default function App() {
             <Route
               path="/admin"
               element={<AuthGuard adminOnly><Admin /></AuthGuard>}
+            />
+            <Route
+              path="/spine"
+              element={<AuthGuard adminOnly><Spine /></AuthGuard>}
             />
           </Route>
 

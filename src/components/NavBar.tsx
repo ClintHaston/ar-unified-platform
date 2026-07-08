@@ -7,6 +7,7 @@ const TABS = [
   { key: 'leads', label: 'Lead Intelligence', path: '/leads' },
   { key: 'sales_command', label: 'Sales Command', path: '/sales-command' },
   { key: 'admin', label: 'Admin', path: '/admin', adminOnly: true },
+  { key: 'spine', label: 'Spine', path: '/spine', adminOnly: true },
 ]
 
 export function NavBar() {
