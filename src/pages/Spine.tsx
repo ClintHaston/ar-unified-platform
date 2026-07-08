@@ -196,7 +196,10 @@ export function Spine() {
               }} className={spendPct >= 1 ? 'spine-glow-red' : undefined} />
             </div>
             <div style={{ fontSize: 10, color: '#A8BDD4', marginTop: 2 }}>
-              {spendPct >= 1 ? 'CAP HIT, MODEL JOBS PAUSED' : 'DAILY SPEND'}
+              {spendPct >= 1 ? 'CAP HIT, MODEL JOBS PAUSED' : 'SPINE-GOVERNED SPEND'}
+            </div>
+            <div style={{ fontSize: 9, color: '#5A6B84', marginTop: 1 }}>
+              runner jobs only. In-app AI calls are not metered here.
             </div>
           </div>
           <div style={{ textAlign: 'center', cursor: 'pointer' }}
