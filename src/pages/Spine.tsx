@@ -95,6 +95,11 @@ const ICONS: Record<string, string> = {
   'scraper-freshness': 'M6 10h12v8H6v-8z M9.5 14h1 M13.5 14h1 M12 10V6 M9 6h6',
 }
 
+/** Text glyphs for nodes that read better as a symbol than a drawing. */
+const GLYPHS: Record<string, string> = {
+  'spine-spend': '$',
+}
+
 /** Deterministic starfield, generated once. */
 function mulberry32(seed: number) {
   return () => {
@@ -691,9 +696,9 @@ export function Spine() {
                     opacity={n.status === 'grey' ? 0.8 : 1} />
                 </g>
               ) : (
-                <text x={x} y={y + 4} textAnchor="middle" fill={c} fontSize={n.r * 0.8}
+                <text x={x} y={y + n.r * 0.36} textAnchor="middle" fill={c} fontSize={n.r * 1.05}
                   fontWeight="bold" style={{ pointerEvents: 'none' }}>
-                  {n.label.slice(0, 2)}
+                  {GLYPHS[n.id] ?? n.label.slice(0, 2)}
                 </text>
               )}
               {n.lines.map((ln, i) => (
