@@ -1,92 +1,60 @@
 import { useEffect, useState } from 'react'
-import { api, type User } from '../lib/api'
+import { api } from '../lib/api'
 
-const TAB_KEYS = [
-  { key: 'evaluator', label: 'Evaluator' },
-  { key: 'deals', label: 'Deals' },
-  { key: 'leads', label: 'Lead Intelligence' },
-  { key: 'sales_command', label: 'Sales Command' },
-]
-
-interface UserRow extends User {
-  permissions: Record<string, boolean>
+interface RosterUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  is_active: boolean
+  must_change_password: boolean
+  created_at: string
 }
 
+// Step 3c-1: tab-level permission toggles retired with the legacy auth —
+// access is rep-vs-admin by role now. This screen is the platform.users
+// roster; role editing lands with the user-management build step.
 export function Admin() {
-  const [users, setUsers] = useState<UserRow[]>([])
+  const [users, setUsers] = useState<RosterUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    api.adminGetAllPermissions()
+    api.listUsers()
       .then((res) => setUsers(res.users))
-      .catch(console.error)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load users'))
       .finally(() => setLoading(false))
   }, [])
 
-  async function togglePermission(userId: number, tabKey: string, current: boolean) {
-    const key = `${userId}-${tabKey}`
-    setSaving(key)
-    try {
-      await api.adminSetPermission(userId, tabKey, !current)
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId
-            ? { ...u, permissions: { ...u.permissions, [tabKey]: !current } }
-            : u
-        )
-      )
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(null)
-    }
-  }
-
   if (loading) return <div className="admin-loading">Loading users…</div>
+  if (error) return <div className="admin-loading">{error}</div>
 
   return (
     <div className="admin-page">
-      <h1 className="admin-title bebas">Tab Access Control</h1>
+      <h1 className="admin-title bebas">Platform Users</h1>
       <table className="admin-table">
         <thead>
           <tr>
             <th>User</th>
             <th>Role</th>
-            {TAB_KEYS.map((t) => (
-              <th key={t.key}>{t.label}</th>
-            ))}
+            <th>Status</th>
+            <th>Password</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
+          {users.map((u) => (
+            <tr key={u.id}>
               <td>
-                <div style={{ fontWeight: 600 }}>{user.name}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{user.email}</div>
+                <div style={{ fontWeight: 600 }}>{u.name}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{u.email}</div>
               </td>
               <td>
-                <span className={`badge-role ${user.role}`}>{user.role}</span>
+                <span className={`badge-role ${u.role}`}>{u.role}</span>
               </td>
-              {TAB_KEYS.map((tab) => {
-                const granted = user.permissions[tab.key] ?? false
-                const key = `${user.id}-${tab.key}`
-                return (
-                  <td key={tab.key}>
-                    <label className="toggle">
-                      <input
-                        type="checkbox"
-                        checked={granted}
-                        disabled={saving === key}
-                        onChange={() => togglePermission(user.id, tab.key, granted)}
-                      />
-                    </label>
-                    {saving === key && (
-                      <span className="save-indicator">saving…</span>
-                    )}
-                  </td>
-                )
-              })}
+              <td>{u.is_active ? 'Active' : 'Inactive'}</td>
+              <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                {u.must_change_password ? 'Change required at next login' : 'Set'}
+              </td>
             </tr>
           ))}
         </tbody>

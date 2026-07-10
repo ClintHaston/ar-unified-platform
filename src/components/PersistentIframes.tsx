@@ -43,14 +43,14 @@ function LiveFrame({ src, title, active }: { src: string; title: string; active:
 
 export function PersistentIframes() {
   const { pathname } = useLocation()
-  const { user, permissions, loading } = useAuth()
+  const { user, loading } = useAuth()
 
-  if (loading || !user) return null
+  if (loading || !user || user.must_change_password) return null
 
   return (
     <>
       {TOOLS.map(tool => {
-        if (!tool.src || !permissions[tool.tabKey]) return null
+        if (!tool.src) return null
         return (
           <LiveFrame
             key={tool.tabKey}

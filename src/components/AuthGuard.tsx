@@ -1,15 +1,18 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import type { ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
-  tabKey?: string
   adminOnly?: boolean
 }
 
-export function AuthGuard({ children, tabKey, adminOnly }: Props) {
-  const { user, permissions, loading } = useAuth()
+// Rep-vs-admin routing (step 3c-1): every active user sees the tool tabs,
+// admins additionally see Admin and Spine. A user flagged
+// must_change_password is gated to the change-password screen first.
+export function AuthGuard({ children, adminOnly }: Props) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -21,11 +24,11 @@ export function AuthGuard({ children, tabKey, adminOnly }: Props) {
 
   if (!user) return <Navigate to="/login" replace />
 
-  if (adminOnly && user.role !== 'admin' && user.role !== 'owner') {
-    return <AccessDenied />
+  if (user.must_change_password && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />
   }
 
-  if (tabKey && !permissions[tabKey]) {
+  if (adminOnly && user.role !== 'admin') {
     return <AccessDenied />
   }
 

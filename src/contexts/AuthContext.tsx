@@ -1,82 +1,53 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, type User } from '../lib/api'
 
+// §2 auth per Amendment 10: no tokens in localStorage. The refresh cookie
+// restores the session on boot; the access token never leaves lib/api.ts
+// memory. User info here is display state, not an auth artifact.
+
 interface AuthState {
   user: User | null
-  permissions: Record<string, boolean>
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
-  logout: () => void
-}
-
-interface AuthData {
-  user: User | null
-  permissions: Record<string, boolean>
-  loading: boolean
+  login: (email: string, password: string) => Promise<User>
+  logout: () => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
 
-function readStoredUser(): User | null {
-  try {
-    const stored = localStorage.getItem('ar_user')
-    return stored ? (JSON.parse(stored) as User) : null
-  } catch {
-    localStorage.removeItem('ar_user')
-    return null
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [{ user, permissions, loading }, setAuthData] = useState<AuthData>(() => ({
-    user: readStoredUser(),
-    permissions: {},
-    loading: true,
-  }))
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    const token = localStorage.getItem('ar_token')
-
-    if (!token) {
-      localStorage.removeItem('ar_user')
-      setAuthData({ user: null, permissions: {}, loading: false })
-      return () => { cancelled = true }
-    }
-
-    Promise.all([api.me(), api.permissionsMe()])
-      .then(([me, perms]) => {
-        if (cancelled) return
-        localStorage.setItem('ar_user', JSON.stringify(me))
-        setAuthData({ user: me, permissions: perms.permissions, loading: false })
-      })
-      .catch(() => {
-        if (cancelled) return
-        localStorage.removeItem('ar_token')
-        localStorage.removeItem('ar_user')
-        setAuthData({ user: null, permissions: {}, loading: false })
-      })
-
+    api.restore().then((restored) => {
+      if (cancelled) return
+      setUser(restored)
+      setLoading(false)
+    })
     return () => { cancelled = true }
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api.login(email, password)
-    localStorage.setItem('ar_token', res.token)
-    const perms = await api.permissionsMe()
-    localStorage.setItem('ar_user', JSON.stringify(res.user))
-    setAuthData({ user: res.user, permissions: perms.permissions, loading: false })
+    const loggedIn = await api.login(email, password)
+    setUser(loggedIn)
+    return loggedIn
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('ar_token')
-    localStorage.removeItem('ar_user')
-    setAuthData({ user: null, permissions: {}, loading: false })
+  const logout = useCallback(async () => {
+    await api.logout().catch(() => undefined)
+    setUser(null)
+  }, [])
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const updated = await api.changePassword(currentPassword, newPassword)
+    setUser(updated)
   }, [])
 
   const value = useMemo(
-    () => ({ user, permissions, loading, login, logout }),
-    [user, permissions, loading, login, logout]
+    () => ({ user, loading, login, logout, changePassword }),
+    [user, loading, login, logout, changePassword]
   )
 
   return (

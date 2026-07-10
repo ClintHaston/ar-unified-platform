@@ -4,6 +4,7 @@ import { AuthGuard } from './components/AuthGuard'
 import { NavBar } from './components/NavBar'
 import { PersistentIframes } from './components/PersistentIframes'
 import { Login } from './pages/Login'
+import { ChangePassword } from './pages/ChangePassword'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
 import { Leads } from './pages/Leads'
@@ -27,24 +28,25 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/change-password" element={<AuthGuard><ChangePassword /></AuthGuard>} />
 
           {/* Single persistent layout — NavBar mounts once, Outlet swaps content */}
           <Route element={<Layout />}>
             <Route
               path="/evaluator"
-              element={<AuthGuard tabKey="evaluator"><Evaluator /></AuthGuard>}
+              element={<AuthGuard><Evaluator /></AuthGuard>}
             />
             <Route
               path="/deals"
-              element={<AuthGuard tabKey="deals"><Deals /></AuthGuard>}
+              element={<AuthGuard><Deals /></AuthGuard>}
             />
             <Route
               path="/leads"
-              element={<AuthGuard tabKey="leads"><Leads /></AuthGuard>}
+              element={<AuthGuard><Leads /></AuthGuard>}
             />
             <Route
               path="/sales-command"
-              element={<AuthGuard tabKey="sales_command"><SalesCommand /></AuthGuard>}
+              element={<AuthGuard><SalesCommand /></AuthGuard>}
             />
             <Route
               path="/admin"

@@ -11,15 +11,15 @@ const TABS = [
 ]
 
 export function NavBar() {
-  const { user, permissions, logout } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  function handleLogout() {
-    logout()
+  async function handleLogout() {
+    await logout()
     navigate('/login')
   }
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'owner'
+  const isAdmin = user?.role === 'admin'
 
   return (
     <nav className="nav">
@@ -28,16 +28,6 @@ export function NavBar() {
       <div className="nav-tabs">
         {TABS.map((tab) => {
           if (tab.adminOnly && !isAdmin) return null
-
-          const hasAccess = tab.adminOnly ? isAdmin : (permissions[tab.key] ?? false)
-
-          if (!hasAccess) {
-            return (
-              <span key={tab.key} className="nav-tab locked bebas" title="Access restricted">
-                {tab.label}
-              </span>
-            )
-          }
 
           return (
             <NavLink
