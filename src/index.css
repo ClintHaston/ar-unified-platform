@@ -697,6 +697,23 @@ input, select, textarea {
 .pill.maint { background: #B4432B; }
 .pill.trans { background: var(--p-navy-mid); }
 
+/* ── 3c-4 Valuation (prototype_4 .val triplet + snapshot age line) ── */
+.val-row { display: flex; gap: 8px; margin-top: 7px; }
+.val-row > div {
+  flex: 1; background: var(--p-row); border: 1px solid var(--p-steel);
+  border-radius: 6px; padding: 5px 6px; text-align: center;
+}
+.val-row b { display: block; font-size: 13px; color: var(--p-navy-dark); }
+.val-row small { font-size: 9px; color: var(--p-body); letter-spacing: 0.6px; }
+.val-meta { font-size: 10px; color: var(--p-body); margin-top: 4px; }
+.val-meta .stale { color: #B4432B; font-weight: bold; }
+.revalue-badge {
+  display: inline-block; background: #B4432B; color: #fff;
+  font-size: 9px; font-weight: bold; letter-spacing: 0.4px;
+  padding: 1px 6px; border-radius: 8px; margin-left: 6px;
+  text-transform: uppercase;
+}
+
 /* offer-form contact typeahead */
 .typeahead {
   position: absolute; top: 100%; left: 0; right: 0; z-index: 20;

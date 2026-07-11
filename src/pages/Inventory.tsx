@@ -42,6 +42,21 @@ export function statusPillText(u: Pick<UnitCard, 'status' | 'reserved_until'>): 
   return STATUS_LABEL[u.status]
 }
 
+// Compact "$412K" for the valuation triplet (the doc's "FLV $412k" pattern).
+export function moneyShort(cents: number | null): string {
+  if (cents === null) return '—'
+  const d = cents / 100
+  if (d >= 1_000_000) return `$${(d / 1_000_000).toFixed(d >= 10_000_000 ? 0 : 2)}M`
+  if (d >= 1_000) return `$${Math.round(d / 1_000)}K`
+  return `$${Math.round(d)}`
+}
+
+export function snapshotAge(ageDays: number): string {
+  if (ageDays === 0) return 'today'
+  if (ageDays === 1) return '1 day old'
+  return `${ageDays} days old`
+}
+
 export function Inventory() {
   const navigate = useNavigate()
   const [units, setUnits] = useState<UnitCard[]>([])
@@ -162,6 +177,22 @@ export function Inventory() {
                   <span>Asking</span>
                   <span style={{ fontWeight: 'bold' }}>{money(u.asking_price_cents)}</span>
                 </div>
+                {u.valuation && (
+                  <>
+                    <div className="val-row">
+                      <div><b>{moneyShort(u.valuation.flv_cents)}</b><small>FLV</small></div>
+                      <div><b>{moneyShort(u.valuation.olv_cents)}</b><small>OLV</small></div>
+                      <div><b>{moneyShort(u.valuation.fmv_cents)}</b><small>FMV</small></div>
+                    </div>
+                    <div className="val-meta">
+                      <span className={u.valuation.stale ? 'stale' : undefined}>
+                        Snapshot {snapshotAge(u.valuation.age_days)}
+                        {u.valuation.stale ? ' · stale' : ''}
+                      </span>
+                      {u.valuation.revalue && <span className="revalue-badge">Revalue</span>}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ))}

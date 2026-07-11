@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type ContactHit, type TaxonomyLists, type UnitDetailResponse } from '../lib/api'
-import { STATUS_PILL, money, statusPillText } from './Inventory'
+import {
+  api, type ContactHit, type TaxonomyLists, type UnitDetailResponse,
+  type ValuationRun, type ValuationSnapshot,
+} from '../lib/api'
+import { STATUS_PILL, money, moneyShort, snapshotAge, statusPillText } from './Inventory'
 
 // Unit detail per prototype_4 + §3: fields, inline taxonomy assignment,
 // status history from unit_status_events, expenses (no workflow — held
@@ -18,7 +21,18 @@ const TRANSITION_LABEL: Record<string, string> = {
 
 const OFFER_PILL: Record<string, string> = {
   open: 'gold', accepted: 'green', declined: 'red', expired: 'grey', withdrawn: 'grey',
+  fell_through: 'red',
 }
+
+const OFFER_STATUS_LABEL: Record<string, string> = {
+  fell_through: 'fell through',
+}
+
+// 3c-4 job zero: releasing a reservation is a one-choice reason, note optional.
+const RELEASE_CHOICES = [
+  { value: 'buyer_fell_through', label: 'Buyer fell through' },
+  { value: 'withdrawn_by_us', label: 'Withdrawn by us' },
+] as const
 
 function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -49,6 +63,16 @@ export function UnitDetail() {
 
   // transition note (server requires it on some paths)
   const [transitionNote, setTransitionNote] = useState('')
+
+  // release-reservation reason flow (3c-4 job zero)
+  const [releaseOpen, setReleaseOpen] = useState(false)
+  const [releaseReason, setReleaseReason] = useState('')
+  const [releaseNote, setReleaseNote] = useState('')
+
+  // valuation run → review → save (3c-4)
+  const [valRun, setValRun] = useState<ValuationRun | null>(null)
+  const [snapshots, setSnapshots] = useState<ValuationSnapshot[]>([])
+  const [showValHistory, setShowValHistory] = useState(false)
 
   // expense form
   const [expCategory, setExpCategory] = useState('transport')
@@ -82,6 +106,10 @@ export function UnitDetail() {
   useEffect(() => {
     api.taxonomy().then(setTaxonomy).catch(() => setTaxonomy(null))
   }, [])
+  useEffect(() => {
+    if (!unitId || !showValHistory) return
+    api.unitValuations(unitId).then((r) => setSnapshots(r.snapshots)).catch(() => setSnapshots([]))
+  }, [unitId, showValHistory, data])
 
   // contact typeahead for the offer form
   useEffect(() => {
@@ -134,6 +162,45 @@ export function UnitDetail() {
     setExpAmount(''); setExpDate(''); setExpNote('')
   }
 
+  // 3c-4: running is explicit and writes nothing; saving redeems the run
+  // token server-side, so the saved row is exactly what was reviewed.
+  async function runValuation() {
+    if (!unitId) return
+    setBusy('val-run')
+    setError('')
+    try {
+      setValRun(await api.runValuation(unitId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Valuation run failed')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function saveValuation() {
+    if (!unitId || !valRun) return
+    setBusy('val-save')
+    setError('')
+    try {
+      await api.saveValuation(unitId, valRun.run_token)
+      setValRun(null)
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Snapshot save failed')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function confirmRelease() {
+    if (!unitId || !releaseReason) return
+    await run('release', () => api.transitionUnit(
+      unitId, 'available', releaseNote.trim() || undefined, releaseReason))
+    setReleaseOpen(false)
+    setReleaseReason('')
+    setReleaseNote('')
+  }
+
   async function logOffer(e: FormEvent) {
     e.preventDefault()
     if (!unitId || !buyer || !offerAmount) return
@@ -181,6 +248,117 @@ export function UnitDetail() {
             {unit.legacy_source && (
               <div className="note">Imported from TAB listing {unit.legacy_id} · {when(unit.created_at)}</div>
             )}
+          </div>
+
+          <div className="panel">
+            <h3>
+              Valuation
+              {unit.valuation?.revalue && <span className="revalue-badge">Revalue</span>}
+            </h3>
+            {unit.valuation ? (
+              <>
+                <div className="val-row">
+                  <div><b>{moneyShort(unit.valuation.flv_cents)}</b><small>FLV</small></div>
+                  <div><b>{moneyShort(unit.valuation.olv_cents)}</b><small>OLV</small></div>
+                  <div><b>{moneyShort(unit.valuation.fmv_cents)}</b><small>FMV</small></div>
+                </div>
+                <div className="val-meta">
+                  <span className={unit.valuation.stale ? 'stale' : undefined}>
+                    Snapshot {snapshotAge(unit.valuation.age_days)}
+                    {unit.valuation.stale ? ' · stale' : ''}
+                  </span>
+                  {' '}· Tier {unit.valuation.tier}
+                  {unit.valuation.confidence !== null ? ` · ${Math.round(unit.valuation.confidence)}% conf` : ''}
+                  {' '}· engine data {unit.valuation.engine_data_version}
+                </div>
+                {unit.valuation.revalue && (
+                  <div className="note" style={{ color: '#B4432B' }}>
+                    Hours or condition changed since this snapshot — run a new valuation.
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="note">No valuation snapshot yet.</div>
+            )}
+
+            {!valRun ? (
+              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button className="plat-btn" disabled={busy !== ''} onClick={runValuation}>
+                  {busy === 'val-run' ? 'Running…' : 'Run valuation'}
+                </button>
+                <span className="note" style={{ margin: 0 }}>
+                  Runs the Evaluator — nothing is saved until you save the snapshot.
+                </span>
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, border: '1px solid var(--p-steel)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--p-navy-dark)' }}>
+                  Engine result — review before saving
+                </div>
+                <div className="val-row">
+                  <div><b>{moneyShort(valRun.flv_cents)}</b><small>FLV</small></div>
+                  <div><b>{moneyShort(valRun.olv_cents)}</b><small>OLV</small></div>
+                  <div><b>{moneyShort(valRun.fmv_cents)}</b><small>FMV</small></div>
+                </div>
+                <div className="val-meta">
+                  Tier {valRun.tier}{valRun.tier_label ? ` (${valRun.tier_label})` : ''}
+                  {valRun.confidence !== null ? ` · ${Math.round(valRun.confidence)}% conf` : ''}
+                  {valRun.confidence_label ? ` (${valRun.confidence_label})` : ''}
+                  {valRun.comp_count !== null ? ` · ${valRun.comp_count} comps` : ''}
+                  {valRun.engine_data_version ? ` · engine data ${valRun.engine_data_version}` : ''}
+                </div>
+                <div className="val-meta">
+                  As of {valRun.as_of.hours !== null ? `${valRun.as_of.hours.toLocaleString()} hr` : 'unknown hours'}
+                  {' '}· condition {valRun.as_of.condition ?? 'unknown'}
+                </div>
+                {valRun.stale_comps_warning && (
+                  <div className="note" style={{ color: '#B4432B' }}>Comps average older than 18 months.</div>
+                )}
+                {valRun.summary && <div className="note">{valRun.summary}</div>}
+                {valRun.assumptions.length > 0 && (
+                  <ul className="note" style={{ margin: '6px 0 0 16px' }}>
+                    {valRun.assumptions.map((a, i) => <li key={i}>{a}</li>)}
+                  </ul>
+                )}
+                {!valRun.saveable && valRun.save_block && (
+                  <div className="note" style={{ color: '#B4432B', fontWeight: 'bold' }}>{valRun.save_block}</div>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button className="plat-btn" disabled={busy !== '' || !valRun.saveable} onClick={saveValuation}>
+                    {busy === 'val-save' ? 'Saving…' : 'Save snapshot'}
+                  </button>
+                  <button className="plat-btn ghost" disabled={busy !== ''} onClick={() => setValRun(null)}>
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginTop: 10 }}>
+              <button className="plat-btn ghost" onClick={() => setShowValHistory((s) => !s)}>
+                {showValHistory ? 'Hide history' : 'Snapshot history'}
+              </button>
+              {showValHistory && (
+                snapshots.length === 0 ? (
+                  <div className="note" style={{ marginTop: 6 }}>No snapshots recorded.</div>
+                ) : (
+                  snapshots.map((s) => (
+                    <div className="hist-item" key={s.id}>
+                      <div>
+                        <b>{moneyShort(s.flv_cents)}</b> FLV · <b>{moneyShort(s.olv_cents)}</b> OLV ·{' '}
+                        <b>{moneyShort(s.fmv_cents)}</b> FMV · Tier {s.tier}
+                        {s.confidence !== null ? ` · ${Math.round(s.confidence)}%` : ''}
+                      </div>
+                      <div className="when">
+                        {when(s.taken_at)} · {s.taken_by_name ?? '—'}
+                        {s.unit_hours !== null ? ` · at ${s.unit_hours.toLocaleString()} hr` : ''}
+                        {s.unit_condition ? ` · ${s.unit_condition}` : ''} · {s.engine_data_version}
+                      </div>
+                    </div>
+                  ))
+                )
+              )}
+            </div>
           </div>
 
           <div className="panel">
@@ -289,7 +467,7 @@ export function UnitDetail() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                     <div>
                       <b>{money(o.amount_cents)}</b>
-                      <span className={`pill ${OFFER_PILL[o.status]}`} style={{ marginLeft: 8 }}>{o.status}</span>
+                      <span className={`pill ${OFFER_PILL[o.status] ?? 'grey'}`} style={{ marginLeft: 8 }}>{OFFER_STATUS_LABEL[o.status] ?? o.status}</span>
                       <div className="when">
                         {o.buyer_name ?? 'Unknown buyer'}{o.buyer_company ? ` (${o.buyer_company})` : ''} ·
                         {' '}rep {o.rep_name ?? '—'} · expires {when(o.expires_at)}
@@ -337,12 +515,53 @@ export function UnitDetail() {
                       key={t}
                       className="plat-btn ghost"
                       disabled={busy !== ''}
-                      onClick={() => run(t, () => api.transitionUnit(unit.id, t, transitionNote.trim() || undefined).then(() => setTransitionNote('')))}
+                      onClick={() => {
+                        if (unit.status === 'reserved' && t === 'available') {
+                          // Releasing a reservation asks WHY (one choice) —
+                          // the reason becomes the offer's terminal status.
+                          setReleaseOpen((o) => !o)
+                          return
+                        }
+                        run(t, () => api.transitionUnit(unit.id, t, transitionNote.trim() || undefined).then(() => setTransitionNote('')))
+                      }}
                     >
-                      {TRANSITION_LABEL[t] ?? t}
+                      {unit.status === 'reserved' && t === 'available'
+                        ? 'Release reservation…' : (TRANSITION_LABEL[t] ?? t)}
                     </button>
                   ))}
                 </div>
+                {releaseOpen && unit.status === 'reserved' && (
+                  <div style={{ border: '1px solid var(--p-steel)', borderRadius: 8, padding: '10px 12px', marginTop: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--p-navy-dark)', marginBottom: 6 }}>
+                      Why is this reservation being released?
+                    </div>
+                    {RELEASE_CHOICES.map((c) => (
+                      <label key={c.value} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 4 }}>
+                        <input
+                          type="radio"
+                          name="release-reason"
+                          checked={releaseReason === c.value}
+                          onChange={() => setReleaseReason(c.value)}
+                        />
+                        {c.label}
+                      </label>
+                    ))}
+                    <input
+                      className="plat-input"
+                      placeholder="Note (optional)"
+                      value={releaseNote}
+                      onChange={(e) => setReleaseNote(e.target.value)}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="plat-btn" disabled={busy !== '' || !releaseReason} onClick={confirmRelease}>
+                        {busy === 'release' ? 'Releasing…' : 'Release'}
+                      </button>
+                      <button className="plat-btn ghost" disabled={busy !== ''} onClick={() => { setReleaseOpen(false); setReleaseReason(''); setReleaseNote('') }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="note">
                   Reserving is not a button — it happens only by accepting an offer.
                 </div>

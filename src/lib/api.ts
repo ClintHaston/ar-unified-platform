@@ -119,6 +119,53 @@ export interface DealDetailResponse {
 // ── 3c-3 Inventory / Units / Offers ──
 export type UnitStatus = 'available' | 'reserved' | 'in_transport' | 'under_maintenance' | 'sold'
 
+// ── 3c-4 Valuation (latest_valuations is the only one-number read path) ──
+export interface UnitValuation {
+  flv_cents: number | null
+  olv_cents: number | null
+  fmv_cents: number | null
+  tier: string
+  confidence: number | null
+  engine_data_version: string
+  taken_at: string
+  age_days: number
+  stale: boolean
+  revalue: boolean
+}
+
+export interface ValuationRun {
+  run_token: string
+  saveable: boolean
+  save_block: string | null
+  flv_cents: number | null
+  olv_cents: number | null
+  fmv_cents: number | null
+  tier: string
+  tier_label: string | null
+  confidence: number | null
+  confidence_label: string | null
+  comp_count: number | null
+  engine_data_version: string | null
+  assumptions: string[]
+  summary: string | null
+  stale_comps_warning: boolean
+  as_of: { hours: number | null; condition: string | null }
+}
+
+export interface ValuationSnapshot {
+  id: string
+  flv_cents: number | null
+  olv_cents: number | null
+  fmv_cents: number | null
+  tier: string
+  confidence: number | null
+  engine_data_version: string
+  taken_at: string
+  unit_hours: number | null
+  unit_condition: string | null
+  taken_by_name: string | null
+}
+
 export interface UnitCard {
   id: string
   title: string
@@ -137,6 +184,7 @@ export interface UnitCard {
   make_name: string | null
   model_name: string | null
   reserved_until: string | null
+  valuation: UnitValuation | null
 }
 
 export interface TaxonomyLists {
@@ -155,7 +203,7 @@ export interface ContactHit {
 export interface UnitOffer {
   id: string
   amount_cents: number
-  status: 'open' | 'accepted' | 'declined' | 'expired' | 'withdrawn'
+  status: 'open' | 'accepted' | 'declined' | 'expired' | 'withdrawn' | 'fell_through'
   expires_at: string
   responded_at: string | null
   note: string | null
@@ -355,12 +403,25 @@ export const api = {
       body: JSON.stringify({ note }),
     }),
 
-  transitionUnit: (unitId: string, toStatus: string, note?: string) =>
+  transitionUnit: (unitId: string, toStatus: string, note?: string, releaseReason?: string) =>
     request<{ ok: boolean; from_status: string; to_status: string; deal_closed: string | null }>(
       `/platform/units/${unitId}/transition`, {
         method: 'POST',
-        body: JSON.stringify({ to_status: toStatus, note }),
+        body: JSON.stringify({ to_status: toStatus, note, release_reason: releaseReason }),
       }),
+
+  // ── 3c-4 Valuation: run → review → explicit save; nothing recomputes silently ──
+  runValuation: (unitId: string) =>
+    request<ValuationRun>(`/platform/units/${unitId}/valuation/run`, { method: 'POST' }),
+
+  saveValuation: (unitId: string, runToken: string) =>
+    request<{ id: string; taken_at: string }>(`/platform/units/${unitId}/valuation/save`, {
+      method: 'POST',
+      body: JSON.stringify({ run_token: runToken }),
+    }),
+
+  unitValuations: (unitId: string) =>
+    request<{ snapshots: ValuationSnapshot[] }>(`/platform/units/${unitId}/valuations`),
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<User> => {
     const data = await request<AuthResponse>('/platform/auth/change-password', {
