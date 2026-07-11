@@ -9,6 +9,8 @@ import { Pipelines } from './pages/Pipelines'
 import { DealDetail } from './pages/DealDetail'
 import { Inventory } from './pages/Inventory'
 import { UnitDetail } from './pages/UnitDetail'
+import { Contacts } from './pages/Contacts'
+import { ContactDetail } from './pages/ContactDetail'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
 import { Leads } from './pages/Leads'
@@ -31,6 +33,8 @@ export default function App() {
             <Route path="/deals/:dealId" element={<AuthGuard><DealDetail /></AuthGuard>} />
             <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
             <Route path="/units/:unitId" element={<AuthGuard><UnitDetail /></AuthGuard>} />
+            <Route path="/contacts" element={<AuthGuard><Contacts /></AuthGuard>} />
+            <Route path="/contacts/:contactId" element={<AuthGuard><ContactDetail /></AuthGuard>} />
 
             <Route path="/evaluator" element={<AuthGuard><Evaluator /></AuthGuard>} />
             <Route path="/deals-legacy" element={<AuthGuard><Deals /></AuthGuard>} />

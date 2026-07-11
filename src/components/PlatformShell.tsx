@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../lib/api'
+import { GlobalSearch } from './GlobalSearch'
 import { PersistentIframes } from './PersistentIframes'
 
 // App shell per the signed-off ar-unified-platform-prototype_4.html:
@@ -13,6 +14,7 @@ const NATIVE_ITEMS = [
   { path: '/dashboard', ic: '#', label: 'Dashboard' },
   { path: '/pipelines', ic: '|', label: 'Pipelines' },
   { path: '/inventory', ic: '=', label: 'Inventory' },
+  { path: '/contacts', ic: 'o', label: 'Contacts' },
 ]
 
 const TOOL_ITEMS = [
@@ -31,6 +33,7 @@ const TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/pipelines': 'Pipelines',
   '/inventory': 'Inventory',
+  '/contacts': 'Contacts',
   '/evaluator': 'Evaluator',
   '/deals-legacy': 'Deals (legacy)',
   '/leads': 'Lead Intelligence',
@@ -61,6 +64,7 @@ export function PlatformShell() {
   const isAdmin = user?.role === 'admin'
   const title = pathname.startsWith('/deals/') ? 'Deal detail'
     : pathname.startsWith('/units/') ? 'Unit detail'
+    : pathname.startsWith('/contacts/') ? 'Contact detail'
     : (TITLES[pathname] ?? 'Dashboard')
 
   return (
@@ -77,6 +81,7 @@ export function PlatformShell() {
       <div className="topbar">
         <div className="page-title">{title}</div>
         <div className="spacer" />
+        {user && <GlobalSearch />}
         {user && (
           <>
             <div className="who">Signed in as <b>{user.name} ({user.role})</b></div>

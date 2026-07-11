@@ -200,6 +200,97 @@ export interface ContactHit {
   company_name: string | null
 }
 
+// ── 3c-5 Contacts surface + global search ──
+export type ContactType = 'buyer' | 'seller' | 'consigner_contact' | 'other'
+
+export interface ContactRow {
+  id: string
+  name: string | null
+  email: string | null
+  phone: string | null
+  contact_type: ContactType
+  hunting_for: string | null
+  source: string
+  company_id: string | null
+  company_name: string | null
+  owner_id: string | null
+  owner_name: string | null
+  created_at: string
+}
+
+export interface ContactListResponse {
+  total: number
+  page: number
+  page_size: number
+  contacts: ContactRow[]
+}
+
+export interface OwnerOption {
+  id: string
+  name: string
+  is_active: boolean
+}
+
+export interface ContactListParams {
+  q?: string
+  contact_type?: string
+  owner_id?: string
+  company_id?: string
+  page?: number
+  page_size?: number
+}
+
+export interface ContactDetailResponse {
+  contact: ContactRow & {
+    first_name: string | null
+    last_name: string | null
+    lead_status: string | null
+    legacy_source: string | null
+  }
+  deals: Array<{
+    id: string
+    name: string
+    value_cents: number | null
+    outcome: string | null
+    pipeline_name: string
+    stage_name: string
+  }>
+  activities: Array<{
+    id: string
+    kind: string
+    subject: string | null
+    body: string
+    occurred_at: string
+    rep_name: string | null
+  }>
+  tasks: Array<{
+    id: string
+    title: string
+    due_at: string | null
+    done_at: string | null
+    owner_name: string | null
+  }>
+}
+
+export interface ContactPatch {
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+  phone?: string | null
+  contact_type?: ContactType
+  hunting_for?: string | null
+}
+
+export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
+
+export interface SearchResult {
+  type: SearchResultType
+  id: string
+  title: string
+  subtitle: string | null
+  score: number
+}
+
 export interface UnitOffer {
   id: string
   amount_cents: number
@@ -330,7 +421,7 @@ export const api = {
 
   myTasks: () => request<{ tasks: TaskItem[] }>('/platform/tasks'),
 
-  createTask: (input: { title: string; due_at?: string; deal_id?: string }) =>
+  createTask: (input: { title: string; due_at?: string; deal_id?: string; unit_id?: string; contact_id?: string }) =>
     request<{ id: string }>('/platform/tasks', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -422,6 +513,56 @@ export const api = {
 
   unitValuations: (unitId: string) =>
     request<{ snapshots: ValuationSnapshot[] }>(`/platform/units/${unitId}/valuations`),
+
+  // ── 3c-5 Contacts surface + global search ──
+  contacts: (params: ContactListParams = {}) => {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') qs.set(k, String(v))
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : ''
+    return request<ContactListResponse>(`/platform/contacts${suffix}`)
+  },
+
+  contactOwners: () => request<{ owners: OwnerOption[] }>('/platform/contacts/owners'),
+
+  createContact: (input: {
+    first_name?: string
+    last_name?: string
+    email?: string
+    phone?: string
+    contact_type?: ContactType
+    hunting_for?: string
+    company_id?: string
+  }) =>
+    request<{ id: string }>('/platform/contacts', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  contactDetail: (contactId: string) =>
+    request<ContactDetailResponse>(`/platform/contacts/${contactId}`),
+
+  updateContact: (contactId: string, patch: ContactPatch) =>
+    request<{ ok: boolean }>(`/platform/contacts/${contactId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+
+  reassignContactOwner: (contactId: string, ownerId: string | null) =>
+    request<{ ok: boolean }>(`/platform/contacts/${contactId}/owner`, {
+      method: 'POST',
+      body: JSON.stringify({ owner_id: ownerId }),
+    }),
+
+  logContactActivity: (contactId: string, input: { kind: 'note' | 'call'; subject?: string; body: string }) =>
+    request<{ id: string }>(`/platform/contacts/${contactId}/activities`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  globalSearch: (q: string) =>
+    request<{ results: SearchResult[] }>(`/platform/search?q=${encodeURIComponent(q)}`),
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<User> => {
     const data = await request<AuthResponse>('/platform/auth/change-password', {
