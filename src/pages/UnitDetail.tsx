@@ -26,6 +26,13 @@ function when(iso: string): string {
   })
 }
 
+// Date-only values (expenses.incurred_on) must not go through new Date(iso):
+// that parses as UTC midnight and renders the previous day in Central.
+function dateOnly(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString()
+}
+
 export function UnitDetail() {
   const { unitId } = useParams<{ unitId: string }>()
   const [data, setData] = useState<UnitDetailResponse | null>(null)
@@ -395,7 +402,7 @@ export function UnitDetail() {
                     <span><span className="pill grey">{e.category}</span>{e.note ? ` ${e.note}` : ''}</span>
                     <b>{money(e.amount_cents)}</b>
                   </div>
-                  <div className="when">{new Date(e.incurred_on).toLocaleDateString()} · {e.created_by_name ?? '—'}</div>
+                  <div className="when">{dateOnly(e.incurred_on)} · {e.created_by_name ?? '—'}</div>
                 </div>
               ))
             )}
