@@ -184,6 +184,7 @@ export interface UnitCard {
   make_name: string | null
   model_name: string | null
   reserved_until: string | null
+  photo_url: string | null
   valuation: UnitValuation | null
 }
 
@@ -295,6 +296,72 @@ export interface NotificationItem {
 export interface NotificationsResponse {
   unread: number
   notifications: NotificationItem[]
+}
+
+// ── 3c-8 documents / intake ──
+export type DocType = 'title' | 'lien_release' | 'bill_of_sale' | 'wire_instructions' | 'inspection' | 'agreement' | 'photo' | 'other'
+
+export interface DocumentRow {
+  id: string
+  doc_type: DocType
+  file_name: string
+  file_hash: string
+  is_primary: boolean
+  uploaded_at: string
+  uploaded_by_name: string | null
+  url: string | null
+}
+
+export interface DocumentsResponse {
+  configured: boolean
+  documents: DocumentRow[]
+}
+
+export interface ConsignerOption {
+  id: string
+  company_name: string
+  split_pct: number | null
+  notes: string | null
+}
+
+export interface IntakeExpenseInput {
+  category: string
+  amount_cents: number
+  incurred_on: string
+  note?: string
+}
+
+export interface InspectionItemInput {
+  label: string
+  result: 'pass' | 'fail' | 'na'
+  note?: string
+}
+
+export interface IntakeInput {
+  unit: {
+    title: string
+    category_id?: string | null
+    make_id?: string | null
+    model_id?: string | null
+    year?: number | null
+    serial?: string | null
+    hours?: number | null
+    condition?: string | null
+    description?: string | null
+    location?: string | null
+    asking_price_cents?: number | null
+    stock_cost_cents?: number | null
+  }
+  initial_status: 'available' | 'under_maintenance'
+  consigner?: {
+    consigner_id?: string
+    new_company_name?: string
+    split_pct?: number
+    split_terms?: string
+    notes?: string
+  } | null
+  expenses: IntakeExpenseInput[]
+  inspection?: { items: InspectionItemInput[]; notes?: string } | null
 }
 
 // ── 3c-7 settings / commission report / sales sheet ──
@@ -624,6 +691,62 @@ export const api = {
 
   markAllNotificationsRead: () =>
     request<{ ok: boolean; marked: number }>('/platform/notifications/read-all', { method: 'POST' }),
+
+  // ── 3c-8 documents / intake ──
+  documentsStatus: () => request<{ configured: boolean }>('/platform/documents/status'),
+
+  documents: (parent: { unit_id?: string; deal_id?: string }) => {
+    const qs = parent.unit_id ? `unit_id=${parent.unit_id}` : `deal_id=${parent.deal_id}`
+    return request<DocumentsResponse>(`/platform/documents?${qs}`)
+  },
+
+  // presign → browser PUT → complete (backend hashes server-side)
+  uploadDocument: async (
+    parent: { unit_id?: string; deal_id?: string },
+    docType: DocType,
+    file: File
+  ): Promise<{ id: string; file_hash: string; is_primary: boolean }> => {
+    const presign = await request<{ file_key: string; upload_url: string }>(
+      '/platform/documents/presign', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...parent, doc_type: docType, file_name: file.name,
+          content_type: file.type || 'application/octet-stream',
+        }),
+      })
+    const put = await fetch(presign.upload_url, {
+      method: 'PUT',
+      body: file,
+      headers: file.type ? { 'Content-Type': file.type } : undefined,
+    })
+    if (!put.ok) throw new Error(`Upload failed (${put.status})`)
+    return request<{ id: string; file_hash: string; is_primary: boolean }>(
+      '/platform/documents/complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          file_key: presign.file_key, ...parent,
+          doc_type: docType, file_name: file.name,
+        }),
+      })
+  },
+
+  documentUrl: (documentId: string) =>
+    request<{ url: string }>(`/platform/documents/${documentId}/url`),
+
+  setPrimaryPhoto: (documentId: string) =>
+    request<{ ok: boolean }>(`/platform/documents/${documentId}/primary`, { method: 'POST' }),
+
+  archiveDocument: (documentId: string) =>
+    request<{ ok: boolean }>(`/platform/documents/${documentId}/archive`, { method: 'POST' }),
+
+  consigners: () => request<{ consigners: ConsignerOption[] }>('/platform/consigners'),
+
+  intakeUnit: (input: IntakeInput) =>
+    request<{ unit_id: string; inspection_document_id: string | null; prompt_valuation: boolean }>(
+      '/platform/units/intake', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
 
   // ── 3c-7 settings / reports / sales sheet ──
   settings: () => request<{ settings: SettingRow[] }>('/platform/settings'),

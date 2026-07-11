@@ -14,6 +14,7 @@ import { UnitDetail } from './pages/UnitDetail'
 import { Contacts } from './pages/Contacts'
 import { ContactDetail } from './pages/ContactDetail'
 import { SalesSheet } from './pages/SalesSheet'
+import { IntakeWizard } from './pages/IntakeWizard'
 import { CommissionReport } from './pages/CommissionReport'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/pipelines" element={<AuthGuard><Pipelines /></AuthGuard>} />
             <Route path="/deals/:dealId" element={<AuthGuard><DealDetail /></AuthGuard>} />
             <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
+            <Route path="/inventory/intake" element={<AuthGuard><IntakeWizard /></AuthGuard>} />
             <Route path="/units/:unitId" element={<AuthGuard><UnitDetail /></AuthGuard>} />
             <Route path="/contacts" element={<AuthGuard><Contacts /></AuthGuard>} />
             <Route path="/contacts/:contactId" element={<AuthGuard><ContactDetail /></AuthGuard>} />

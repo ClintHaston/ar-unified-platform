@@ -149,6 +149,7 @@ export function Inventory() {
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--p-body)' }}>
             {filtered.length} of {units.filter((u) => showArchived || !u.archived).length} units
           </span>
+          <button className="plat-btn" onClick={() => navigate('/inventory/intake')}>+ Intake unit</button>
         </div>
       </div>
 
@@ -158,7 +159,9 @@ export function Inventory() {
         <div className="units">
           {filtered.map((u) => (
             <div className="unit-card" key={u.id} onClick={() => navigate(`/units/${u.id}`)}>
-              <div className="ph">{u.category_name ?? 'Uncategorized'}</div>
+              {u.photo_url
+                ? <div className="ph has-photo"><img src={u.photo_url} alt={u.title} loading="lazy" /></div>
+                : <div className="ph">{u.category_name ?? 'Uncategorized'}</div>}
               <div className="bd">
                 <div className="ti">{u.title}</div>
                 <div className="sub">
