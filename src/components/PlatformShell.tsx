@@ -12,6 +12,7 @@ import { PersistentIframes } from './PersistentIframes'
 const NATIVE_ITEMS = [
   { path: '/dashboard', ic: '#', label: 'Dashboard' },
   { path: '/pipelines', ic: '|', label: 'Pipelines' },
+  { path: '/inventory', ic: '=', label: 'Inventory' },
 ]
 
 const TOOL_ITEMS = [
@@ -29,6 +30,7 @@ const ADMIN_ITEMS = [
 const TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/pipelines': 'Pipelines',
+  '/inventory': 'Inventory',
   '/evaluator': 'Evaluator',
   '/deals-legacy': 'Deals (legacy)',
   '/leads': 'Lead Intelligence',
@@ -57,7 +59,9 @@ export function PlatformShell() {
   }
 
   const isAdmin = user?.role === 'admin'
-  const title = pathname.startsWith('/deals/') ? 'Deal detail' : (TITLES[pathname] ?? 'Dashboard')
+  const title = pathname.startsWith('/deals/') ? 'Deal detail'
+    : pathname.startsWith('/units/') ? 'Unit detail'
+    : (TITLES[pathname] ?? 'Dashboard')
 
   return (
     <div className="plat-grid">

@@ -657,3 +657,53 @@ input, select, textarea {
 
 .back-link { font-size: 12px; color: var(--p-body); cursor: pointer; margin-bottom: 12px; display: inline-block; }
 .back-link:hover { color: var(--p-navy-dark); }
+
+/* ── 3c-3 Inventory (prototype_4 unit grid) ── */
+.units {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.unit-card {
+  background: var(--p-white); border: 1px solid var(--p-steel);
+  border-radius: 9px; overflow: hidden; cursor: pointer;
+}
+.unit-card:hover { border-color: var(--p-gold); }
+.unit-card .ph {
+  height: 60px;
+  background: linear-gradient(135deg, var(--p-steel), var(--p-blue-muted));
+  display: flex; align-items: center; justify-content: center;
+  color: var(--p-navy-dark); font-size: 11px;
+}
+.unit-card .bd { padding: 11px 12px; }
+.unit-card .ti {
+  font-size: 13px; font-weight: bold; color: var(--p-navy-dark);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.unit-card .sub {
+  font-size: 11px; color: var(--p-body); margin: 2px 0 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.unit-card .r {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; margin-bottom: 3px; color: var(--p-navy-dark);
+}
+.unit-card .r span:first-child { color: var(--p-body); }
+
+/* unit status pills (prototype: av/res/sold/maint + in_transport) */
+.pill.av { background: #2e7d5b; }
+.pill.res { background: var(--p-gold); color: var(--p-navy-dark); }
+.pill.sold { background: #8a8f98; }
+.pill.maint { background: #B4432B; }
+.pill.trans { background: var(--p-navy-mid); }
+
+/* offer-form contact typeahead */
+.typeahead {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  background: var(--p-white); border: 1px solid var(--p-steel);
+  border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  max-height: 220px; overflow-y: auto; margin-top: -6px;
+}
+.typeahead-item { padding: 8px 10px; font-size: 12px; cursor: pointer; }
+.typeahead-item:hover { background: var(--p-row); }
+.typeahead-item span { color: var(--p-body); margin-left: 6px; }

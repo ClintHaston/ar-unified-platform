@@ -116,6 +116,94 @@ export interface DealDetailResponse {
   }>
 }
 
+// ── 3c-3 Inventory / Units / Offers ──
+export type UnitStatus = 'available' | 'reserved' | 'in_transport' | 'under_maintenance' | 'sold'
+
+export interface UnitCard {
+  id: string
+  title: string
+  year: number | null
+  hours: number | null
+  condition: string | null
+  serial: string | null
+  status: UnitStatus
+  asking_price_cents: number | null
+  location: string | null
+  archived: boolean
+  category_id: string | null
+  make_id: string | null
+  model_id: string | null
+  category_name: string | null
+  make_name: string | null
+  model_name: string | null
+  reserved_until: string | null
+}
+
+export interface TaxonomyLists {
+  categories: Array<{ id: string; name: string }>
+  makes: Array<{ id: string; name: string }>
+  models: Array<{ id: string; name: string; category_id: string; make_id: string }>
+}
+
+export interface ContactHit {
+  id: string
+  name: string | null
+  email: string | null
+  company_name: string | null
+}
+
+export interface UnitOffer {
+  id: string
+  amount_cents: number
+  status: 'open' | 'accepted' | 'declined' | 'expired' | 'withdrawn'
+  expires_at: string
+  responded_at: string | null
+  note: string | null
+  created_at: string
+  deal_id: string | null
+  deal_name: string | null
+  rep_name: string | null
+  buyer_name: string | null
+  buyer_company: string | null
+}
+
+export interface UnitDetailResponse {
+  unit: UnitCard & {
+    description: string | null
+    stock_cost_cents: number | null
+    legacy_source: string | null
+    legacy_id: string | null
+    created_at: string
+  }
+  allowed_transitions: string[]
+  status_history: Array<{
+    at: string
+    from_status: string | null
+    to_status: string
+    note: string | null
+    actor_name: string | null
+    offer_id: string | null
+    offer_amount_cents: number | null
+  }>
+  expenses: Array<{
+    id: string
+    category: string
+    amount_cents: number
+    incurred_on: string
+    note: string | null
+    created_by_name: string | null
+  }>
+  expense_total_cents: number
+  offers: UnitOffer[]
+  tasks: Array<{
+    id: string
+    title: string
+    due_at: string | null
+    done_at: string | null
+    owner_name: string | null
+  }>
+}
+
 function setAccessToken(token: string | null): void {
   accessToken = token
 }
@@ -221,6 +309,58 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
+
+  // ── 3c-3 Inventory / Units / Offers ──
+  units: (includeArchived = false) =>
+    request<{ units: UnitCard[] }>(`/platform/units${includeArchived ? '?include_archived=true' : ''}`),
+
+  unitDetail: (unitId: string) => request<UnitDetailResponse>(`/platform/units/${unitId}`),
+
+  taxonomy: () => request<TaxonomyLists>('/platform/taxonomy'),
+
+  searchContacts: (q: string) =>
+    request<{ contacts: ContactHit[] }>(`/platform/contacts/search?q=${encodeURIComponent(q)}`),
+
+  addExpense: (unitId: string, input: { category: string; amount_cents: number; incurred_on: string; note?: string }) =>
+    request<{ id: string }>(`/platform/units/${unitId}/expenses`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  assignTaxonomy: (unitId: string, input: { category_id: string | null; make_id: string | null; model_id: string | null }) =>
+    request<{ ok: boolean }>(`/platform/units/${unitId}/taxonomy`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+
+  logOffer: (unitId: string, input: { buyer_contact_id: string; amount_cents: number; expires_at?: string; deal_id?: string; note?: string }) =>
+    request<{ id: string; expires_at: string }>(`/platform/units/${unitId}/offers`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  acceptOffer: (offerId: string) =>
+    request<{ ok: boolean; unit_status: string; reserved_until: string }>(
+      `/platform/offers/${offerId}/accept`, { method: 'POST' }),
+
+  declineOffer: (offerId: string, note?: string) =>
+    request<{ ok: boolean; status: string }>(`/platform/offers/${offerId}/decline`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    }),
+
+  withdrawOffer: (offerId: string, note?: string) =>
+    request<{ ok: boolean; status: string }>(`/platform/offers/${offerId}/withdraw`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    }),
+
+  transitionUnit: (unitId: string, toStatus: string, note?: string) =>
+    request<{ ok: boolean; from_status: string; to_status: string; deal_closed: string | null }>(
+      `/platform/units/${unitId}/transition`, {
+        method: 'POST',
+        body: JSON.stringify({ to_status: toStatus, note }),
+      }),
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<User> => {
     const data = await request<AuthResponse>('/platform/auth/change-password', {

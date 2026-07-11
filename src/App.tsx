@@ -7,6 +7,8 @@ import { ChangePassword } from './pages/ChangePassword'
 import { Dashboard } from './pages/Dashboard'
 import { Pipelines } from './pages/Pipelines'
 import { DealDetail } from './pages/DealDetail'
+import { Inventory } from './pages/Inventory'
+import { UnitDetail } from './pages/UnitDetail'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
 import { Leads } from './pages/Leads'
@@ -27,6 +29,8 @@ export default function App() {
             <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
             <Route path="/pipelines" element={<AuthGuard><Pipelines /></AuthGuard>} />
             <Route path="/deals/:dealId" element={<AuthGuard><DealDetail /></AuthGuard>} />
+            <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
+            <Route path="/units/:unitId" element={<AuthGuard><UnitDetail /></AuthGuard>} />
 
             <Route path="/evaluator" element={<AuthGuard><Evaluator /></AuthGuard>} />
             <Route path="/deals-legacy" element={<AuthGuard><Deals /></AuthGuard>} />
