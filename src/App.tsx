@@ -3,6 +3,8 @@ import { AuthProvider } from './contexts/AuthContext'
 import { AuthGuard } from './components/AuthGuard'
 import { PlatformShell } from './components/PlatformShell'
 import { Login } from './pages/Login'
+import { ForgotPassword } from './pages/ForgotPassword'
+import { ResetPassword } from './pages/ResetPassword'
 import { ChangePassword } from './pages/ChangePassword'
 import { Dashboard } from './pages/Dashboard'
 import { Pipelines } from './pages/Pipelines'
@@ -24,6 +26,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/change-password" element={<AuthGuard><ChangePassword /></AuthGuard>} />
 
           {/* Prototype shell: brand + topbar + sidebar, preview banner (Amendment 14) */}

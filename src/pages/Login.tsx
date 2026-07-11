@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function Login() {
@@ -62,6 +62,9 @@ export function Login() {
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
+          <div className="login-alt">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </div>
         </form>
         </div>
       </div>

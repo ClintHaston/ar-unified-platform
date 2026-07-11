@@ -281,6 +281,22 @@ export interface ContactPatch {
   hunting_for?: string | null
 }
 
+// ── 3c-6 notifications (topbar bell) ──
+export interface NotificationItem {
+  id: string
+  kind: 'stage_entry' | 'stall_alert' | 'system' | string
+  subject: string
+  body: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationsResponse {
+  unread: number
+  notifications: NotificationItem[]
+}
+
 export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
 
 export interface SearchResult {
@@ -563,6 +579,27 @@ export const api = {
 
   globalSearch: (q: string) =>
     request<{ results: SearchResult[] }>(`/platform/search?q=${encodeURIComponent(q)}`),
+
+  // ── 3c-6 notifications + password reset ──
+  notifications: () => request<NotificationsResponse>('/platform/notifications'),
+
+  markNotificationRead: (notificationId: string) =>
+    request<{ ok: boolean }>(`/platform/notifications/${notificationId}/read`, { method: 'POST' }),
+
+  markAllNotificationsRead: () =>
+    request<{ ok: boolean; marked: number }>('/platform/notifications/read-all', { method: 'POST' }),
+
+  requestPasswordReset: (email: string) =>
+    request<{ ok: boolean }>('/platform/auth/request-reset', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ ok: boolean }>('/platform/auth/reset', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password: newPassword }),
+    }),
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<User> => {
     const data = await request<AuthResponse>('/platform/auth/change-password', {

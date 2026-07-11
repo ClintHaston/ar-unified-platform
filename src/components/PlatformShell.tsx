@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../lib/api'
 import { GlobalSearch } from './GlobalSearch'
+import { NotificationBell } from './NotificationBell'
 import { PersistentIframes } from './PersistentIframes'
 
 // App shell per the signed-off ar-unified-platform-prototype_4.html:
@@ -82,6 +83,7 @@ export function PlatformShell() {
         <div className="page-title">{title}</div>
         <div className="spacer" />
         {user && <GlobalSearch />}
+        {user && <NotificationBell />}
         {user && (
           <>
             <div className="who">Signed in as <b>{user.name} ({user.role})</b></div>
