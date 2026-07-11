@@ -22,6 +22,8 @@ import { Leads } from './pages/Leads'
 import { SalesCommand } from './pages/SalesCommand'
 import { Admin } from './pages/Admin'
 import { Spine } from './pages/Spine'
+import { Outbox } from './pages/Outbox'
+import { LeadApprovals } from './pages/LeadApprovals'
 
 export default function App() {
   return (
@@ -52,6 +54,8 @@ export default function App() {
             <Route path="/sales-command" element={<AuthGuard><SalesCommand /></AuthGuard>} />
 
             <Route path="/admin" element={<AuthGuard adminOnly><Admin /></AuthGuard>} />
+            <Route path="/outbox" element={<AuthGuard adminOnly><Outbox /></AuthGuard>} />
+            <Route path="/lead-approvals" element={<AuthGuard adminOnly><LeadApprovals /></AuthGuard>} />
             <Route path="/spine" element={<AuthGuard adminOnly><Spine /></AuthGuard>} />
           </Route>
 

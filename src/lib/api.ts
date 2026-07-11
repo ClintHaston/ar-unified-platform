@@ -462,6 +462,88 @@ export interface UnitDetailResponse {
   }>
 }
 
+// ── 4b HubSpot outbox screen + §5 inbound door ──
+export type OutboxStatus = 'pending_approval' | 'pending' | 'in_flight' | 'done' | 'failed' | 'dismissed'
+
+export interface OutboxQueueDepth {
+  pending: number
+  gated: number
+  failed: number
+  in_flight: number
+  done: number
+  oldest_pending_min: number | null
+  oldest_gated_min: number | null
+}
+
+export interface OutboxRow {
+  id: string
+  entity_type: 'contact' | 'company' | 'deal'
+  entity_id: string
+  entity_label: string | null
+  op: 'upsert' | 'archive' | 'associate'
+  assoc_target_type: string | null
+  assoc_target_id: string | null
+  assoc_target_label: string | null
+  status: OutboxStatus
+  attempts: number
+  last_error: string | null
+  next_attempt_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OutboxResponse {
+  drain_armed: boolean
+  queue: OutboxQueueDepth
+  rows: OutboxRow[]
+}
+
+export interface OutboxPlan {
+  outbox_id: string
+  entity_type: string
+  entity_id: string
+  entity_label?: string | null
+  op: string
+  action: string
+  hubspot_id?: string | null
+  target_hubspot_id?: string | null
+  assoc_target_type?: string
+  assoc_target_id?: string
+  properties?: Record<string, string>
+  intended_lifecyclestage?: string | null
+  note?: string
+  ratchet_note?: string
+}
+
+export interface OutboxDryRunReport {
+  mode: string
+  drain_armed: boolean
+  hubspot_writes_performed: number
+  queue: OutboxQueueDepth
+  planned: Record<string, number>
+  ratchet_note: string | null
+  rows: OutboxPlan[]
+}
+
+export interface InboundLead {
+  id: string
+  hubspot_contact_id: string
+  name: string | null
+  email: string | null
+  phone: string | null
+  lifecyclestage: string | null
+  hs_created_at: string | null
+  imported_at: string
+  status: 'pending_approval' | 'approved' | 'dismissed'
+  resolved_at: string | null
+  resolved_by_name: string | null
+}
+
+export interface InboundLeadsResponse {
+  counts: { pending: number; approved: number; dismissed: number }
+  leads: InboundLead[]
+}
+
 function setAccessToken(token: string | null): void {
   accessToken = token
 }
@@ -765,6 +847,36 @@ export const api = {
   salesSheet: (unitId: string) =>
     request<{ html: string; spec_source: 'published' | 'generated' | 'none' }>(
       `/platform/units/${unitId}/sales-sheet`),
+
+  // ── 4b HubSpot outbox + inbound door (admin) ──
+  outbox: (status?: OutboxStatus) =>
+    request<OutboxResponse>(`/platform/outbox${status ? `?status=${status}` : ''}`),
+
+  outboxPlan: (outboxId: string) =>
+    request<OutboxPlan>(`/platform/outbox/${outboxId}/plan`),
+
+  retryOutboxRow: (outboxId: string) =>
+    request<{ ok: boolean; status: string }>(`/platform/outbox/${outboxId}/retry`, { method: 'POST' }),
+
+  approveOutboxRow: (outboxId: string) =>
+    request<{ ok: boolean; status: string }>(`/platform/outbox/${outboxId}/approve`, { method: 'POST' }),
+
+  dismissOutboxRow: (outboxId: string) =>
+    request<{ ok: boolean; status: string }>(`/platform/outbox/${outboxId}/dismiss`, { method: 'POST' }),
+
+  outboxDryRun: () =>
+    request<OutboxDryRunReport>('/platform/outbox/dry-run', { method: 'POST' }),
+
+  inboundLeads: (status: 'pending_approval' | 'approved' | 'dismissed' = 'pending_approval') =>
+    request<InboundLeadsResponse>(`/platform/inbound-leads?status=${status}`),
+
+  approveInboundLead: (leadId: string) =>
+    request<{ ok: boolean; contact_id: string; already_existed: boolean }>(
+      `/platform/inbound-leads/${leadId}/approve`, { method: 'POST' }),
+
+  dismissInboundLead: (leadId: string) =>
+    request<{ ok: boolean; status: string }>(
+      `/platform/inbound-leads/${leadId}/dismiss`, { method: 'POST' }),
 
   requestPasswordReset: (email: string) =>
     request<{ ok: boolean }>('/platform/auth/request-reset', {

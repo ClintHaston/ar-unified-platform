@@ -29,6 +29,8 @@ const TOOL_ITEMS = [
 const ADMIN_ITEMS = [
   { path: '/admin', ic: '@', label: 'Team & settings' },
   { path: '/commission', ic: '%', label: 'Commission report' },
+  { path: '/outbox', ic: '^', label: 'HubSpot outbox' },
+  { path: '/lead-approvals', ic: '?', label: 'Lead approvals' },
   { path: '/spine', ic: '+', label: 'Spine' },
 ]
 
@@ -44,6 +46,8 @@ const TITLES: Record<string, string> = {
   '/leads': 'Lead Intelligence',
   '/sales-command': 'Sales Command',
   '/admin': 'Team & settings',
+  '/outbox': 'HubSpot outbox',
+  '/lead-approvals': 'Lead approvals',
   '/spine': 'Spine',
 }
 
