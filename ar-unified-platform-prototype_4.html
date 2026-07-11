@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asset Resource — Unified Platform (Prototype)</title>
+<style>
+  :root{
+    --navy-dark:#1A2B47; --navy-mid:#2C3E50; --gold:#C8922A;
+    --steel:#D1D9E6; --row:#F4F6F9; --white:#FFFFFF;
+    --blue-muted:#A8BDD4; --body:#555555;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;}
+  body{background:var(--row);height:100vh;overflow:hidden;color:var(--navy-dark);}
+
+  #login{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy-dark),var(--navy-mid));display:flex;align-items:center;justify-content:center;z-index:50;}
+  #login .box{background:var(--white);border-radius:14px;padding:40px 44px;width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  #login .logo{font-size:26px;font-weight:bold;}
+  #login .logo span{color:var(--gold);}
+  #login .tag{font-size:12px;color:var(--body);margin-bottom:26px;letter-spacing:.5px;}
+  #login input{width:100%;padding:11px 12px;margin-bottom:12px;border:1px solid var(--steel);border-radius:7px;font-size:14px;}
+  #login button{width:100%;padding:12px;background:var(--gold);color:var(--navy-dark);border:0;border-radius:7px;font-size:15px;font-weight:bold;cursor:pointer;}
+  #login .hint{font-size:11px;color:var(--body);margin-top:16px;}
+
+  #app{display:none;height:100vh;grid-template-columns:230px 1fr;grid-template-rows:56px 1fr;grid-template-areas:"brand top" "nav main";}
+  .brand-cell{grid-area:brand;background:var(--navy-dark);color:var(--white);display:flex;align-items:center;padding:0 18px;font-weight:bold;font-size:16px;}
+  .brand-cell span{color:var(--gold);margin-left:5px;}
+  .topbar{grid-area:top;background:var(--white);border-bottom:1px solid var(--steel);display:flex;align-items:center;padding:0 22px;gap:16px;}
+  .topbar .page-title{font-size:16px;font-weight:bold;}
+  .topbar .spacer{flex:1;}
+  .roletoggle{display:flex;background:var(--row);border-radius:7px;overflow:hidden;border:1px solid var(--steel);}
+  .roletoggle button{background:transparent;border:0;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--body);}
+  .roletoggle button.active{background:var(--navy-dark);color:var(--white);font-weight:bold;}
+  .who{font-size:12px;color:var(--body);}
+  .who b{color:var(--navy-dark);}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy-dark);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;}
+
+  nav{grid-area:nav;background:var(--navy-mid);padding:12px 10px;overflow-y:auto;}
+  nav .navitem{display:flex;align-items:center;gap:10px;color:var(--blue-muted);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:2px;}
+  nav .navitem:hover{background:rgba(255,255,255,.06);color:var(--white);}
+  nav .navitem.active{background:var(--gold);color:var(--navy-dark);font-weight:bold;}
+  nav .navitem .ic{width:18px;text-align:center;font-size:14px;}
+  nav .sect{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:#6f86a3;padding:14px 12px 6px;}
+  nav .adminonly{display:none;}
+  body.admin nav .adminonly{display:flex;}
+  nav .sect.adminsect{display:none;}
+  body.admin nav .sect.adminsect{display:block;}
+
+  main{grid-area:main;overflow-y:auto;padding:22px;}
+  .view{display:none;} .view.active{display:block;}
+
+  .kpis{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
+  .kpi{background:var(--white);border:1px solid var(--steel);border-radius:9px;padding:14px 18px;flex:1;min-width:150px;}
+  .kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--body);}
+  .kpi .v{font-size:24px;font-weight:bold;margin-top:4px;}
+  .kpi .s{font-size:12px;color:var(--gold);margin-top:2px;}
+  .panel{background:var(--white);border:1px solid var(--steel);border-radius:10px;padding:18px;margin-bottom:20px;}
+  .panel h3{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--body);margin-bottom:14px;}
+
+  .funnel{display:flex;gap:6px;align-items:flex-end;height:150px;}
+  .fstep{flex:1;text-align:center;display:flex;flex-direction:column;justify-content:flex-end;height:100%;}
+  .fbar{background:var(--navy-mid);border-radius:5px 5px 0 0;position:relative;}
+  .fbar b{position:absolute;top:6px;left:0;right:0;color:#fff;font-size:13px;}
+  .fstep small{margin-top:6px;font-size:10px;font-weight:bold;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{background:var(--navy-dark);color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:9px 12px;}
+  td{padding:9px 12px;font-size:13px;border-bottom:1px solid var(--row);}
+  tr:last-child td{border-bottom:0;}
+  .num{font-weight:bold;color:var(--navy-mid);}
+  .pill{font-size:10px;border-radius:10px;padding:2px 9px;color:#fff;}
+  .pill.av{background:#2e7d5b;} .pill.res{background:var(--gold);color:var(--navy-dark);} .pill.sold{background:#8a8f98;} .pill.maint{background:#B4432B;}
+  .pill.green{background:#2e7d5b;} .pill.grey{background:#8a8f98;} .pill.red{background:#B4432B;}
+
+  .board{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;}
+  .col{background:var(--white);border:1px solid var(--steel);border-radius:9px;min-width:230px;width:230px;flex-shrink:0;}
+  .colh{padding:10px 12px;border-bottom:2px solid var(--gold);display:flex;justify-content:space-between;font-size:12px;font-weight:bold;}
+  .colh .c{background:var(--row);color:var(--body);border-radius:10px;padding:1px 8px;font-weight:normal;}
+  .colb{padding:9px;display:flex;flex-direction:column;gap:9px;min-height:50px;}
+  .card{background:var(--white);border:1px solid var(--steel);border-left:4px solid var(--gold);border-radius:6px;padding:9px 10px;}
+  .card .co{font-size:12px;font-weight:bold;}
+  .card .eq{font-size:11px;color:var(--body);margin:2px 0 6px;}
+  .card .mt{display:flex;justify-content:space-between;align-items:center;}
+  .card .vv{font-size:12px;font-weight:bold;color:var(--navy-mid);}
+  .card .rp{font-size:9px;background:var(--navy-dark);color:#fff;border-radius:9px;padding:1px 7px;}
+
+  .units{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .unit{background:var(--white);border:1px solid var(--steel);border-radius:9px;overflow:hidden;}
+  .unit .ph{height:90px;background:linear-gradient(135deg,var(--steel),var(--blue-muted));display:flex;align-items:center;justify-content:center;color:var(--navy-dark);font-size:11px;}
+  .unit .bd{padding:11px 12px;}
+  .unit .ti{font-size:13px;font-weight:bold;}
+  .unit .sub{font-size:11px;color:var(--body);margin:2px 0 8px;}
+  .unit .r{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;}
+  .unit .r span:first-child{color:var(--body);}
+  .val{background:var(--row);border-radius:6px;padding:8px;margin-top:8px;display:flex;justify-content:space-between;}
+  .val div{text-align:center;} .val b{display:block;font-size:13px;} .val small{color:var(--body);font-size:10px;}
+
+  .adminbadge{display:none;}
+  body.admin .adminbadge{display:inline-block;background:var(--navy-dark);color:#fff;font-size:10px;border-radius:10px;padding:2px 9px;margin-left:8px;}
+  .note{font-size:12px;color:var(--body);margin-top:6px;}
+  .userhide{display:block;}
+  body:not(.admin) .userhide{display:none;}
+</style>
+</head>
+<body class="admin">
+
+<div id="login">
+  <div class="box">
+    <div class="logo">Asset <span>Resource</span></div>
+    <div class="tag">UNIFIED PLATFORM</div>
+    <input placeholder="Email" value="clint@asset-resource.com">
+    <input placeholder="Password" type="password" value="********">
+    <button onclick="enter()">Sign in</button>
+    <div class="hint">Prototype. One login gates the whole environment. Use the Rep / Admin switch up top to see both views.</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="brand-cell">Asset <span>Resource</span></div>
+  <div class="topbar">
+    <div class="page-title" id="pageTitle">Dashboard</div>
+    <div class="spacer"></div>
+    <div class="roletoggle">
+      <button id="btnUser" onclick="setRole('user')">Rep view</button>
+      <button id="btnAdmin" class="active" onclick="setRole('admin')">Admin view</button>
+    </div>
+    <div class="who">Signed in as <b id="whoName">Clint (Admin)</b></div>
+    <div class="avatar" id="whoAv">CH</div>
+  </div>
+
+  <nav></nav>
+
+  <main>
+    <div class="view active" id="v-dashboard">
+      <div class="kpis" id="dashKpis"></div>
+      <div class="panel userhide"><h3>Funnel conversion (all reps) <span class="adminbadge">Admin</span></h3><div class="funnel" id="dashFunnel"></div></div>
+      <div class="panel userhide"><h3>Rep leaderboard <span class="adminbadge">Admin</span></h3>
+        <table><thead><tr><th>Rep</th><th>Open deals</th><th>Pipeline value</th><th>Won QTD</th><th>Win rate</th></tr></thead>
+        <tbody>
+          <tr><td>D. Reyes</td><td class="num">11</td><td class="num">$1.71M</td><td class="num">$680K</td><td>34%</td></tr>
+          <tr><td>M. Cole</td><td class="num">8</td><td class="num">$1.20M</td><td class="num">$410K</td><td>29%</td></tr>
+          <tr><td>J. Tran</td><td class="num">7</td><td class="num">$980K</td><td class="num">$300K</td><td>25%</td></tr>
+          <tr><td>S. Ali</td><td class="num">6</td><td class="num">$730K</td><td class="num">$190K</td><td>22%</td></tr>
+        </tbody></table></div>
+      <div class="panel" id="myWork"><h3>My open deals needing action</h3>
+        <table><thead><tr><th>Company</th><th>Unit</th><th>Stage</th><th>Value</th><th>Next action</th></tr></thead>
+        <tbody>
+          <tr><td>Permian Basin Haul</td><td>2019 Cat 745</td><td>Qualified</td><td class="num">$285K</td><td>Call back Thu</td></tr>
+          <tr><td>Gulf Coast Marine</td><td>Manitowoc Crawler</td><td>Negotiation</td><td class="num">$540K</td><td>Send revised quote</td></tr>
+          <tr><td>Chisholm Energy</td><td>760-E Rig</td><td>Negotiation</td><td class="num">$1.25M</td><td>Confirm inspection</td></tr>
+        </tbody></table></div>
+    </div>
+
+    <div class="view" id="v-pipelines">
+      <div class="panel" style="padding:14px 16px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:12px;color:var(--body);">Pipeline:</span>
+          <div class="roletoggle"><button class="active">Buyer</button><button>Seller / Listing</button><button>Rig Sales</button></div>
+          <span style="margin-left:auto;font-size:11px;color:var(--body);">Changes mirror to HubSpot on approval</span>
+        </div>
+      </div>
+      <div class="board" id="board"></div>
+      <div class="note">Cards are deals in Postgres; changes mirror outbound to HubSpot on approval. No HubSpot pipeline cap, no per-rep seat.</div>
+    </div>
+
+    <div class="view" id="v-inventory"><div class="units" id="units"></div></div>
+
+    <div class="view" id="v-contacts">
+      <div class="panel"><h3>Contacts</h3>
+        <table><thead><tr><th>Name</th><th>Company</th><th>Type</th><th>Hunting for</th><th>Owner</th></tr></thead>
+        <tbody>
+          <tr><td>Ray Dunn</td><td>Permian Basin Haul</td><td>Buyer</td><td>Haul trucks, 2018+</td><td>D. Reyes</td></tr>
+          <tr><td>Mia Okafor</td><td>Lone Star Aggregates</td><td>Buyer</td><td>Wheel loaders</td><td>M. Cole</td></tr>
+          <tr><td>Latshaw Drilling</td><td>Latshaw Drilling</td><td>Consigner</td><td>Selling Rig 27</td><td>D. Reyes</td></tr>
+          <tr><td>Sam Reyes</td><td>Delta Site Works</td><td>Buyer</td><td>Excavators under 3000hr</td><td>J. Tran</td></tr>
+        </tbody></table>
+        <div class="note">Buyer-need matching: what a contact is hunting is matched against live inventory and surfaced to the owning rep.</div></div>
+    </div>
+
+    <div class="view" id="v-valuation">
+      <div class="panel"><h3>Valuation (Evaluator, native tab)</h3>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+          <div style="flex:1;min-width:220px;"><div style="font-size:15px;font-weight:bold;">2019 Caterpillar 745 Articulated Truck</div><div class="note">Serial 3F600xxx . 6,240 hrs . Good condition</div></div>
+          <div class="val" style="flex:2;min-width:280px;"><div><b>$262K</b><small>FLV</small></div><div><b>$298K</b><small>OLV</small></div><div><b>$341K</b><small>FMV</small></div><div style="align-self:center;font-size:10px;color:var(--body);">Snapshot 2h ago<br>Tier 1 . High</div></div>
+        </div>
+        <div class="note" style="margin-top:12px;">Valuation snapshots (FLV/OLV/FMV, tier, confidence, timestamp) are written to the unit record each run; the engine stays behind its API. Age rides with the number everywhere it appears. Reps price from real numbers without leaving the platform.</div></div>
+    </div>
+
+    <div class="view" id="v-sheet">
+      <div class="panel" style="max-width:640px;">
+        <div style="border:1px solid var(--steel);border-radius:8px;overflow:hidden;">
+          <div style="background:var(--navy-dark);color:#fff;padding:16px 20px;"><div style="font-size:18px;font-weight:bold;">2019 Caterpillar 745 <span style="color:var(--gold)">Articulated Truck</span></div><div style="font-size:12px;color:var(--blue-muted);">Asset Resource . Direct Equipment Source</div></div>
+          <div style="padding:18px 20px;">
+            <div class="unit"><div class="r"><span>Year</span><span>2019</span></div><div class="r"><span>Hours</span><span>6,240</span></div><div class="r"><span>Serial</span><span>3F600xxx</span></div><div class="r"><span>Condition</span><span>Good, field ready</span></div></div>
+            <div style="margin-top:14px;font-size:13px;color:var(--body);">Server-rendered spec description from the Spec Builder, brand-styled, ready to send or print.</div>
+            <div style="margin-top:14px;font-size:22px;font-weight:bold;">$319,000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN TOOLS -->
+    <div class="view" id="v-leadintel">
+      <div class="panel"><h3>Lead Intelligence <span class="adminbadge">Admin</span></h3>
+        <table><thead><tr><th>Name</th><th>Company</th><th>Source</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>West TX Excavation</td><td>West TX Excavation</td><td>Places scraper</td><td><span class="pill green">New</span></td></tr>
+          <tr><td>Delta Rentals</td><td>Delta Rentals</td><td>Places scraper</td><td>Reviewed</td></tr>
+          <tr><td>Sooner Site Prep</td><td>Sooner Site Prep</td><td>Places scraper</td><td>Reviewed</td></tr>
+        </tbody></table>
+        <div class="note">On-demand scraper, ~5,200 contacts. Push to HubSpot is human-gated, one tap by you, never automatic.</div></div>
+    </div>
+
+    <div class="view" id="v-marketing">
+      <div class="panel"><h3>Marketing Hub <span class="adminbadge">Admin</span></h3>
+        <div class="kpis">
+          <div class="kpi"><div class="l">Sessions (30d)</div><div class="v">18.4K</div><div class="s">real, bot filtered</div></div>
+          <div class="kpi"><div class="l">Leads</div><div class="v">142</div><div class="s">+18 vs prev</div></div>
+          <div class="kpi"><div class="l">Ad spend</div><div class="v">$4,910</div><div class="s">Google Ads</div></div>
+          <div class="kpi"><div class="l">Cost per lead</div><div class="v">$34.6</div><div class="s">down 9%</div></div>
+        </div>
+        <div class="note">GA4 + Google Ads dashboard. Reached from the shell; runs its own engine.</div></div>
+    </div>
+
+    <div class="view" id="v-tab">
+      <div class="panel"><h3>TAB Listings <span class="adminbadge">Admin</span></h3>
+        <table><thead><tr><th>Unit</th><th>Category</th><th>Price</th><th>Status</th><th>Views</th></tr></thead>
+        <tbody>
+          <tr><td>2019 Cat 745</td><td>Articulated Trucks</td><td class="num">$319K</td><td><span class="pill av">Live</span></td><td>412</td></tr>
+          <tr><td>Roadtec RX-600</td><td>Cold Planers</td><td class="num">$405K</td><td><span class="pill av">Live</span></td><td>288</td></tr>
+          <tr><td>760-E Rig</td><td>Oil &amp; Gas</td><td class="num">$1.25M</td><td><span class="pill res">Pending</span></td><td>96</td></tr>
+        </tbody></table>
+        <div class="note">The Open Industrial Marketplace. Listing status ties back to the unit record so a sold unit drops off automatically.</div></div>
+    </div>
+
+    <div class="view" id="v-spine">
+      <div class="panel"><h3>Spine (system health) <span class="adminbadge">Admin</span></h3>
+        <div class="kpis">
+          <div class="kpi"><div class="l">Checks green</div><div class="v">15 / 17</div><div class="s">2 idle by policy</div></div>
+          <div class="kpi"><div class="l">Daily spend</div><div class="v">$0.00</div><div class="s">of $5.00 cap</div></div>
+          <div class="kpi"><div class="l">Approvals pending</div><div class="v">1</div><div class="s">your tap</div></div>
+          <div class="kpi"><div class="l">Red</div><div class="v">0</div><div class="s">all clear</div></div>
+        </div>
+        <div class="note">The agentic OS map: health, job runner with cost cap, approval queue. Admin only.</div></div>
+    </div>
+
+    <div class="view" id="v-settings">
+      <div class="panel"><h3>Team &amp; access <span class="adminbadge">Admin</span></h3>
+        <table><thead><tr><th>User</th><th>Role</th><th>Access</th></tr></thead>
+        <tbody>
+          <tr><td>Clint Haston</td><td>Admin</td><td>Everything + analytics + platform tools</td></tr>
+          <tr><td>D. Reyes</td><td>Rep</td><td>Own deals, inventory, valuation, sheets</td></tr>
+          <tr><td>M. Cole</td><td>Rep</td><td>Own deals, inventory, valuation, sheets</td></tr>
+        </tbody></table>
+        <div class="note">10 reps + admin. One org, one login, one role flag. No tenants, no white-label.</div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const NAV=[
+    {v:"dashboard",ic:"#",label:"Dashboard"},
+    {v:"pipelines",ic:"|",label:"Pipelines"},
+    {v:"inventory",ic:"=",label:"Inventory"},
+    {v:"contacts",ic:"o",label:"Contacts"},
+    {v:"valuation",ic:"$",label:"Valuation"},
+    {v:"sheet",ic:"-",label:"Sales sheet"},
+    {v:"leadintel",ic:">",label:"Lead Intelligence",admin:true,sect:"Platform (admin only)"},
+    {v:"marketing",ic:"^",label:"Marketing Hub",admin:true},
+    {v:"tab",ic:"*",label:"TAB Listings",admin:true},
+    {v:"spine",ic:"+",label:"Spine",admin:true},
+    {v:"settings",ic:"@",label:"Team & settings",admin:true},
+  ];
+  const TITLES={dashboard:"Dashboard",pipelines:"Pipelines",inventory:"Inventory",contacts:"Contacts",valuation:"Valuation",sheet:"Sales sheet",leadintel:"Lead Intelligence",marketing:"Marketing Hub",tab:"TAB Listings",spine:"Spine",settings:"Team & settings"};
+
+  function buildNav(){
+    const nav=document.querySelector("nav");nav.innerHTML="";
+    NAV.forEach(n=>{
+      if(n.sect){const s=document.createElement("div");s.className="sect adminsect";s.textContent=n.sect;nav.appendChild(s);}
+      const d=document.createElement("div");
+      d.className="navitem"+(n.v==="dashboard"?" active":"")+(n.admin?" adminonly":"");
+      d.dataset.view=n.v;
+      d.innerHTML='<span class="ic">'+n.ic+'</span> '+n.label;
+      d.onclick=()=>go(n.v);
+      nav.appendChild(d);
+    });
+  }
+  function go(v){
+    document.querySelectorAll(".navitem").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
+    document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+    document.getElementById("v-"+v).classList.add("active");
+    document.getElementById("pageTitle").textContent=TITLES[v];
+  }
+  function enter(){document.getElementById("login").style.display="none";document.getElementById("app").style.display="grid";}
+  function setRole(r){
+    const admin=r==="admin";
+    document.body.classList.toggle("admin",admin);
+    document.getElementById("btnAdmin").classList.toggle("active",admin);
+    document.getElementById("btnUser").classList.toggle("active",!admin);
+    document.getElementById("whoName").textContent=admin?"Clint (Admin)":"D. Reyes (Rep)";
+    document.getElementById("whoAv").textContent=admin?"CH":"DR";
+    document.querySelector("#myWork h3").textContent=admin?"Deals needing action (all reps)":"My open deals needing action";
+    renderDash();
+    const cur=document.querySelector(".view.active").id.replace("v-","");
+    if(!admin && ["leadintel","marketing","tab","spine","settings"].includes(cur)) go("dashboard");
+  }
+  function renderDash(){
+    const admin=document.body.classList.contains("admin");
+    const kpis=admin
+      ?[["Open pipeline value","$4.62M","32 active deals"],["Weighted forecast","$1.94M","by stage probability"],["Win rate (QTD)","28%","up from 22%"],["Avg days to close","41","5 deals stalled"]]
+      :[["My pipeline value","$1.71M","11 active deals"],["My weighted forecast","$720K","by stage probability"],["My win rate","34%","team best"],["Tasks due today","4","2 overdue"]];
+    document.getElementById("dashKpis").innerHTML=kpis.map(k=>'<div class="kpi"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>').join("");
+  }
+  function renderFunnel(){
+    const reach=[42,31,22,14,8,5],max=42,st=["New","Contacted","Qualified","Quoted","Negotiation","Won"];
+    document.getElementById("dashFunnel").innerHTML=reach.map((r,i)=>{const h=25+(r/max)*115;return '<div class="fstep"><div class="fbar" style="height:'+h+'px"><b>'+r+'</b></div><small>'+st[i]+'</small></div>';}).join("");
+  }
+  const DEALS=[["Permian Basin Haul","2019 Cat 745",285,"DR",0],["Lone Star Aggregates","Loader 966M",210,"MC",1],["Delta Site Works","Deere 350G",190,"JT",1],["Red River Paving","RX-600 Planer",320,"DR",2],["Sabine Industrial","Grove RT765",275,"MC",3],["Gulf Coast Marine","Manitowoc Crane",540,"DR",4],["Chisholm Energy","760-E Rig",1250,"SA",4]];
+  const STAGES=["New Lead","Contacted","Qualified","Quoted","Negotiation"];
+  function renderBoard(){
+    const b=document.getElementById("board");b.innerHTML="";
+    STAGES.forEach((s,si)=>{
+      const inC=DEALS.filter(d=>d[4]===si);
+      const col=document.createElement("div");col.className="col";
+      col.innerHTML='<div class="colh"><span>'+s+'</span><span class="c">'+inC.length+'</span></div>';
+      const body=document.createElement("div");body.className="colb";
+      inC.forEach(d=>{const c=document.createElement("div");c.className="card";c.innerHTML='<div class="co">'+d[0]+'</div><div class="eq">'+d[1]+'</div><div class="mt"><span class="vv">$'+d[2]+'K</span><span class="rp">'+d[3]+'</span></div>';body.appendChild(c);});
+      col.appendChild(body);b.appendChild(col);
+    });
+  }
+  const UNITS=[
+    ["2019 Cat 745","Articulated Truck . 6,240 hr","av","Available","262/298/341","2h ago"],
+    ["2020 Deere 350G","Excavator . 2,910 hr","res","Reserved until Jul 18","171/196/224","1d ago"],
+    ["Roadtec RX-600","Cold Planer . 4,100 hr","av","Available","288/331/402","3d ago"],
+    ["Grove RT765","Rough Terrain Crane . 5,500 hr","maint","In maintenance","240/276/318","6d ago"],
+    ["760-E Drilling Rig","Land Rig . pkg","av","Available","1.05M/1.2M/1.4M","12d ago"],
+    ["Cat D6T","Dozer . 7,800 hr","sold","Sold","132/151/172","at sale"],
+  ];
+  function renderUnits(){
+    document.getElementById("units").innerHTML=UNITS.map(u=>{const v=u[4].split("/");
+      return '<div class="unit"><div class="ph">unit photo</div><div class="bd"><div class="ti">'+u[0]+'</div><div class="sub">'+u[1]+'</div><div class="r"><span>Status</span><span class="pill '+u[2]+'">'+u[3]+'</span></div><div class="val"><div><b>$'+v[0]+'</b><small>FLV</small></div><div><b>$'+v[1]+'</b><small>OLV</small></div><div><b>$'+v[2]+'</b><small>FMV</small></div></div><div style="font-size:10px;color:var(--body);margin-top:4px;">Valuation snapshot '+u[5]+'</div></div></div>';
+    }).join("");
+  }
+  buildNav();renderDash();renderFunnel();renderBoard();renderUnits();
+</script>
+</body>
+</html>

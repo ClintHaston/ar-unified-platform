@@ -5,7 +5,7 @@ import { TOOL_URLS } from '../lib/config'
 
 const TOOLS = [
   { path: '/evaluator',     tabKey: 'evaluator',    src: TOOL_URLS.evaluator,     title: 'AR Evaluator' },
-  { path: '/deals',         tabKey: 'deals',         src: TOOL_URLS.deals,         title: 'AR Deals' },
+  { path: '/deals-legacy',  tabKey: 'deals',         src: TOOL_URLS.deals,         title: 'AR Deals' },
   { path: '/leads',         tabKey: 'leads',         src: TOOL_URLS.leads,         title: 'AR Lead Intelligence' },
   { path: '/sales-command', tabKey: 'sales_command', src: TOOL_URLS.sales_command, title: 'AR Sales Command' },
 ]
