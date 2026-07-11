@@ -16,6 +16,7 @@ const NATIVE_ITEMS = [
   { path: '/pipelines', ic: '|', label: 'Pipelines' },
   { path: '/inventory', ic: '=', label: 'Inventory' },
   { path: '/contacts', ic: 'o', label: 'Contacts' },
+  { path: '/sales-sheet', ic: '-', label: 'Sales sheet' },
 ]
 
 const TOOL_ITEMS = [
@@ -27,6 +28,7 @@ const TOOL_ITEMS = [
 
 const ADMIN_ITEMS = [
   { path: '/admin', ic: '@', label: 'Team & settings' },
+  { path: '/commission', ic: '%', label: 'Commission report' },
   { path: '/spine', ic: '+', label: 'Spine' },
 ]
 
@@ -35,6 +37,8 @@ const TITLES: Record<string, string> = {
   '/pipelines': 'Pipelines',
   '/inventory': 'Inventory',
   '/contacts': 'Contacts',
+  '/sales-sheet': 'Sales sheet',
+  '/commission': 'Commission report',
   '/evaluator': 'Evaluator',
   '/deals-legacy': 'Deals (legacy)',
   '/leads': 'Lead Intelligence',

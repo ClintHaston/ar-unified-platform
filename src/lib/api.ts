@@ -297,6 +297,42 @@ export interface NotificationsResponse {
   notifications: NotificationItem[]
 }
 
+// ── 3c-7 settings / commission report / sales sheet ──
+export interface SettingRow {
+  key: string
+  label: string
+  type: 'string' | 'int' | 'number_or_null' | 'bool' | 'timezone' | 'readonly'
+  confirm: boolean
+  value: unknown
+  unset: boolean
+  updated_at: string | null
+}
+
+export interface EmailLogRow {
+  to_email: string
+  subject: string
+  context: string | null
+  status: 'sent' | 'suppressed' | 'failed'
+  detail: string | null
+  created_at: string
+}
+
+export interface CommissionRepRow {
+  rep_id: string | null
+  rep_name: string
+  won_count: number
+  won_value_cents: number
+  commission_cents: number
+  deals_without_pct: number
+  deals_without_value: number
+  complete: boolean
+}
+
+export interface CommissionReport {
+  commission_default_pct: number | null
+  reps: CommissionRepRow[]
+}
+
 export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
 
 export interface SearchResult {
@@ -588,6 +624,24 @@ export const api = {
 
   markAllNotificationsRead: () =>
     request<{ ok: boolean; marked: number }>('/platform/notifications/read-all', { method: 'POST' }),
+
+  // ── 3c-7 settings / reports / sales sheet ──
+  settings: () => request<{ settings: SettingRow[] }>('/platform/settings'),
+
+  updateSetting: (key: string, value: unknown, confirm = false) =>
+    request<{ ok: boolean; key: string; value: unknown; unset: boolean }>(
+      `/platform/settings/${key}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ value, confirm }),
+      }),
+
+  emailLog: () => request<{ emails: EmailLogRow[] }>('/platform/settings/email-log'),
+
+  commissionReport: () => request<CommissionReport>('/platform/reports/commission'),
+
+  salesSheet: (unitId: string) =>
+    request<{ html: string; spec_source: 'published' | 'generated' | 'none' }>(
+      `/platform/units/${unitId}/sales-sheet`),
 
   requestPasswordReset: (email: string) =>
     request<{ ok: boolean }>('/platform/auth/request-reset', {

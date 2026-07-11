@@ -13,6 +13,8 @@ import { Inventory } from './pages/Inventory'
 import { UnitDetail } from './pages/UnitDetail'
 import { Contacts } from './pages/Contacts'
 import { ContactDetail } from './pages/ContactDetail'
+import { SalesSheet } from './pages/SalesSheet'
+import { CommissionReport } from './pages/CommissionReport'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
 import { Leads } from './pages/Leads'
@@ -39,6 +41,8 @@ export default function App() {
             <Route path="/units/:unitId" element={<AuthGuard><UnitDetail /></AuthGuard>} />
             <Route path="/contacts" element={<AuthGuard><Contacts /></AuthGuard>} />
             <Route path="/contacts/:contactId" element={<AuthGuard><ContactDetail /></AuthGuard>} />
+            <Route path="/sales-sheet" element={<AuthGuard><SalesSheet /></AuthGuard>} />
+            <Route path="/commission" element={<AuthGuard adminOnly><CommissionReport /></AuthGuard>} />
 
             <Route path="/evaluator" element={<AuthGuard><Evaluator /></AuthGuard>} />
             <Route path="/deals-legacy" element={<AuthGuard><Deals /></AuthGuard>} />
