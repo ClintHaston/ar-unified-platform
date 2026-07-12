@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, type DealDetailResponse } from '../lib/api'
 import { DocumentsPanel } from '../components/DocumentsPanel'
+import { TabListingPanel } from '../components/TabListingPanel'
 
 function money(cents: number | null): string {
   if (cents === null) return '—'
@@ -131,6 +132,8 @@ export function DealDetail() {
               <div className="note">Imported from HubSpot backfill · created {when(deal.created_at)}</div>
             )}
           </div>
+
+          {dealId && <TabListingPanel dealId={dealId} />}
 
           {dealId && <DocumentsPanel dealId={dealId} />}
 

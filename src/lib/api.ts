@@ -544,6 +544,33 @@ export interface InboundLeadsResponse {
   leads: InboundLead[]
 }
 
+// ── 4d TAB listing-fields capture ──
+export type ListingFieldSource = 'derived_unit' | 'manual' | 'deal' | 'spec' | 'none'
+
+export interface ListingField {
+  key: string
+  label: string
+  value: string | null
+  source: ListingFieldSource
+  derivable_from_unit: boolean
+}
+
+export interface ListingFieldsResponse {
+  deal_id: string
+  deal_name: string
+  unit: { id: string; title: string } | null
+  at_publish_stage: boolean
+  resubmit_to_tab: boolean
+  tab_published_at: string | null
+  tab_listing_id: string | null
+  tab_publish_error: string | null
+  tab_publish_armed: boolean
+  publishable: boolean
+  missing: string[]
+  fields: ListingField[]
+  derive_result?: { unit_linked: boolean; derived: string[]; still_missing: string[] }
+}
+
 function setAccessToken(token: string | null): void {
   accessToken = token
 }
@@ -847,6 +874,36 @@ export const api = {
   salesSheet: (unitId: string) =>
     request<{ html: string; spec_source: 'published' | 'generated' | 'none' }>(
       `/platform/units/${unitId}/sales-sheet`),
+
+  // ── 4d TAB listing-fields capture (deal detail) ──
+  listingFields: (dealId: string) =>
+    request<ListingFieldsResponse>(`/platform/deals/${dealId}/listing-fields`),
+
+  linkDealUnit: (dealId: string, unitId: string) =>
+    request<ListingFieldsResponse>(`/platform/deals/${dealId}/unit`, {
+      method: 'POST', body: JSON.stringify({ unit_id: unitId }),
+    }),
+
+  unlinkDealUnit: (dealId: string) =>
+    request<ListingFieldsResponse>(`/platform/deals/${dealId}/unit`, { method: 'DELETE' }),
+
+  deriveListingFields: (dealId: string) =>
+    request<ListingFieldsResponse>(`/platform/deals/${dealId}/listing-fields/derive`, {
+      method: 'POST',
+    }),
+
+  patchListingFields: (dealId: string, values: Record<string, string>) =>
+    request<ListingFieldsResponse>(`/platform/deals/${dealId}/listing-fields`, {
+      method: 'PATCH', body: JSON.stringify({ values }),
+    }),
+
+  requestTabPublish: (dealId: string) =>
+    request<{ ok: boolean; resubmit_to_tab: boolean }>(
+      `/platform/deals/${dealId}/tab-publish-request`, { method: 'POST' }),
+
+  cancelTabPublish: (dealId: string) =>
+    request<{ ok: boolean; resubmit_to_tab: boolean }>(
+      `/platform/deals/${dealId}/tab-publish-request`, { method: 'DELETE' }),
 
   // ── 4b HubSpot outbox + inbound door (admin) ──
   outbox: (status?: OutboxStatus) =>
