@@ -6,6 +6,7 @@ import {
 } from '../lib/api'
 import { STATUS_PILL, money, moneyShort, snapshotAge, statusPillText } from './Inventory'
 import { DocumentsPanel } from '../components/DocumentsPanel'
+import { BuyerInterestPanel } from '../components/BuyerInterestPanel'
 
 // Unit detail per prototype_4 + §3: fields, inline taxonomy assignment,
 // status history from unit_status_events, expenses (no workflow — held
@@ -495,6 +496,7 @@ export function UnitDetail() {
             )}
           </div>
 
+          {unitId && <BuyerInterestPanel unitId={unitId} />}
           {unitId && <DocumentsPanel unitId={unitId} />}
         </div>
 

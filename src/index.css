@@ -450,6 +450,7 @@ input, select, textarea {
   --p-navy-dark: #1A2B47;
   --p-navy-mid: #2C3E50;
   --p-gold: #C8922A;
+  --p-buy: #2C7A7B;
   --p-steel: #D1D9E6;
   --p-row: #F4F6F9;
   --p-white: #FFFFFF;
@@ -581,6 +582,7 @@ input, select, textarea {
 .pill.gold { background: var(--p-gold); color: var(--p-navy-dark); }
 .pill.grey { background: #8a8f98; }
 .pill.red { background: #B4432B; }
+.pill.buy { background: var(--p-buy); }
 
 .roletoggle {
   display: flex; background: var(--p-row); border-radius: 7px;
@@ -621,6 +623,13 @@ input, select, textarea {
 }
 .card:active { cursor: grabbing; }
 .card.dragging { opacity: 0.4; }
+
+/* Buy-side (build step 4e) — teal accent keeps it visually distinct from the
+   gold sell-side board. */
+.card.buy { border-left-color: var(--p-buy); }
+.buy-board .colh { border-bottom-color: var(--p-buy); }
+.buy-board .col.drag-over { outline-color: var(--p-buy); }
+.roletoggle.buy button.active { background: var(--p-buy); }
 .card .co { font-size: 12px; font-weight: bold; color: var(--p-navy-dark); }
 .card .eq { font-size: 11px; color: var(--p-body); margin: 2px 0 6px; }
 .card .mt { display: flex; justify-content: space-between; align-items: center; }

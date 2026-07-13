@@ -58,6 +58,7 @@ export interface Pipeline {
   id: string
   name: string
   position: number
+  kind: 'sell' | 'buy' | string
   stages: Stage[]
 }
 
@@ -571,6 +572,89 @@ export interface ListingFieldsResponse {
   derive_result?: { unit_linked: boolean; derived: string[]; still_missing: string[] }
 }
 
+// ── 4e Buyer Opportunity layer (buy-side interest tracker) ──
+export type InterestStatus = 'info_sent' | 'negotiating' | 'cooling' | 'offer_made'
+
+export interface BuyerOppCard {
+  id: string
+  name: string
+  stage_id: string
+  owner_id: string
+  owner_name: string | null
+  buyer_name: string | null
+  buyer_company: string | null
+  unit_count: number
+  outcome: 'won' | 'lost' | null
+  is_mine: boolean
+}
+
+export interface BuyerBoardResponse {
+  pipeline: { id: string; name: string; stages: Stage[] }
+  opportunities: BuyerOppCard[]
+}
+
+export interface BuyerOppUnit {
+  link_id: string
+  unit_id: string
+  unit_title: string
+  unit_status: UnitStatus
+  asking_price_cents: number | null
+  target_price_cents: number | null
+  interest_status: InterestStatus
+  offer_id: string | null
+  offer_status: string | null
+  offer_amount_cents: number | null
+  note: string | null
+}
+
+export interface BuyerOppDetailResponse {
+  opportunity: {
+    id: string
+    name: string
+    notes: string | null
+    outcome: 'won' | 'lost' | null
+    lost_reason: string | null
+    created_at: string
+    pipeline_id: string
+    pipeline_name: string
+    stage_id: string
+    stage_name: string
+    owner_id: string
+    owner_name: string | null
+    buyer_contact_id: string
+    buyer_name: string | null
+    buyer_email: string | null
+    buyer_phone: string | null
+    company_id: string | null
+    company_name: string | null
+    can_edit: boolean
+  }
+  stages: Stage[]
+  units: BuyerOppUnit[]
+  stage_history: Array<{
+    at: string
+    from_stage: string | null
+    to_stage: string
+    actor_name: string | null
+  }>
+}
+
+// The point of the feature: cross-rep "who's working this unit"
+export interface UnitBuyerInterest {
+  opportunity_id: string
+  owner_id: string
+  owner_name: string | null
+  buyer_name: string | null
+  buyer_company: string | null
+  stage_name: string
+  interest_status: InterestStatus
+  target_price_cents: number | null
+  note: string | null
+  opp_notes: string | null
+  has_offer: boolean
+  is_mine: boolean
+}
+
 function setAccessToken(token: string | null): void {
   accessToken = token
 }
@@ -955,4 +1039,54 @@ export const api = {
     setAccessToken(data.access_token)
     return data.user
   },
+
+  // ── 4e Buyer Opportunity layer ──
+  buyerOpportunities: (params: { mine?: boolean; owner_id?: string } = {}) => {
+    const qs = new URLSearchParams()
+    if (params.mine) qs.set('mine', 'true')
+    if (params.owner_id) qs.set('owner_id', params.owner_id)
+    const suffix = qs.toString() ? `?${qs.toString()}` : ''
+    return request<BuyerBoardResponse>(`/platform/buyer-opportunities${suffix}`)
+  },
+
+  createBuyerOpportunity: (input: { buyer_contact_id: string; name?: string; notes?: string; stage_id?: string }) =>
+    request<{ id: string }>('/platform/buyer-opportunities', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  buyerOpportunityDetail: (oppId: string) =>
+    request<BuyerOppDetailResponse>(`/platform/buyer-opportunities/${oppId}`),
+
+  editBuyerOpportunity: (oppId: string, patch: { name?: string; notes?: string; buyer_contact_id?: string }) =>
+    request<{ ok: boolean }>(`/platform/buyer-opportunities/${oppId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+
+  moveBuyerOpportunity: (oppId: string, toStageId: string) =>
+    request<{ ok: boolean }>(`/platform/buyer-opportunities/${oppId}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ to_stage_id: toStageId }),
+    }),
+
+  attachBuyerUnit: (oppId: string, input: { unit_id: string; target_price_cents?: number | null; interest_status?: InterestStatus; note?: string }) =>
+    request<{ id: string }>(`/platform/buyer-opportunities/${oppId}/units`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  updateBuyerUnit: (oppId: string, linkId: string, patch: { target_price_cents?: number | null; interest_status?: InterestStatus; note?: string; offer_id?: string; clear_offer?: boolean }) =>
+    request<{ ok: boolean }>(`/platform/buyer-opportunities/${oppId}/units/${linkId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+
+  detachBuyerUnit: (oppId: string, linkId: string) =>
+    request<{ ok: boolean }>(`/platform/buyer-opportunities/${oppId}/units/${linkId}`, {
+      method: 'DELETE',
+    }),
+
+  unitBuyerInterest: (unitId: string) =>
+    request<{ interest: UnitBuyerInterest[] }>(`/platform/units/${unitId}/buyer-interest`),
 }

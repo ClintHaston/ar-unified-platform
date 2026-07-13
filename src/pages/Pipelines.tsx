@@ -33,8 +33,10 @@ export function Pipelines() {
   useEffect(() => {
     api.pipelines()
       .then((res) => {
-        setPipelines(res.pipelines)
-        if (res.pipelines.length > 0) setActiveId(res.pipelines[0].id)
+        // Sell-side only — buy-side lives on its own Buyer opportunities board.
+        const sell = res.pipelines.filter((p) => p.kind !== 'buy')
+        setPipelines(sell)
+        if (sell.length > 0) setActiveId(sell[0].id)
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load pipelines'))
   }, [])

@@ -8,6 +8,8 @@ import { ResetPassword } from './pages/ResetPassword'
 import { ChangePassword } from './pages/ChangePassword'
 import { Dashboard } from './pages/Dashboard'
 import { Pipelines } from './pages/Pipelines'
+import { BuyerOpportunities } from './pages/BuyerOpportunities'
+import { BuyerOpportunityDetail } from './pages/BuyerOpportunityDetail'
 import { DealDetail } from './pages/DealDetail'
 import { Inventory } from './pages/Inventory'
 import { UnitDetail } from './pages/UnitDetail'
@@ -39,6 +41,8 @@ export default function App() {
           <Route element={<PlatformShell />}>
             <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
             <Route path="/pipelines" element={<AuthGuard><Pipelines /></AuthGuard>} />
+            <Route path="/buyer-opportunities" element={<AuthGuard><BuyerOpportunities /></AuthGuard>} />
+            <Route path="/buyer-opportunities/:opportunityId" element={<AuthGuard><BuyerOpportunityDetail /></AuthGuard>} />
             <Route path="/deals/:dealId" element={<AuthGuard><DealDetail /></AuthGuard>} />
             <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
             <Route path="/inventory/intake" element={<AuthGuard><IntakeWizard /></AuthGuard>} />
