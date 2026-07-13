@@ -33,6 +33,12 @@ export function Pipelines() {
   const [error, setError] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
+  // P1 multi-select
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<string[]>([])
+  const [bulkStage, setBulkStage] = useState('')
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [confirmArchive, setConfirmArchive] = useState(false)
 
   useEffect(() => {
     api.pipelines()
@@ -55,6 +61,8 @@ export function Pipelines() {
 
   useEffect(() => {
     if (activeId) loadDeals(activeId, scope)
+    // switching pipeline/scope drops any in-progress selection
+    setSelected([]); setConfirmArchive(false)
   }, [activeId, scope, loadDeals])
 
   function openCreate() {
@@ -67,6 +75,38 @@ export function Pipelines() {
       searchParams.delete('new')
       setSearchParams(searchParams, { replace: true })
     }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+  }
+
+  function exitSelect() {
+    setSelectMode(false); setSelected([]); setConfirmArchive(false); setBulkStage('')
+  }
+
+  async function bulkMove() {
+    if (!active || !bulkStage || selected.length === 0) return
+    setBulkBusy(true)
+    try {
+      await api.batchMoveDeals(active.id, selected, bulkStage)
+      exitSelect()
+      loadDeals(active.id, scope)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Batch move failed')
+    } finally { setBulkBusy(false) }
+  }
+
+  async function bulkArchive() {
+    if (!active || selected.length === 0) return
+    setBulkBusy(true)
+    try {
+      await api.batchArchiveDeals(active.id, selected)
+      exitSelect()
+      loadDeals(active.id, scope)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Batch archive failed')
+    } finally { setBulkBusy(false) }
   }
 
   const active = pipelines.find((p) => p.id === activeId)
@@ -122,6 +162,9 @@ export function Pipelines() {
           <button className="plat-btn" onClick={() => (creating ? closeCreate() : openCreate())}>
             {creating ? 'Cancel' : '+ New deal'}
           </button>
+          <button className="plat-btn ghost" onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}>
+            {selectMode ? 'Done' : 'Select'}
+          </button>
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--p-body)' }}>
             Changes are Postgres-local — nothing mirrors to HubSpot until the outbox ships
           </span>
@@ -134,6 +177,43 @@ export function Pipelines() {
           />
         )}
       </div>
+
+      {selectMode && (
+        <div className="panel" style={{ padding: '12px 16px' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <b style={{ fontSize: 13 }}>{selected.length} selected</b>
+            <select
+              className="plat-input"
+              style={{ marginBottom: 0, width: 'auto' }}
+              value={bulkStage}
+              onChange={(e) => setBulkStage(e.target.value)}
+            >
+              <option value="">Move to stage…</option>
+              {active.stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <button className="plat-btn" disabled={bulkBusy || !bulkStage || selected.length === 0} onClick={bulkMove}>
+              {bulkBusy ? '…' : 'Move'}
+            </button>
+            <button className="plat-btn ghost" disabled={bulkBusy || selected.length === 0} onClick={() => setConfirmArchive(true)}>
+              Archive
+            </button>
+            <button className="plat-btn ghost" onClick={exitSelect}>Cancel</button>
+          </div>
+          {confirmArchive && (
+            <div style={{ marginTop: 10, padding: '10px 12px', border: '1px solid #B4432B', borderRadius: 8 }}>
+              <div style={{ fontSize: 13, marginBottom: 8 }}>
+                Archive {selected.length} deal{selected.length === 1 ? '' : 's'}? They can be restored.
+              </div>
+              <button className="plat-btn" disabled={bulkBusy} onClick={bulkArchive}>
+                {bulkBusy ? 'Archiving…' : `Archive ${selected.length}`}
+              </button>
+              <button className="plat-btn ghost" disabled={bulkBusy} onClick={() => setConfirmArchive(false)} style={{ marginLeft: 8 }}>
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="admin-loading">Loading deals…</div>
@@ -154,15 +234,23 @@ export function Pipelines() {
                   <span className="c">{inColumn.length}</span>
                 </div>
                 <div className="colb">
-                  {inColumn.map((deal) => (
+                  {inColumn.map((deal) => {
+                    const isSel = selected.includes(deal.id)
+                    return (
                     <div
                       key={deal.id}
                       className={`card${draggingId === deal.id ? ' dragging' : ''}`}
-                      draggable
+                      style={selectMode && isSel ? { outline: '2px solid var(--p-gold)' } : undefined}
+                      draggable={!selectMode}
                       onDragStart={(e) => onDragStart(e, deal.id)}
                       onDragEnd={() => setDraggingId(null)}
-                      onClick={() => navigate(`/deals/${deal.id}`)}
+                      onClick={() => (selectMode ? toggleSelect(deal.id) : navigate(`/deals/${deal.id}`))}
                     >
+                      {selectMode && (
+                        <span style={{ float: 'right', fontWeight: 'bold', color: isSel ? 'var(--p-gold)' : 'var(--p-steel)' }}>
+                          {isSel ? '☑' : '☐'}
+                        </span>
+                      )}
                       <div className="co">{deal.company_name ?? 'No company'}</div>
                       <div className="eq">{deal.name}</div>
                       <div className="mt">
@@ -172,7 +260,8 @@ export function Pipelines() {
                         </span>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )

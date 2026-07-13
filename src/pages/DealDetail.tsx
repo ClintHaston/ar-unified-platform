@@ -9,6 +9,7 @@ import {
   type Stage,
 } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { AssigneePicker } from '../components/AssigneePicker'
 import { DocumentsPanel } from '../components/DocumentsPanel'
 import { TabListingPanel } from '../components/TabListingPanel'
 
@@ -59,6 +60,7 @@ export function DealDetail() {
 
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDue, setTaskDue] = useState('')
+  const [taskAssignee, setTaskAssignee] = useState('')  // '' = self
   const [savingTask, setSavingTask] = useState(false)
   const [completingTask, setCompletingTask] = useState<string | null>(null)
 
@@ -178,9 +180,11 @@ export function DealDetail() {
         title: taskTitle.trim(),
         due_at: taskDue ? new Date(taskDue + 'T17:00:00').toISOString() : undefined,
         deal_id: dealId,
+        assignee_id: taskAssignee || undefined,
       })
       setTaskTitle('')
       setTaskDue('')
+      setTaskAssignee('')
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task')
@@ -204,7 +208,7 @@ export function DealDetail() {
   if (loading) return <div className="admin-loading">Loading deal…</div>
   if (!data) return <div className="admin-loading">{error || 'Deal not found'}</div>
 
-  const { deal, stage_history, timeline, tasks } = data
+  const { deal, stage_history, timeline, tasks, unit_link } = data
 
   return (
     <div>
@@ -326,6 +330,33 @@ export function DealDetail() {
             )}
           </div>
 
+          {unit_link && (
+            <div className="panel">
+              <h3>Unit</h3>
+              <div className="fieldrow">
+                <span>Inventory (CRM)</span>
+                <span>
+                  <Link to={`/units/${unit_link.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                    {unit_link.unit_title}
+                  </Link>
+                </span>
+              </div>
+              <div className="fieldrow">
+                <span>Website listing</span>
+                <span>
+                  {unit_link.listed_on_website && unit_link.website_url ? (
+                    <a href={unit_link.website_url} target="_blank" rel="noopener noreferrer"
+                       style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                      View live listing ↗
+                    </a>
+                  ) : (
+                    <span style={{ color: 'var(--p-body)' }}>Not listed on the website yet</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+
           {dealId && <TabListingPanel dealId={dealId} />}
 
           {dealId && <DocumentsPanel dealId={dealId} />}
@@ -419,6 +450,7 @@ export function DealDetail() {
                 value={taskDue}
                 onChange={(e) => setTaskDue(e.target.value)}
               />
+              <AssigneePicker value={taskAssignee} onChange={setTaskAssignee} />
               <button className="plat-btn" type="submit" disabled={savingTask || !taskTitle.trim()}>
                 {savingTask ? 'Saving…' : 'Add task'}
               </button>

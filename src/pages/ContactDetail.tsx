@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
+import { AssigneePicker } from '../components/AssigneePicker'
 import { TYPE_LABEL, TYPE_PILL, ownerLabel } from './Contacts'
 
 function money(cents: number | null): string {
@@ -38,6 +39,7 @@ export function ContactDetail() {
 
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDue, setTaskDue] = useState('')
+  const [taskAssignee, setTaskAssignee] = useState('')  // '' = self
   const [savingTask, setSavingTask] = useState(false)
   const [completingTask, setCompletingTask] = useState<string | null>(null)
 
@@ -143,9 +145,11 @@ export function ContactDetail() {
         title: taskTitle.trim(),
         due_at: taskDue ? new Date(taskDue + 'T17:00:00').toISOString() : undefined,
         contact_id: contactId,
+        assignee_id: taskAssignee || undefined,
       })
       setTaskTitle('')
       setTaskDue('')
+      setTaskAssignee('')
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task')
@@ -337,6 +341,7 @@ export function ContactDetail() {
                 value={taskDue}
                 onChange={(e) => setTaskDue(e.target.value)}
               />
+              <AssigneePicker value={taskAssignee} onChange={setTaskAssignee} />
               <button className="plat-btn" type="submit" disabled={savingTask || !taskTitle.trim()}>
                 {savingTask ? 'Saving…' : 'Add task'}
               </button>

@@ -90,6 +90,17 @@ export interface TimelineItem {
   summary: string | null
 }
 
+// P1: read-side resolution of the unit a deal is selling, for the CRM +
+// website links. null when no unit resolves (show the "link a unit" panel).
+export interface DealUnitLink {
+  unit_id: string
+  unit_title: string
+  resolved_via: 'unit_id' | 'listing_spec'
+  legacy_id: string | null
+  listed_on_website: boolean
+  website_url: string | null
+}
+
 export interface DealDetailResponse {
   deal: {
     id: string
@@ -130,6 +141,7 @@ export interface DealDetailResponse {
     rep_name: string | null
   }>
   timeline: TimelineItem[]
+  unit_link: DealUnitLink | null
   tasks: Array<{
     id: string
     title: string
@@ -780,7 +792,7 @@ export const api = {
 
   myTasks: () => request<{ tasks: TaskItem[] }>('/platform/tasks'),
 
-  createTask: (input: { title: string; due_at?: string; deal_id?: string; unit_id?: string; contact_id?: string }) =>
+  createTask: (input: { title: string; due_at?: string; deal_id?: string; unit_id?: string; contact_id?: string; assignee_id?: string }) =>
     request<{ id: string }>('/platform/tasks', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -805,6 +817,20 @@ export const api = {
       `/platform/deals/${dealId}`, {
         method: 'PATCH',
         body: JSON.stringify(patch),
+      }),
+
+  batchMoveDeals: (pipelineId: string, dealIds: string[], toStageId: string) =>
+    request<{ ok: boolean; moved: string[]; moved_count: number; requested: number }>(
+      `/platform/pipelines/${pipelineId}/deals/batch-move`, {
+        method: 'POST',
+        body: JSON.stringify({ deal_ids: dealIds, to_stage_id: toStageId }),
+      }),
+
+  batchArchiveDeals: (pipelineId: string, dealIds: string[]) =>
+    request<{ ok: boolean; archived: string[]; archived_count: number }>(
+      `/platform/pipelines/${pipelineId}/deals/batch-archive`, {
+        method: 'POST',
+        body: JSON.stringify({ deal_ids: dealIds }),
       }),
 
   dealDetail: (dealId: string) => request<DealDetailResponse>(`/platform/deals/${dealId}`),
