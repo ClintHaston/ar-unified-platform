@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type DragEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api, type DealCard, type Pipeline } from '../lib/api'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { api, type DealCard, type DealScope, type Pipeline } from '../lib/api'
+import { NewDealForm } from '../components/NewDealForm'
 
 // Pipelines board per prototype_4: switcher, stage columns with counts,
 // gold-accent deal cards. Drag-and-drop stage moves POST to the backend,
@@ -22,9 +23,12 @@ function initials(name: string | null): string {
 
 export function Pipelines() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [deals, setDeals] = useState<DealCard[]>([])
+  const [scope, setScope] = useState<DealScope>('mine')
+  const [creating, setCreating] = useState(searchParams.get('new') === '1')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -41,17 +45,29 @@ export function Pipelines() {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load pipelines'))
   }, [])
 
-  const loadDeals = useCallback((pipelineId: string) => {
+  const loadDeals = useCallback((pipelineId: string, dealScope: DealScope) => {
     setLoading(true)
-    api.pipelineDeals(pipelineId)
+    api.pipelineDeals(pipelineId, dealScope)
       .then((res) => { setDeals(res.deals); setError('') })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load deals'))
       .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
-    if (activeId) loadDeals(activeId)
-  }, [activeId, loadDeals])
+    if (activeId) loadDeals(activeId, scope)
+  }, [activeId, scope, loadDeals])
+
+  function openCreate() {
+    setCreating(true)
+  }
+
+  function closeCreate() {
+    setCreating(false)
+    if (searchParams.get('new')) {
+      searchParams.delete('new')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }
 
   const active = pipelines.find((p) => p.id === activeId)
 
@@ -99,10 +115,24 @@ export function Pipelines() {
               </button>
             ))}
           </div>
+          <div className="roletoggle">
+            <button className={scope === 'mine' ? 'active' : ''} onClick={() => setScope('mine')}>Mine</button>
+            <button className={scope === 'all' ? 'active' : ''} onClick={() => setScope('all')}>All</button>
+          </div>
+          <button className="plat-btn" onClick={() => (creating ? closeCreate() : openCreate())}>
+            {creating ? 'Cancel' : '+ New deal'}
+          </button>
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--p-body)' }}>
             Changes are Postgres-local — nothing mirrors to HubSpot until the outbox ships
           </span>
         </div>
+
+        {creating && (
+          <NewDealForm
+            onCreated={(dealId) => navigate(`/deals/${dealId}`)}
+            onCancel={closeCreate}
+          />
+        )}
       </div>
 
       {loading ? (

@@ -92,6 +92,9 @@ export function Dashboard() {
 
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button className="plat-btn" onClick={() => navigate('/pipelines?new=1')}>+ New deal</button>
+      </div>
       <div className="kpis">
         {kpiCards.map((k) => (
           <div className="kpi" key={k.l}>

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, type DealDetailResponse } from '../lib/api'
+import {
+  api,
+  type ContactHit,
+  type DealDetailResponse,
+  type DealPatchInput,
+  type OwnerOption,
+  type Stage,
+} from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import { DocumentsPanel } from '../components/DocumentsPanel'
 import { TabListingPanel } from '../components/TabListingPanel'
 
@@ -15,11 +23,34 @@ function when(iso: string): string {
   })
 }
 
+const AUDIT_LABEL: Record<string, string> = {
+  created: 'created', deal_edited: 'edited', stage_moved: 'stage',
+}
+
 export function DealDetail() {
   const { dealId } = useParams<{ dealId: string }>()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [data, setData] = useState<DealDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // edit mode
+  const [editing, setEditing] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [eName, setEName] = useState('')
+  const [eStageId, setEStageId] = useState('')
+  const [eValue, setEValue] = useState('')
+  const [eCommission, setECommission] = useState('')
+  const [eClose, setEClose] = useState('')
+  const [eOwnerId, setEOwnerId] = useState('')
+  const [eContactId, setEContactId] = useState<string | null>(null)
+  const [eContactLabel, setEContactLabel] = useState<string | null>(null)
+  const [changingContact, setChangingContact] = useState(false)
+  const [cq, setCq] = useState('')
+  const [chits, setChits] = useState<ContactHit[]>([])
+  const [stages, setStages] = useState<Stage[]>([])
+  const [owners, setOwners] = useState<OwnerOption[]>([])
 
   const [actKind, setActKind] = useState<'note' | 'call'>('note')
   const [actSubject, setActSubject] = useState('')
@@ -40,6 +71,83 @@ export function DealDetail() {
   }, [dealId])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (cq.trim().length < 2) { setChits([]); return }
+    let live = true
+    api.searchContacts(cq.trim())
+      .then((res) => { if (live) setChits(res.contacts) })
+      .catch(() => { if (live) setChits([]) })
+    return () => { live = false }
+  }, [cq])
+
+  async function enterEdit() {
+    if (!data) return
+    const { deal } = data
+    setEName(deal.name)
+    setEStageId(deal.stage_id)
+    setEValue(deal.value_cents !== null ? String(deal.value_cents / 100) : '')
+    setECommission(deal.commission_pct !== null ? String(deal.commission_pct) : '')
+    setEClose(deal.expected_close ? deal.expected_close.slice(0, 10) : '')
+    setEOwnerId(deal.owner_id ?? '')
+    setEContactId(deal.contact_id ?? null)
+    setEContactLabel(deal.contact_name)
+    setChangingContact(false)
+    setCq('')
+    setEditing(true)
+    // Load the pipeline's stages for the dropdown (and owners for admins).
+    api.pipelines()
+      .then((res) => {
+        const p = res.pipelines.find((pp) => pp.id === deal.pipeline_id)
+        setStages(p?.stages ?? [])
+      })
+      .catch(() => setStages([]))
+    if (isAdmin) {
+      api.contactOwners().then((res) => setOwners(res.owners.filter((o) => o.is_active))).catch(() => setOwners([]))
+    }
+  }
+
+  async function saveEdit() {
+    if (!dealId || !data) return
+    const { deal } = data
+    const patch: DealPatchInput = {}
+
+    const name = eName.trim()
+    if (name && name !== deal.name) patch.name = name
+    if (eStageId && eStageId !== deal.stage_id) patch.to_stage_id = eStageId
+
+    const cents = eValue.trim() === '' ? null : Math.round(parseFloat(eValue) * 100)
+    const normCents = cents !== null && Number.isNaN(cents) ? deal.value_cents : cents
+    if (normCents !== deal.value_cents) patch.value_cents = normCents
+
+    const pct = eCommission.trim() === '' ? null : parseFloat(eCommission)
+    const normPct = pct !== null && Number.isNaN(pct) ? deal.commission_pct : pct
+    if (normPct !== deal.commission_pct) patch.commission_pct = normPct
+
+    const close = eClose || null
+    const curClose = deal.expected_close ? deal.expected_close.slice(0, 10) : null
+    if (close !== curClose) patch.expected_close = close
+
+    if (isAdmin) {
+      const curOwner = deal.owner_id ?? ''
+      if (eOwnerId !== curOwner) patch.owner_id = eOwnerId || null
+    }
+
+    if ((eContactId ?? null) !== (deal.contact_id ?? null)) patch.contact_id = eContactId
+
+    if (Object.keys(patch).length === 0) { setEditing(false); return }
+
+    setSavingEdit(true)
+    try {
+      await api.patchDeal(dealId, patch)
+      setEditing(false)
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save deal')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
 
   async function submitActivity(e: FormEvent) {
     e.preventDefault()
@@ -96,7 +204,7 @@ export function DealDetail() {
   if (loading) return <div className="admin-loading">Loading deal…</div>
   if (!data) return <div className="admin-loading">{error || 'Deal not found'}</div>
 
-  const { deal, stage_history, activities, tasks } = data
+  const { deal, stage_history, timeline, tasks } = data
 
   return (
     <div>
@@ -105,31 +213,116 @@ export function DealDetail() {
       <div className="detail-grid">
         <div>
           <div className="panel">
-            <h3>{deal.name}</h3>
-            <div className="fieldrow"><span>Pipeline / stage</span><span>{deal.pipeline_name} · {deal.stage_name}</span></div>
-            <div className="fieldrow"><span>Value</span><span>{money(deal.value_cents)}</span></div>
-            <div className="fieldrow"><span>Owner</span><span>{deal.owner_name ?? 'Unassigned'}</span></div>
-            <div className="fieldrow"><span>Company</span><span>{deal.company_name ?? '—'}</span></div>
-            <div className="fieldrow">
-              <span>Contact</span>
-              <span>
-                {deal.contact_name ?? '—'}
-                {deal.contact_email ? ` · ${deal.contact_email}` : ''}
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <h3 style={{ margin: 0 }}>{deal.name}</h3>
+              {!editing && (
+                <button className="plat-btn ghost" onClick={enterEdit}>Edit</button>
+              )}
             </div>
-            <div className="fieldrow"><span>Commission</span><span>{deal.commission_pct !== null ? `${deal.commission_pct}%` : 'not set'}</span></div>
-            <div className="fieldrow"><span>Expected close</span><span>{deal.expected_close ? new Date(deal.expected_close).toLocaleDateString() : '—'}</span></div>
-            {deal.outcome && (
-              <div className="fieldrow">
-                <span>Outcome</span>
-                <span>
-                  <span className={`pill ${deal.outcome === 'won' ? 'green' : 'red'}`}>{deal.outcome}</span>
-                  {deal.lost_reason ? ` ${deal.lost_reason}` : ''}
-                </span>
+
+            {editing ? (
+              <div style={{ marginTop: 10 }}>
+                <label style={{ fontSize: 12, color: 'var(--p-body)' }}>
+                  Deal name
+                  <input className="plat-input" value={eName} onChange={(e) => setEName(e.target.value)} />
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--p-body)' }}>
+                  Stage
+                  <select className="plat-input" value={eStageId} onChange={(e) => setEStageId(e.target.value)}>
+                    {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </label>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <label style={{ flex: '1 1 140px', fontSize: 12, color: 'var(--p-body)' }}>
+                    Value ($)
+                    <input className="plat-input" type="number" min="0" step="1"
+                           value={eValue} onChange={(e) => setEValue(e.target.value)} />
+                  </label>
+                  <label style={{ flex: '1 1 120px', fontSize: 12, color: 'var(--p-body)' }}>
+                    Commission (%)
+                    <input className="plat-input" type="number" min="0" max="100" step="0.1"
+                           value={eCommission} onChange={(e) => setECommission(e.target.value)} />
+                  </label>
+                  <label style={{ flex: '1 1 160px', fontSize: 12, color: 'var(--p-body)' }}>
+                    Expected close
+                    <input className="plat-input" type="date"
+                           value={eClose} onChange={(e) => setEClose(e.target.value)} />
+                  </label>
+                </div>
+
+                <div style={{ fontSize: 12, color: 'var(--p-body)' }}>Contact</div>
+                {!changingContact ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span className="pill grey">{eContactLabel ?? 'None'}</span>
+                    <button className="plat-btn ghost" onClick={() => { setChangingContact(true); setCq('') }}>Change</button>
+                    {eContactId && (
+                      <button className="plat-btn ghost" onClick={() => { setEContactId(null); setEContactLabel(null) }}>Remove</button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <input className="plat-input" placeholder="Search a contact…" value={cq} onChange={(e) => setCq(e.target.value)} />
+                    {chits.length > 0 && (
+                      <div style={{ border: '1px solid var(--p-steel)', borderRadius: 6, marginTop: 6, maxHeight: 160, overflowY: 'auto' }}>
+                        {chits.map((h) => (
+                          <div key={h.id}
+                               onClick={() => { setEContactId(h.id); setEContactLabel(h.name); setChangingContact(false); setChits([]) }}
+                               style={{ padding: '6px 10px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--p-row)' }}>
+                            <b>{h.name ?? 'Unnamed'}</b>{h.company_name ? ` · ${h.company_name}` : ''}
+                            {h.email ? <span style={{ color: 'var(--p-body)' }}> · {h.email}</span> : null}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="note" style={{ marginTop: 4 }}>Company follows the contact.</div>
+                  </>
+                )}
+
+                {isAdmin && (
+                  <label style={{ fontSize: 12, color: 'var(--p-body)' }}>
+                    Owner
+                    <select className="plat-input" value={eOwnerId} onChange={(e) => setEOwnerId(e.target.value)}>
+                      <option value="">Unassigned</option>
+                      {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  </label>
+                )}
+
+                <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                  <button className="plat-btn" disabled={savingEdit || !eName.trim()} onClick={saveEdit}>
+                    {savingEdit ? 'Saving…' : 'Save'}
+                  </button>
+                  <button className="plat-btn ghost" disabled={savingEdit} onClick={() => setEditing(false)}>Cancel</button>
+                </div>
               </div>
-            )}
-            {deal.legacy_source && (
-              <div className="note">Imported from HubSpot backfill · created {when(deal.created_at)}</div>
+            ) : (
+              <>
+                <div className="fieldrow"><span>Pipeline / stage</span><span>{deal.pipeline_name} · {deal.stage_name}</span></div>
+                <div className="fieldrow"><span>Value</span><span>{money(deal.value_cents)}</span></div>
+                <div className="fieldrow"><span>Owner</span><span>{deal.owner_name ?? 'Unassigned'}</span></div>
+                <div className="fieldrow"><span>Company</span><span>{deal.company_name ?? '—'}</span></div>
+                <div className="fieldrow">
+                  <span>Contact</span>
+                  <span>
+                    {deal.contact_name ?? '—'}
+                    {deal.contact_email ? ` · ${deal.contact_email}` : ''}
+                  </span>
+                </div>
+                <div className="fieldrow"><span>Commission</span><span>{deal.commission_pct !== null ? `${deal.commission_pct}%` : 'not set'}</span></div>
+                <div className="fieldrow"><span>Expected close</span><span>{deal.expected_close ? new Date(deal.expected_close).toLocaleDateString() : '—'}</span></div>
+                {deal.outcome && (
+                  <div className="fieldrow">
+                    <span>Outcome</span>
+                    <span>
+                      <span className={`pill ${deal.outcome === 'won' ? 'green' : 'red'}`}>{deal.outcome}</span>
+                      {deal.lost_reason ? ` ${deal.lost_reason}` : ''}
+                    </span>
+                  </div>
+                )}
+                {deal.legacy_source && (
+                  <div className="note">Imported from HubSpot backfill · created {when(deal.created_at)}</div>
+                )}
+              </>
             )}
           </div>
 
@@ -164,17 +357,29 @@ export function DealDetail() {
                 {savingAct ? 'Saving…' : `Log ${actKind}`}
               </button>
             </form>
-            {activities.length === 0 ? (
+            {timeline.length === 0 ? (
               <div className="note">No activity logged yet.</div>
             ) : (
-              activities.map((a) => (
-                <div className="hist-item" key={a.id}>
-                  <div>
-                    <span className={`pill ${a.kind === 'call' ? 'gold' : 'grey'}`}>{a.kind}</span>
-                    {a.subject && <b style={{ marginLeft: 8 }}>{a.subject}</b>}
-                  </div>
-                  <div style={{ margin: '4px 0' }}>{a.body}</div>
-                  <div className="when">{a.rep_name ?? 'Unknown'} · {when(a.occurred_at)}</div>
+              timeline.map((t, i) => (
+                <div className="hist-item" key={i}>
+                  {t.type === 'activity' ? (
+                    <>
+                      <div>
+                        <span className={`pill ${t.kind === 'call' ? 'gold' : 'grey'}`}>{t.kind}</span>
+                        {t.subject && <b style={{ marginLeft: 8 }}>{t.subject}</b>}
+                      </div>
+                      <div style={{ margin: '4px 0' }}>{t.body}</div>
+                      <div className="when">{t.actor_name ?? 'Unknown'} · {when(t.at)}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="pill grey">{AUDIT_LABEL[t.kind] ?? t.kind}</span>
+                        <span style={{ marginLeft: 8 }}>{t.summary}</span>
+                      </div>
+                      <div className="when">{t.actor_name ?? 'System'} · {when(t.at)}</div>
+                    </>
+                  )}
                 </div>
               ))
             )}

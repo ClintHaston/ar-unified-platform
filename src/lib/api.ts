@@ -72,6 +72,24 @@ export interface DealCard {
   company_name: string | null
 }
 
+export interface DealContactRef {
+  id: string
+  name: string | null
+  email: string | null
+}
+
+// §2 merged read-side timeline: manual activities + audit events
+// (created / deal_edited / stage_moved), newest first.
+export interface TimelineItem {
+  type: 'activity' | 'audit'
+  at: string
+  actor_name: string | null
+  kind: string
+  subject: string | null
+  body: string | null
+  summary: string | null
+}
+
 export interface DealDetailResponse {
   deal: {
     id: string
@@ -88,10 +106,13 @@ export interface DealDetailResponse {
     pipeline_name: string
     stage_id: string
     stage_name: string
+    owner_id: string | null
     owner_name: string | null
+    contact_id: string | null
     contact_name: string | null
     contact_email: string | null
     contact_phone: string | null
+    company_id: string | null
     company_name: string | null
   }
   stage_history: Array<{
@@ -108,6 +129,7 @@ export interface DealDetailResponse {
     occurred_at: string
     rep_name: string | null
   }>
+  timeline: TimelineItem[]
   tasks: Array<{
     id: string
     title: string
@@ -116,6 +138,31 @@ export interface DealDetailResponse {
     owner_name: string | null
   }>
 }
+
+export interface DealCreateInput {
+  pipeline_id: string
+  stage_id: string
+  name: string
+  contact_id?: string | null
+  company_id?: string | null
+  owner_id?: string | null
+  value_cents?: number | null
+  commission_pct?: number | null
+  expected_close?: string | null
+}
+
+export interface DealPatchInput {
+  name?: string
+  contact_id?: string | null
+  company_id?: string | null
+  owner_id?: string | null
+  value_cents?: number | null
+  commission_pct?: number | null
+  expected_close?: string | null
+  to_stage_id?: string
+}
+
+export type DealScope = 'mine' | 'all'
 
 // ── 3c-3 Inventory / Units / Offers ──
 export type UnitStatus = 'available' | 'reserved' | 'in_transport' | 'under_maintenance' | 'sold'
@@ -744,8 +791,21 @@ export const api = {
 
   pipelines: () => request<{ pipelines: Pipeline[] }>('/platform/pipelines'),
 
-  pipelineDeals: (pipelineId: string) =>
-    request<{ deals: DealCard[] }>(`/platform/pipelines/${pipelineId}/deals`),
+  pipelineDeals: (pipelineId: string, scope: DealScope = 'mine') =>
+    request<{ deals: DealCard[] }>(`/platform/pipelines/${pipelineId}/deals?scope=${scope}`),
+
+  createDeal: (input: DealCreateInput) =>
+    request<{ id: string }>('/platform/deals', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  patchDeal: (dealId: string, patch: DealPatchInput) =>
+    request<{ ok: boolean; moved?: boolean; edited?: boolean; unchanged?: boolean }>(
+      `/platform/deals/${dealId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
 
   dealDetail: (dealId: string) => request<DealDetailResponse>(`/platform/deals/${dealId}`),
 
