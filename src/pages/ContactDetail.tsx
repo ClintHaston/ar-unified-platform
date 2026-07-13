@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
@@ -41,6 +41,7 @@ export function ContactDetail() {
   const [taskDue, setTaskDue] = useState('')
   const [taskAssignee, setTaskAssignee] = useState('')  // '' = self
   const [savingTask, setSavingTask] = useState(false)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
   const [completingTask, setCompletingTask] = useState<string | null>(null)
 
   const load = useCallback(() => {
@@ -56,6 +57,22 @@ export function ContactDetail() {
   useEffect(() => {
     api.contactOwners().then((res) => setOwners(res.owners)).catch(() => setOwners([]))
   }, [])
+
+  async function uploadContract(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    const consignerId = data?.consignment?.consigner.id
+    if (!file || !consignerId) return
+    setUploadingDoc(true)
+    try {
+      await api.uploadDocument({ consigner_id: consignerId }, 'agreement', file)
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploadingDoc(false)
+    }
+  }
 
   function startEdit() {
     if (!data) return
@@ -295,7 +312,15 @@ export function ContactDetail() {
                 ))
               )}
 
-              <h4 style={{ margin: '12px 0 4px' }}>Contract</h4>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 4px' }}>
+                <h4 style={{ margin: 0 }}>Contract</h4>
+                {consignment.documents_configured && (
+                  <label className="plat-btn ghost" style={{ cursor: uploadingDoc ? 'default' : 'pointer', marginLeft: 'auto' }}>
+                    {uploadingDoc ? 'Uploading…' : 'Upload contract'}
+                    <input type="file" style={{ display: 'none' }} disabled={uploadingDoc} onChange={uploadContract} />
+                  </label>
+                )}
+              </div>
               <ConsignDocs docs={consignment.contract_docs} configured={consignment.documents_configured} emptyLabel="No contract uploaded yet." />
               <h4 style={{ margin: '12px 0 4px' }}>Related docs</h4>
               <ConsignDocs docs={consignment.related_docs} configured={consignment.documents_configured} emptyLabel="No related documents." />

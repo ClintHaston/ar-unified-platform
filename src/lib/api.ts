@@ -359,6 +359,7 @@ export interface Consignment {
   }
   units: ConsignmentUnit[]
   documents_configured: boolean
+  consigner_id: string
   contract_docs: ConsignmentDoc[]
   related_docs: ConsignmentDoc[]
 }
@@ -1072,7 +1073,7 @@ export const api = {
 
   // presign → browser PUT → complete (backend hashes server-side)
   uploadDocument: async (
-    parent: { unit_id?: string; deal_id?: string },
+    parent: { unit_id?: string; deal_id?: string; consigner_id?: string },
     docType: DocType,
     file: File
   ): Promise<{ id: string; file_hash: string; is_primary: boolean }> => {
