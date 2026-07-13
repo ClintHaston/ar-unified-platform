@@ -57,6 +57,16 @@ export function snapshotAge(ageDays: number): string {
   return `${ageDays} days old`
 }
 
+// Open-offer summary for the card / list ("2 offers · top $X"). Null when
+// there are no open offers (accepted offers surface via the Reserved pill).
+export function offerSummary(u: Pick<UnitCard, 'open_offer_count' | 'top_open_offer_cents'>): string | null {
+  if (u.open_offer_count === 0) return null
+  const top = u.top_open_offer_cents !== null ? ` · top ${money(u.top_open_offer_cents)}` : ''
+  return `${u.open_offer_count} offer${u.open_offer_count === 1 ? '' : 's'}${top}`
+}
+
+type InvView = 'card' | 'list'
+
 export function Inventory() {
   const navigate = useNavigate()
   const [units, setUnits] = useState<UnitCard[]>([])
@@ -69,6 +79,14 @@ export function Inventory() {
   const [categoryId, setCategoryId] = useState('')
   const [makeId, setMakeId] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  // Remember card/list choice within the session.
+  const [view, setView] = useState<InvView>(() =>
+    (sessionStorage.getItem('inv_view') === 'list' ? 'list' : 'card'))
+
+  function chooseView(v: InvView) {
+    setView(v)
+    sessionStorage.setItem('inv_view', v)
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -149,13 +167,17 @@ export function Inventory() {
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--p-body)' }}>
             {filtered.length} of {units.filter((u) => showArchived || !u.archived).length} units
           </span>
+          <div className="roletoggle">
+            <button className={view === 'card' ? 'active' : ''} onClick={() => chooseView('card')}>Cards</button>
+            <button className={view === 'list' ? 'active' : ''} onClick={() => chooseView('list')}>List</button>
+          </div>
           <button className="plat-btn" onClick={() => navigate('/inventory/intake')}>+ Intake unit</button>
         </div>
       </div>
 
       {filtered.length === 0 ? (
         <div className="admin-loading">No units match these filters.</div>
-      ) : (
+      ) : view === 'card' ? (
         <div className="units">
           {filtered.map((u) => (
             <div className="unit-card" key={u.id} onClick={() => navigate(`/units/${u.id}`)}>
@@ -180,6 +202,12 @@ export function Inventory() {
                   <span>Asking</span>
                   <span style={{ fontWeight: 'bold' }}>{money(u.asking_price_cents)}</span>
                 </div>
+                {offerSummary(u) && (
+                  <div className="r">
+                    <span>Offers</span>
+                    <span style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>{offerSummary(u)}</span>
+                  </div>
+                )}
                 {u.valuation && (
                   <>
                     <div className="val-row">
@@ -199,6 +227,50 @@ export function Inventory() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="panel" style={{ padding: 0, overflowX: 'auto' }}>
+          <table className="plat-table">
+            <thead>
+              <tr>
+                <th>Unit</th><th>Category / Make / Model</th><th>Year</th><th>Hours</th>
+                <th>Condition</th><th>Status</th><th>Asking</th><th>FLV</th><th>Offers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((u) => (
+                <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/units/${u.id}`)}>
+                  <td>
+                    <b>{u.title}</b>
+                    {u.legacy_id ? <span style={{ color: 'var(--p-body)' }}> · #{u.legacy_id}</span> : null}
+                  </td>
+                  <td style={{ color: 'var(--p-body)' }}>
+                    {[u.category_name, u.make_name, u.model_name].filter(Boolean).join(' / ') || '—'}
+                  </td>
+                  <td>{u.year ?? '—'}</td>
+                  <td>{u.hours !== null ? u.hours.toLocaleString() : '—'}</td>
+                  <td>{u.condition ?? '—'}</td>
+                  <td>
+                    <span className={`pill ${STATUS_PILL[u.status]}`}>
+                      {statusPillText(u)}{u.archived ? ' · arch' : ''}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 'bold' }}>{money(u.asking_price_cents)}</td>
+                  <td>
+                    {u.valuation ? (
+                      <>
+                        {moneyShort(u.valuation.flv_cents)}
+                        <span style={{ color: 'var(--p-body)', fontSize: 11 }}>
+                          {' · '}{snapshotAge(u.valuation.age_days)}{u.valuation.stale ? ' · stale' : ''}
+                        </span>
+                      </>
+                    ) : '—'}
+                  </td>
+                  <td>{offerSummary(u) ?? <span style={{ color: 'var(--p-body)' }}>—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}

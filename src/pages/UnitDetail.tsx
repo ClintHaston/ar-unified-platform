@@ -5,6 +5,7 @@ import {
   type ValuationRun, type ValuationSnapshot,
 } from '../lib/api'
 import { STATUS_PILL, money, moneyShort, snapshotAge, statusPillText } from './Inventory'
+import { AssigneePicker } from '../components/AssigneePicker'
 import { DocumentsPanel } from '../components/DocumentsPanel'
 import { BuyerInterestPanel } from '../components/BuyerInterestPanel'
 
@@ -81,6 +82,12 @@ export function UnitDetail() {
   const [expAmount, setExpAmount] = useState('')
   const [expDate, setExpDate] = useState('')
   const [expNote, setExpNote] = useState('')
+
+  // task form
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskDue, setTaskDue] = useState('')
+  const [taskAssignee, setTaskAssignee] = useState('')  // '' = self
+  const [savingTask, setSavingTask] = useState(false)
 
   // offer form
   const [contactQuery, setContactQuery] = useState('')
@@ -203,6 +210,26 @@ export function UnitDetail() {
     setReleaseNote('')
   }
 
+  async function submitTask(e: FormEvent) {
+    e.preventDefault()
+    if (!unitId || !taskTitle.trim()) return
+    setSavingTask(true)
+    try {
+      await api.createTask({
+        title: taskTitle.trim(),
+        due_at: taskDue ? new Date(taskDue + 'T17:00:00').toISOString() : undefined,
+        unit_id: unitId,
+        assignee_id: taskAssignee || undefined,
+      })
+      setTaskTitle(''); setTaskDue(''); setTaskAssignee('')
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create task')
+    } finally {
+      setSavingTask(false)
+    }
+  }
+
   async function logOffer(e: FormEvent) {
     e.preventDefault()
     if (!unitId || !buyer || !offerAmount) return
@@ -246,6 +273,14 @@ export function UnitDetail() {
             <div className="fieldrow"><span>Location</span><span>{unit.location ?? '—'}</span></div>
             <div className="fieldrow"><span>Asking price</span><span>{money(unit.asking_price_cents)}</span></div>
             <div className="fieldrow"><span>Stock cost</span><span>{money(unit.stock_cost_cents)}</span></div>
+            <div className="fieldrow">
+              <span>Website listing</span>
+              <span>
+                {unit.listed_on_website && unit.website_url
+                  ? <a href={unit.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>View live listing ↗</a>
+                  : <span style={{ color: 'var(--p-body)' }}>Not listed on the website yet</span>}
+              </span>
+            </div>
             {unit.description && <div className="note" style={{ marginTop: 10 }}>{unit.description}</div>}
             {unit.legacy_source && (
               <div className="note">Imported from TAB listing {unit.legacy_id} · {when(unit.created_at)}</div>
@@ -632,10 +667,30 @@ export function UnitDetail() {
             )}
           </div>
 
-          {tasks.length > 0 && (
-            <div className="panel">
-              <h3>Tasks</h3>
-              {tasks.map((t) => (
+          <div className="panel">
+            <h3>Tasks</h3>
+            <form onSubmit={submitTask} style={{ marginBottom: 12 }}>
+              <input
+                className="plat-input"
+                placeholder="New task for this unit…"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+              />
+              <input
+                className="plat-input"
+                type="date"
+                value={taskDue}
+                onChange={(e) => setTaskDue(e.target.value)}
+              />
+              <AssigneePicker value={taskAssignee} onChange={setTaskAssignee} />
+              <button className="plat-btn" type="submit" disabled={savingTask || !taskTitle.trim()}>
+                {savingTask ? 'Saving…' : 'Add task'}
+              </button>
+            </form>
+            {tasks.length === 0 ? (
+              <div className="note">No tasks on this unit.</div>
+            ) : (
+              tasks.map((t) => (
                 <div className="hist-item" key={t.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                   <div>
                     <div style={{ textDecoration: t.done_at ? 'line-through' : undefined }}>{t.title}</div>
@@ -650,9 +705,9 @@ export function UnitDetail() {
                     </button>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
       {error && <div className="note" style={{ color: '#B4432B', fontWeight: 'bold' }}>{error}</div>}

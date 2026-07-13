@@ -237,6 +237,9 @@ export interface UnitCard {
   asking_price_cents: number | null
   location: string | null
   archived: boolean
+  legacy_id: string | null
+  open_offer_count: number
+  top_open_offer_cents: number | null
   category_id: string | null
   make_id: string | null
   model_id: string | null
@@ -557,6 +560,8 @@ export interface UnitDetailResponse {
     stock_cost_cents: number | null
     legacy_source: string | null
     legacy_id: string | null
+    listed_on_website: boolean
+    website_url: string | null
     created_at: string
   }
   allowed_transitions: string[]
