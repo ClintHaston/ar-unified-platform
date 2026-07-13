@@ -301,6 +301,68 @@ export interface ContactListParams {
   page_size?: number
 }
 
+// P1 contacts-coherence (read-only)
+export interface ContactBuyOpp {
+  id: string
+  name: string
+  stage_name: string
+  probability_to_close: number | null
+  expected_close: string | null
+  outcome: 'won' | 'lost' | null
+  unit_count: number
+}
+
+export interface ContactOffer {
+  id: string
+  amount_cents: number
+  status: string
+  expires_at: string | null
+  responded_at: string | null
+  created_at: string
+  unit_id: string
+  unit_title: string
+  unit_legacy_id: string | null
+  unit_desc: string | null
+  listed_on_website: boolean
+  website_url: string | null
+  deal_id: string | null
+  deal_name: string | null
+}
+
+export interface ConsignmentUnit {
+  unit_id: string
+  title: string
+  legacy_id: string | null
+  description: string | null
+  status: string
+  listed_on_website: boolean
+  website_url: string | null
+}
+
+export interface ConsignmentDoc {
+  id: string
+  doc_type: string
+  file_name: string
+  uploaded_at: string
+  uploaded_by_name: string | null
+  url: string | null
+}
+
+export interface Consignment {
+  consigner: {
+    id: string
+    split_terms: string | null
+    split_pct: number | null
+    payout_status: string | null
+    payment_details_on_file: boolean
+    notes: string | null
+  }
+  units: ConsignmentUnit[]
+  documents_configured: boolean
+  contract_docs: ConsignmentDoc[]
+  related_docs: ConsignmentDoc[]
+}
+
 export interface ContactDetailResponse {
   contact: ContactRow & {
     first_name: string | null
@@ -331,6 +393,9 @@ export interface ContactDetailResponse {
     done_at: string | null
     owner_name: string | null
   }>
+  buy_opps: ContactBuyOpp[]
+  offers: ContactOffer[]
+  consignment: Consignment | null
 }
 
 export interface ContactPatch {

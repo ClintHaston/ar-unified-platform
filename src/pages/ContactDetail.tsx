@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { api, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
+import { api, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { TYPE_LABEL, TYPE_PILL, ownerLabel } from './Contacts'
 
@@ -173,7 +173,7 @@ export function ContactDetail() {
   if (loading) return <div className="admin-loading">Loading contact…</div>
   if (!data) return <div className="admin-loading">{error || 'Contact not found'}</div>
 
-  const { contact, deals, activities, tasks } = data
+  const { contact, deals, activities, tasks, buy_opps, offers, consignment } = data
 
   return (
     <div>
@@ -262,6 +262,46 @@ export function ContactDetail() {
             )}
           </div>
 
+          {consignment && (
+            <div className="panel">
+              <h3>Consignment</h3>
+              <div className="fieldrow">
+                <span>Split terms</span>
+                <span>
+                  {consignment.consigner.split_terms ?? '—'}
+                  {consignment.consigner.split_pct !== null ? ` · ${consignment.consigner.split_pct}%` : ''}
+                </span>
+              </div>
+              <div className="fieldrow"><span>Payout status</span><span>{consignment.consigner.payout_status ?? '—'}</span></div>
+              <div className="fieldrow"><span>Payment details on file</span><span>{consignment.consigner.payment_details_on_file ? 'Yes' : 'No'}</span></div>
+              {consignment.consigner.notes && <div className="note">{consignment.consigner.notes}</div>}
+
+              <h4 style={{ margin: '12px 0 4px' }}>Consigned items <span className="c">{consignment.units.length}</span></h4>
+              {consignment.units.length === 0 ? (
+                <div className="note">No consigned units linked yet — intake links units to a consigner; backfilled TAB units may not have one.</div>
+              ) : (
+                consignment.units.map((u) => (
+                  <div className="hist-item" key={u.unit_id}>
+                    <Link to={`/units/${u.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                      {u.legacy_id ? `#${u.legacy_id} — ` : ''}{u.title}
+                    </Link>
+                    <span className="pill grey" style={{ marginLeft: 8 }}>{u.status.replace('_', ' ')}</span>
+                    <div className="when">
+                      {u.listed_on_website && u.website_url
+                        ? <a href={u.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
+                        : <span style={{ color: 'var(--p-body)' }}>not listed on the website yet</span>}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              <h4 style={{ margin: '12px 0 4px' }}>Contract</h4>
+              <ConsignDocs docs={consignment.contract_docs} configured={consignment.documents_configured} emptyLabel="No contract uploaded yet." />
+              <h4 style={{ margin: '12px 0 4px' }}>Related docs</h4>
+              <ConsignDocs docs={consignment.related_docs} configured={consignment.documents_configured} emptyLabel="No related documents." />
+            </div>
+          )}
+
           <div className="panel">
             <h3>Activity</h3>
             <form onSubmit={submitActivity} style={{ marginBottom: 14 }}>
@@ -327,6 +367,60 @@ export function ContactDetail() {
           </div>
 
           <div className="panel">
+            <h3>Buy opps</h3>
+            {buy_opps.length === 0 ? (
+              <div className="note">This contact isn't the buyer on any buy opps.</div>
+            ) : (
+              buy_opps.map((b) => (
+                <div className="hist-item" key={b.id}>
+                  <div>
+                    <Link to={`/buyer-opportunities/${b.id}`}><b>{b.name}</b></Link>
+                    {b.outcome && (
+                      <span className={`pill ${b.outcome === 'won' ? 'green' : 'red'}`} style={{ marginLeft: 8 }}>{b.outcome}</span>
+                    )}
+                  </div>
+                  <div className="when">
+                    {b.stage_name}
+                    {b.probability_to_close !== null ? ` · ${b.probability_to_close}%` : ''}
+                    {b.expected_close ? ` · close ~ ${new Date(b.expected_close).toLocaleDateString()}` : ''}
+                    {` · ${b.unit_count} unit${b.unit_count === 1 ? '' : 's'}`}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="panel">
+            <h3>Offer history</h3>
+            {offers.length === 0 ? (
+              <div className="note">No offers from this contact.</div>
+            ) : (
+              offers.map((o) => (
+                <div className="hist-item" key={o.id}>
+                  <div>
+                    <Link to={`/units/${o.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                      {o.unit_legacy_id ? `#${o.unit_legacy_id} — ` : ''}{o.unit_title}
+                    </Link>
+                    <span className={`pill ${o.status === 'accepted' ? 'green' : o.status === 'open' ? 'gold' : 'grey'}`} style={{ marginLeft: 8 }}>
+                      {o.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="when">
+                    {money(o.amount_cents)}
+                    {o.status === 'open' && o.expires_at ? ` · expires ${new Date(o.expires_at).toLocaleDateString()}` : ''}
+                    {o.responded_at ? ` · responded ${new Date(o.responded_at).toLocaleDateString()}` : ''}
+                    {' · '}
+                    {o.listed_on_website && o.website_url
+                      ? <a href={o.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
+                      : <span style={{ color: 'var(--p-body)' }}>not listed</span>}
+                    {o.deal_id && o.deal_name ? <> · <Link to={`/deals/${o.deal_id}`} style={{ color: 'var(--p-gold)' }}>{o.deal_name}</Link></> : ''}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="panel">
             <h3>Tasks</h3>
             <form onSubmit={submitTask} style={{ marginBottom: 12 }}>
               <input
@@ -376,5 +470,33 @@ export function ContactDetail() {
       </div>
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
     </div>
+  )
+}
+
+interface ConsignDocsProps {
+  docs: ConsignmentDoc[]
+  configured: boolean
+  emptyLabel: string
+}
+
+// Reuses the 3c-8 storage-aware pattern: while R2 is unconfigured, render the
+// pending state, never a broken link.
+function ConsignDocs({ docs, configured, emptyLabel }: ConsignDocsProps) {
+  if (!configured) {
+    return <div className="note">Document storage isn't enabled yet — contracts appear here once R2 is configured.</div>
+  }
+  if (docs.length === 0) return <div className="note">{emptyLabel}</div>
+  return (
+    <>
+      {docs.map((d) => (
+        <div className="hist-item" key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+          <div>
+            <b>{d.file_name}</b>
+            <div className="when">{d.doc_type} · {d.uploaded_by_name ?? '—'} · {when(d.uploaded_at)}</div>
+          </div>
+          {d.url && <a className="plat-btn ghost" href={d.url} target="_blank" rel="noopener noreferrer">Download</a>}
+        </div>
+      ))}
+    </>
   )
 }
