@@ -14,7 +14,7 @@ import { PersistentIframes } from './PersistentIframes'
 const NATIVE_ITEMS = [
   { path: '/dashboard', ic: '#', label: 'Dashboard' },
   { path: '/pipelines', ic: '|', label: 'Pipelines' },
-  { path: '/buyer-opportunities', ic: '*', label: 'Buyer opportunities' },
+  { path: '/buyer-opportunities', ic: '*', label: 'Buy opps' },
   { path: '/inventory', ic: '=', label: 'Inventory' },
   { path: '/contacts', ic: 'o', label: 'Contacts' },
   { path: '/sales-sheet', ic: '-', label: 'Sales sheet' },
@@ -38,7 +38,7 @@ const ADMIN_ITEMS = [
 const TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/pipelines': 'Pipelines',
-  '/buyer-opportunities': 'Buyer opportunities',
+  '/buyer-opportunities': 'Buy opps',
   '/inventory': 'Inventory',
   '/contacts': 'Contacts',
   '/sales-sheet': 'Sales sheet',
@@ -76,7 +76,7 @@ export function PlatformShell() {
   const title = pathname.startsWith('/deals/') ? 'Deal detail'
     : pathname.startsWith('/units/') ? 'Unit detail'
     : pathname.startsWith('/contacts/') ? 'Contact detail'
-    : pathname.startsWith('/buyer-opportunities/') ? 'Buyer opportunity'
+    : pathname.startsWith('/buyer-opportunities/') ? 'Buy opp'
     : (TITLES[pathname] ?? 'Dashboard')
 
   return (

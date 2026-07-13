@@ -35,12 +35,13 @@ interface BuyerInterestPanelProps {
 
 export function BuyerInterestPanel({ unitId }: BuyerInterestPanelProps) {
   const [interest, setInterest] = useState<UnitBuyerInterest[] | null>(null)
+  const [websiteUrl, setWebsiteUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let live = true
     api.unitBuyerInterest(unitId)
-      .then((res) => { if (live) setInterest(res.interest) })
+      .then((res) => { if (live) { setInterest(res.interest); setWebsiteUrl(res.unit_website_url) } })
       .catch((err: unknown) => { if (live) setError(err instanceof Error ? err.message : 'Failed to load') })
     return () => { live = false }
   }, [unitId])
@@ -48,17 +49,22 @@ export function BuyerInterestPanel({ unitId }: BuyerInterestPanelProps) {
   return (
     <div className="panel">
       <h3>
-        Buyer interest
+        Buy opps
         {interest && interest.length > 0 && <span className="c">{interest.length}</span>}
       </h3>
       <div className="note" style={{ marginTop: 0 }}>
-        Open buyer opportunities working this unit, across all reps — read-only.
+        Open buy opps working this unit, across all reps — read-only.
+        {websiteUrl ? (
+          <> · <a href={websiteUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>View live listing ↗</a></>
+        ) : (
+          <> · <span>Not listed on the website yet</span></>
+        )}
       </div>
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       {interest === null ? (
         <div className="note">Loading…</div>
       ) : interest.length === 0 ? (
-        <div className="note">No open buyer opportunities are tracking this unit.</div>
+        <div className="note">No open buy opps are tracking this unit.</div>
       ) : (
         interest.map((row) => (
           <div className="hist-item" key={row.opportunity_id} style={{ alignItems: 'flex-start' }}>

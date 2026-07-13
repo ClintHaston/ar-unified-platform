@@ -109,11 +109,11 @@ export function Dashboard() {
         <div className="panel">
           <h3>
             Buy-side pipeline {mine ? '— mine' : '(all reps)'}
-            <span className="pill buy" style={{ marginLeft: 8 }}>Buyer opportunities</span>
+            <span className="pill buy" style={{ marginLeft: 8 }}>Buy opps</span>
           </h3>
           {buyBoard.opportunities.length === 0 ? (
             <div className="note">
-              No buyer opportunities yet.{' '}
+              No buy opps yet.{' '}
               <Link to="/buyer-opportunities" style={{ color: 'var(--p-buy)', fontWeight: 'bold' }}>Open the buyer board →</Link>
             </div>
           ) : (

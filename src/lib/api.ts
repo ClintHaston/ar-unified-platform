@@ -634,6 +634,13 @@ export interface ListingFieldsResponse {
 // ── 4e Buyer Opportunity layer (buy-side interest tracker) ──
 export type InterestStatus = 'info_sent' | 'negotiating' | 'cooling' | 'offer_made'
 
+export interface BuyerOppFirstUnit {
+  legacy_id: string | null
+  serial: string | null
+  title: string
+  description: string | null
+}
+
 export interface BuyerOppCard {
   id: string
   name: string
@@ -644,6 +651,9 @@ export interface BuyerOppCard {
   buyer_company: string | null
   unit_count: number
   outcome: 'won' | 'lost' | null
+  probability_to_close: number | null
+  expected_close: string | null
+  first_unit: BuyerOppFirstUnit | null
   is_mine: boolean
 }
 
@@ -660,10 +670,23 @@ export interface BuyerOppUnit {
   asking_price_cents: number | null
   target_price_cents: number | null
   interest_status: InterestStatus
+  legacy_id: string | null
+  serial: string | null
+  description: string | null
+  listed_on_website: boolean
+  website_url: string | null
   offer_id: string | null
   offer_status: string | null
   offer_amount_cents: number | null
   note: string | null
+}
+
+export interface BuyerOppNote {
+  id: string
+  subject: string | null
+  body: string
+  occurred_at: string
+  rep_name: string | null
 }
 
 export interface BuyerOppDetailResponse {
@@ -686,10 +709,13 @@ export interface BuyerOppDetailResponse {
     buyer_phone: string | null
     company_id: string | null
     company_name: string | null
+    probability_to_close: number | null
+    expected_close: string | null
     can_edit: boolean
   }
   stages: Stage[]
   units: BuyerOppUnit[]
+  activities: BuyerOppNote[]
   stage_history: Array<{
     at: string
     from_stage: string | null
@@ -1135,7 +1161,15 @@ export const api = {
     return request<BuyerBoardResponse>(`/platform/buyer-opportunities${suffix}`)
   },
 
-  createBuyerOpportunity: (input: { buyer_contact_id: string; name?: string; notes?: string; stage_id?: string }) =>
+  createBuyerOpportunity: (input: {
+    buyer_contact_id: string
+    name?: string
+    notes?: string
+    stage_id?: string
+    probability_to_close?: number | null
+    expected_close?: string | null
+    units?: Array<{ unit_id: string; target_price_cents?: number | null; interest_status?: InterestStatus }>
+  }) =>
     request<{ id: string }>('/platform/buyer-opportunities', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -1144,10 +1178,16 @@ export const api = {
   buyerOpportunityDetail: (oppId: string) =>
     request<BuyerOppDetailResponse>(`/platform/buyer-opportunities/${oppId}`),
 
-  editBuyerOpportunity: (oppId: string, patch: { name?: string; notes?: string; buyer_contact_id?: string }) =>
+  editBuyerOpportunity: (oppId: string, patch: { name?: string; notes?: string; buyer_contact_id?: string; probability_to_close?: number | null; expected_close?: string | null }) =>
     request<{ ok: boolean }>(`/platform/buyer-opportunities/${oppId}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
+    }),
+
+  addBuyerNote: (oppId: string, input: { body: string; subject?: string }) =>
+    request<{ id: string }>(`/platform/buyer-opportunities/${oppId}/activities`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     }),
 
   moveBuyerOpportunity: (oppId: string, toStageId: string) =>
@@ -1174,5 +1214,6 @@ export const api = {
     }),
 
   unitBuyerInterest: (unitId: string) =>
-    request<{ interest: UnitBuyerInterest[] }>(`/platform/units/${unitId}/buyer-interest`),
+    request<{ unit_listed: boolean; unit_website_url: string | null; interest: UnitBuyerInterest[] }>(
+      `/platform/units/${unitId}/buyer-interest`),
 }
