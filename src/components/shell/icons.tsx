@@ -9,6 +9,7 @@ export type IconName =
   | 'evaluator' | 'leads' | 'command' | 'outbox' | 'approvals' | 'spine'
   | 'search' | 'plus' | 'note' | 'chevron-right' | 'chevron-down'
   | 'chevron-left' | 'panel' | 'clock' | 'activity' | 'sparkle' | 'intake'
+  | 'star' | 'star-filled'
 
 const P: Record<IconName, JSX.Element> = {
   dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
@@ -40,6 +41,8 @@ const P: Record<IconName, JSX.Element> = {
   clock: <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></>,
   activity: <><path d="M3 12h4l2.5-6 5 12L17 12h4" /></>,
   sparkle: <><path d="M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6z" /></>,
+  star: <path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17l-5.3 2.6 1-5.8-4.2-4.1 5.9-.9z" />,
+  'star-filled': <path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17l-5.3 2.6 1-5.8-4.2-4.1 5.9-.9z" fill="currentColor" />,
 }
 
 interface IconProps {

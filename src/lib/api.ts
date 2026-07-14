@@ -654,6 +654,55 @@ export interface SavedReport {
   updated_at: string
 }
 
+// ── WS2c saveable dashboards ──
+export type PanelSize = 'full' | 'half'
+
+export interface DashboardPanel {
+  saved_report_id: string
+  size: PanelSize
+}
+
+export interface DashboardFilters {
+  date?: { start?: string; end?: string }
+  owner_id?: string
+}
+
+export interface DashboardListItem {
+  id: string
+  name: string
+  layout: DashboardPanel[]
+  default_filters: DashboardFilters
+  owner_id: string
+  owner_name: string | null
+  favorited: boolean
+  panel_count: number
+  updated_at: string
+}
+
+export interface DashboardMeta {
+  id: string
+  name: string
+  layout: DashboardPanel[]
+  default_filters: DashboardFilters
+  favorited: boolean
+}
+
+export interface DashboardRunPanel {
+  saved_report_id: string
+  size: PanelSize
+  name: string | null
+  result?: RunResult
+  error?: string
+}
+
+export interface DashboardRun {
+  id: string
+  name: string
+  default_filters: DashboardFilters
+  favorited: boolean
+  panels: DashboardRunPanel[]
+}
+
 export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
 
 export interface SearchResult {
@@ -1296,6 +1345,22 @@ export const api = {
     request<SavedReport>(`/platform/reports/saved/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteSavedReport: (id: string) =>
     request<{ ok: boolean }>(`/platform/reports/saved/${id}`, { method: 'DELETE' }),
+
+  // ── WS2c dashboards (admin-only) ──
+  dashboards: () => request<{ dashboards: DashboardListItem[] }>('/platform/dashboards'),
+  dashboardMeta: (id: string) => request<DashboardMeta>(`/platform/dashboards/${id}`),
+  runDashboard: (id: string, f: ReportFilters = {}) =>
+    request<DashboardRun>(`/platform/dashboards/${id}/run${reportQs(f)}`),
+  createDashboard: (input: { name: string; layout: DashboardPanel[]; default_filters: DashboardFilters }) =>
+    request<DashboardMeta>('/platform/dashboards', { method: 'POST', body: JSON.stringify(input) }),
+  updateDashboard: (id: string, patch: { name?: string; layout?: DashboardPanel[]; default_filters?: DashboardFilters }) =>
+    request<DashboardMeta>(`/platform/dashboards/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteDashboard: (id: string) =>
+    request<{ ok: boolean }>(`/platform/dashboards/${id}`, { method: 'DELETE' }),
+  favoriteDashboard: (id: string) =>
+    request<{ ok: boolean; favorited: boolean }>(`/platform/dashboards/${id}/favorite`, { method: 'POST' }),
+  unfavoriteDashboard: (id: string) =>
+    request<{ ok: boolean; favorited: boolean }>(`/platform/dashboards/${id}/favorite`, { method: 'DELETE' }),
 
   salesSheet: (unitId: string) =>
     request<{ html: string; spec_source: 'published' | 'generated' | 'none' }>(

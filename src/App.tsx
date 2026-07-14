@@ -28,6 +28,7 @@ import { Outbox } from './pages/Outbox'
 import { LeadApprovals } from './pages/LeadApprovals'
 import { Tasks } from './pages/Tasks'
 import { Reports } from './pages/Reports'
+import { DashboardView } from './pages/DashboardView'
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
             <Route path="/tasks" element={<AuthGuard><Tasks /></AuthGuard>} />
             <Route path="/reports" element={<AuthGuard><Reports /></AuthGuard>} />
+            <Route path="/dashboards/:dashboardId" element={<AuthGuard adminOnly><DashboardView /></AuthGuard>} />
             <Route path="/pipelines" element={<AuthGuard><Pipelines /></AuthGuard>} />
             <Route path="/buyer-opportunities" element={<AuthGuard><BuyerOpportunities /></AuthGuard>} />
             <Route path="/buyer-opportunities/:opportunityId" element={<AuthGuard><BuyerOpportunityDetail /></AuthGuard>} />
