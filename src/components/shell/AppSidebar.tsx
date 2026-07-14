@@ -13,6 +13,18 @@ function useIsActive() {
   return (path: string) => pathname === path || pathname.startsWith(path + '/')
 }
 
+// The flyout is position:fixed (so the sidebar's overflow scroll container can't
+// clip it). fixed is viewport-relative, so anchor it to the nav item's rect on
+// hover/focus, just to its right and aligned to its top.
+function positionFlyout(wrap: HTMLElement) {
+  const btn = wrap.querySelector<HTMLElement>('.ws-navitem')
+  const fly = wrap.querySelector<HTMLElement>('.ws-flyout')
+  if (!btn || !fly) return
+  const r = btn.getBoundingClientRect()
+  fly.style.top = `${Math.round(r.top - 4)}px`
+  fly.style.left = `${Math.round(r.right + 8)}px`
+}
+
 export function AppSidebar() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -47,7 +59,9 @@ export function AppSidebar() {
               )
               if (!hasFly) return <div key={item.key}>{btn}</div>
               return (
-                <div className="ws-flywrap" key={item.key}>
+                <div className="ws-flywrap" key={item.key}
+                     onMouseEnter={(e) => positionFlyout(e.currentTarget)}
+                     onFocusCapture={(e) => positionFlyout(e.currentTarget)}>
                   {btn}
                   <div className="ws-flyout" role="menu">
                     {item.flyout?.head && <div className="ws-flyhead">{item.flyout.head}</div>}
