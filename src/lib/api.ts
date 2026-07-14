@@ -80,6 +80,10 @@ export interface DealContactRef {
 
 // §2 merged read-side timeline: manual activities + audit events
 // (created / deal_edited / stage_moved), newest first.
+// WS2a: a logged call carries a disposition. Six values, enforced server-side.
+export type CallOutcome =
+  | 'connected' | 'voicemail' | 'no-answer' | 'callback' | 'wrong-number' | 'other'
+
 export interface TimelineItem {
   type: 'activity' | 'audit'
   at: string
@@ -88,6 +92,7 @@ export interface TimelineItem {
   subject: string | null
   body: string | null
   summary: string | null
+  call_outcome?: CallOutcome | null
 }
 
 // P1: read-side resolution of the unit a deal is selling, for the CRM +
@@ -388,6 +393,7 @@ export interface ContactDetailResponse {
     subject: string | null
     body: string
     occurred_at: string
+    call_outcome?: CallOutcome | null
     rep_name: string | null
   }>
   tasks: Array<{
@@ -527,6 +533,64 @@ export interface CommissionRepRow {
 export interface CommissionReport {
   commission_default_pct: number | null
   reps: CommissionRepRow[]
+}
+
+// ── WS2a prebuilt reports ──
+export interface ReportFilters {
+  start?: string        // YYYY-MM-DD inclusive
+  end?: string          // YYYY-MM-DD inclusive
+  owner_id?: string
+}
+
+export interface FunnelStage {
+  stage_id: string
+  name: string
+  position: number
+  reached: number
+  drop_from_prev: number | null
+  conversion_from_prev_pct: number | null
+  completed_visits: number
+  avg_days_in_stage: number | null
+  median_days_in_stage: number | null
+}
+
+export interface FunnelPipeline {
+  pipeline_id: string
+  pipeline_name: string
+  stages: FunnelStage[]
+}
+
+export interface FunnelReport {
+  pipelines: FunnelPipeline[]
+}
+
+export interface DealsByRepRow {
+  rep_id: string
+  rep_name: string
+  period: string | null
+  won_count: number
+  lost_count: number
+  won_value_cents: number
+}
+
+export interface DealsByRepReport {
+  rows: DealsByRepRow[]
+  totals: { won_count: number; lost_count: number; won_value_cents: number }
+}
+
+export interface CallActivityRow {
+  rep_id: string
+  rep_name: string
+  period: string | null
+  total: number
+  no_outcome: number
+  by_outcome: Record<CallOutcome, number>
+}
+
+export interface CallActivityReport {
+  outcomes: CallOutcome[]
+  rows: CallActivityRow[]
+  total_calls: number
 }
 
 export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
@@ -854,6 +918,16 @@ async function tryRefresh(): Promise<User | null> {
   }
 }
 
+// WS2a: report endpoints share start/end/owner_id filters.
+function reportQs(f: ReportFilters): string {
+  const p = new URLSearchParams()
+  if (f.start) p.set('start', f.start)
+  if (f.end) p.set('end', f.end)
+  if (f.owner_id) p.set('owner_id', f.owner_id)
+  const s = p.toString()
+  return s ? `?${s}` : ''
+}
+
 export const api = {
   login: async (email: string, password: string): Promise<User> => {
     const data = await request<AuthResponse>('/platform/auth/login', {
@@ -938,7 +1012,7 @@ export const api = {
       body: JSON.stringify({ to_stage_id: toStageId }),
     }),
 
-  logActivity: (dealId: string, input: { kind: 'note' | 'call'; subject?: string; body: string }) =>
+  logActivity: (dealId: string, input: { kind: 'note' | 'call'; subject?: string; body: string; call_outcome?: CallOutcome | null }) =>
     request<{ id: string }>(`/platform/deals/${dealId}/activities`, {
       method: 'POST',
       body: JSON.stringify(input),
@@ -1050,7 +1124,7 @@ export const api = {
       body: JSON.stringify({ owner_id: ownerId }),
     }),
 
-  logContactActivity: (contactId: string, input: { kind: 'note' | 'call'; subject?: string; body: string }) =>
+  logContactActivity: (contactId: string, input: { kind: 'note' | 'call'; subject?: string; body: string; call_outcome?: CallOutcome | null }) =>
     request<{ id: string }>(`/platform/contacts/${contactId}/activities`, {
       method: 'POST',
       body: JSON.stringify(input),
@@ -1137,6 +1211,16 @@ export const api = {
   emailLog: () => request<{ emails: EmailLogRow[] }>('/platform/settings/email-log'),
 
   commissionReport: () => request<CommissionReport>('/platform/reports/commission'),
+
+  // ── WS2a prebuilt reports (admin-only, read-only) ──
+  sellFunnel: (f: ReportFilters = {}) =>
+    request<FunnelReport>(`/platform/reports/pipeline-funnel${reportQs(f)}`),
+  buyFunnel: (f: ReportFilters = {}) =>
+    request<FunnelReport>(`/platform/reports/buy-funnel${reportQs(f)}`),
+  dealsByRep: (f: ReportFilters = {}) =>
+    request<DealsByRepReport>(`/platform/reports/deals-by-rep${reportQs(f)}`),
+  callActivity: (f: ReportFilters = {}) =>
+    request<CallActivityReport>(`/platform/reports/call-activity${reportQs(f)}`),
 
   salesSheet: (unitId: string) =>
     request<{ html: string; spec_source: 'published' | 'generated' | 'none' }>(

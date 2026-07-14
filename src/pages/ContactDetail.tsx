@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { api, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
+import { api, type CallOutcome, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
+import { CALL_OUTCOMES, CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { recordRecent } from '../lib/recentlyViewed'
 import { TYPE_LABEL, TYPE_PILL, ownerLabel } from './Contacts'
 
@@ -36,6 +37,7 @@ export function ContactDetail() {
   const [actKind, setActKind] = useState<'note' | 'call'>('note')
   const [actSubject, setActSubject] = useState('')
   const [actBody, setActBody] = useState('')
+  const [callOutcome, setCallOutcome] = useState<CallOutcome | ''>('')
   const [savingAct, setSavingAct] = useState(false)
 
   const [taskTitle, setTaskTitle] = useState('')
@@ -137,15 +139,19 @@ export function ContactDetail() {
   async function submitActivity(e: FormEvent) {
     e.preventDefault()
     if (!contactId || !actBody.trim()) return
+    if (actKind === 'call' && callOutcome === '') return  // outcome required for a call
+    const outcome: CallOutcome | null = actKind === 'call' ? (callOutcome as CallOutcome) : null
     setSavingAct(true)
     try {
       await api.logContactActivity(contactId, {
         kind: actKind,
         subject: actSubject.trim() || undefined,
         body: actBody.trim(),
+        call_outcome: outcome,
       })
       setActSubject('')
       setActBody('')
+      setCallOutcome('')
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log activity')
@@ -344,6 +350,19 @@ export function ContactDetail() {
                   onChange={(e) => setActSubject(e.target.value)}
                 />
               </div>
+              {actKind === 'call' && (
+                <select
+                  className="plat-input"
+                  style={{ marginBottom: 8, maxWidth: 220 }}
+                  value={callOutcome}
+                  onChange={(e) => setCallOutcome(e.target.value as CallOutcome | '')}
+                >
+                  <option value="">Call outcome (required)…</option>
+                  {CALL_OUTCOMES.map((o) => (
+                    <option key={o} value={o}>{CALL_OUTCOME_LABEL[o]}</option>
+                  ))}
+                </select>
+              )}
               <textarea
                 className="plat-input"
                 rows={3}
@@ -351,7 +370,7 @@ export function ContactDetail() {
                 value={actBody}
                 onChange={(e) => setActBody(e.target.value)}
               />
-              <button className="plat-btn" type="submit" disabled={savingAct || !actBody.trim()}>
+              <button className="plat-btn" type="submit" disabled={savingAct || !actBody.trim() || (actKind === 'call' && callOutcome === '')}>
                 {savingAct ? 'Saving…' : `Log ${actKind}`}
               </button>
             </form>
@@ -362,6 +381,9 @@ export function ContactDetail() {
                 <div className="hist-item" key={a.id}>
                   <div>
                     <span className={`pill ${a.kind === 'call' ? 'gold' : 'grey'}`}>{a.kind}</span>
+                    {a.kind === 'call' && a.call_outcome && (
+                      <span className="pill trans" style={{ marginLeft: 6 }}>{CALL_OUTCOME_LABEL[a.call_outcome]}</span>
+                    )}
                     {a.subject && <b style={{ marginLeft: 8 }}>{a.subject}</b>}
                   </div>
                   <div style={{ margin: '4px 0' }}>{a.body}</div>

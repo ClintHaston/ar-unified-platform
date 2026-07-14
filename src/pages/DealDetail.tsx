@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   api,
+  type CallOutcome,
   type ContactHit,
   type DealDetailResponse,
   type DealPatchInput,
   type OwnerOption,
   type Stage,
 } from '../lib/api'
+import { CALL_OUTCOMES, CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { useAuth } from '../contexts/AuthContext'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { DocumentsPanel } from '../components/DocumentsPanel'
@@ -59,6 +61,7 @@ export function DealDetail() {
   const [actKind, setActKind] = useState<'note' | 'call'>('note')
   const [actSubject, setActSubject] = useState('')
   const [actBody, setActBody] = useState('')
+  const [callOutcome, setCallOutcome] = useState<CallOutcome | ''>('')
   const [savingAct, setSavingAct] = useState(false)
 
   const [taskTitle, setTaskTitle] = useState('')
@@ -157,9 +160,11 @@ export function DealDetail() {
   async function submitActivity(e: FormEvent) {
     e.preventDefault()
     if (!dealId || !actBody.trim() || !data) return
+    if (actKind === 'call' && callOutcome === '') return  // outcome required for a call
     const body = actBody.trim()
     const subject = actSubject.trim() || null
     const kind = actKind
+    const outcome: CallOutcome | null = kind === 'call' ? (callOutcome as CallOutcome) : null
     setSavingAct(true)
 
     // Optimistic: the note appears in the timeline instantly (Phase 4).
@@ -168,19 +173,21 @@ export function DealDetail() {
       ...data,
       timeline: [{
         type: 'activity', at: new Date().toISOString(), actor_name: user?.name ?? null,
-        kind, subject, body, summary: null,
+        kind, subject, body, summary: null, call_outcome: outcome,
       }, ...data.timeline],
     })
     setActSubject('')
     setActBody('')
+    setCallOutcome('')
 
     try {
-      await api.logActivity(dealId, { kind, subject: subject ?? undefined, body })
+      await api.logActivity(dealId, { kind, subject: subject ?? undefined, body, call_outcome: outcome })
       load()  // reconcile with server truth
     } catch (err) {
       setData(prev)  // rollback
       setActSubject(subject ?? '')
       setActBody(body)
+      setCallOutcome(outcome ?? '')
       toast.error('Note not saved', err instanceof Error ? err.message : 'Please try again.')
     } finally {
       setSavingAct(false)
@@ -408,6 +415,19 @@ export function DealDetail() {
                   onChange={(e) => setActSubject(e.target.value)}
                 />
               </div>
+              {actKind === 'call' && (
+                <select
+                  className="plat-input"
+                  style={{ marginBottom: 8, maxWidth: 220 }}
+                  value={callOutcome}
+                  onChange={(e) => setCallOutcome(e.target.value as CallOutcome | '')}
+                >
+                  <option value="">Call outcome (required)…</option>
+                  {CALL_OUTCOMES.map((o) => (
+                    <option key={o} value={o}>{CALL_OUTCOME_LABEL[o]}</option>
+                  ))}
+                </select>
+              )}
               <textarea
                 className="plat-input"
                 rows={3}
@@ -415,7 +435,7 @@ export function DealDetail() {
                 value={actBody}
                 onChange={(e) => setActBody(e.target.value)}
               />
-              <button className="plat-btn" type="submit" disabled={savingAct || !actBody.trim()}>
+              <button className="plat-btn" type="submit" disabled={savingAct || !actBody.trim() || (actKind === 'call' && callOutcome === '')}>
                 {savingAct ? 'Saving…' : `Log ${actKind}`}
               </button>
             </form>
@@ -428,6 +448,9 @@ export function DealDetail() {
                     <>
                       <div>
                         <span className={`pill ${t.kind === 'call' ? 'gold' : 'grey'}`}>{t.kind}</span>
+                        {t.kind === 'call' && t.call_outcome && (
+                          <span className="pill trans" style={{ marginLeft: 6 }}>{CALL_OUTCOME_LABEL[t.call_outcome]}</span>
+                        )}
                         {t.subject && <b style={{ marginLeft: 8 }}>{t.subject}</b>}
                       </div>
                       <div style={{ margin: '4px 0' }}>{t.body}</div>

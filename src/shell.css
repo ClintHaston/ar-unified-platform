@@ -365,11 +365,27 @@
 }
 @keyframes wsShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
+/* ── WS2a report funnel (CSS bars, no charting dep) ── */
+.rep-funnel { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+.rep-fstage { display: flex; flex-direction: column; gap: 4px; }
+.rep-fhead { display: flex; justify-content: space-between; align-items: baseline; }
+.rep-fname { font-size: 13px; font-weight: 600; color: var(--p-navy-dark); }
+.rep-fcount { font-size: 13px; font-weight: 700; color: var(--p-navy-dark); font-variant-numeric: tabular-nums; }
+.rep-ftrack { height: 10px; background: var(--p-row); border-radius: 6px; overflow: hidden; }
+.rep-fbar {
+  height: 100%; min-width: 2px; border-radius: 6px;
+  transition: width var(--ws-out) var(--ws-ease);
+}
+.rep-fmeta {
+  display: flex; flex-wrap: wrap; gap: 2px 14px;
+  font-size: 11px; color: var(--p-body);
+}
+
 /* ── Reduced motion: collapse everything to instant ── */
 @media (prefers-reduced-motion: reduce) {
   .plat-grid,
   .ws-navitem, .ws-flyout, .ws-menu, .ws-topbtn, .ws-overlay, .ws-palette,
-  .ws-toast, .ws-rail-item, .ws-brand .ws-collapse, .ws-rail-toggle {
+  .ws-toast, .ws-rail-item, .ws-brand .ws-collapse, .ws-rail-toggle, .rep-fbar {
     transition: none !important;
     animation: none !important;
   }
