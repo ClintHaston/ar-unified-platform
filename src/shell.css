@@ -145,8 +145,13 @@
 
 /* Flyout submenu */
 .ws-flywrap { position: relative; }
+/* position: fixed so the sidebar's overflow:auto (scroll container) cannot clip
+   the flyout, which extends past the sidebar's right edge into the content area.
+   Absolute positioning was clipped away there. top/left are set in JS from the
+   nav item's rect (AppSidebar) since fixed is viewport-relative. z-index sits
+   above content and below the command palette (200). */
 .ws-flyout {
-  position: absolute; left: calc(100% + 8px); top: -4px; z-index: 60;
+  position: fixed; z-index: 60;
   min-width: 190px;
   background: var(--p-white); color: var(--p-navy-dark);
   border: 1px solid var(--p-steel); border-radius: var(--ws-r-lg);
