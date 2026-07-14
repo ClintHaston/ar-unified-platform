@@ -1001,6 +1001,9 @@ async function rawRequest(path: string, options: RequestInit = {}): Promise<Resp
 async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
   const res = await rawRequest(path, options)
 
+  // A 401 on the FIRST attempt triggers (at most) one refresh + retry. The
+  // retried request never refreshes again — a 401 after a fresh token is a
+  // real auth failure, not another refresh trigger (loop guard).
   if (res.status === 401 && !retried && !path.startsWith('/platform/auth/')) {
     const refreshed = await tryRefresh()
     if (refreshed) return request<T>(path, options, true)
@@ -1016,7 +1019,25 @@ async function request<T>(path: string, options: RequestInit = {}, retried = fal
   return res.json() as Promise<T>
 }
 
-async function tryRefresh(): Promise<User | null> {
+// Single-flight refresh. The refresh token is a rotating, single-use httpOnly
+// cookie (backend §2): each POST /auth/refresh consumes the presented token and
+// issues a new one. So concurrent 401s must NOT each refresh — the first would
+// rotate the token, and the losers would present the now-stale token, get a 401
+// that clears the cookie, and resolve to null (rendering their list empty and
+// risking a spurious logout on the next refresh). Instead, all concurrent
+// callers await ONE in-flight refresh, so the rotating token is presented
+// exactly once per window; every caller then retries once with the new token.
+let refreshInFlight: Promise<User | null> | null = null
+
+function tryRefresh(): Promise<User | null> {
+  if (!refreshInFlight) {
+    // reset once the shared refresh settles, so the next window starts fresh
+    refreshInFlight = doRefresh().finally(() => { refreshInFlight = null })
+  }
+  return refreshInFlight
+}
+
+async function doRefresh(): Promise<User | null> {
   try {
     const res = await rawRequest('/platform/auth/refresh', { method: 'POST' })
     if (!res.ok) return null
