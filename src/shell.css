@@ -381,6 +381,32 @@
   font-size: 11px; color: var(--p-body);
 }
 
+/* ── WS2b custom report builder ── */
+.rb-grid { display: grid; grid-template-columns: 300px 1fr; gap: 12px; align-items: start; }
+@media (max-width: 860px) { .rb-grid { grid-template-columns: 1fr; } }
+.rb-config { display: flex; flex-direction: column; gap: 6px; }
+.rb-config .plat-input { margin-bottom: 0; }
+.rb-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--p-body); margin-top: 8px; }
+.rb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rb-chip {
+  font-size: 12px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--p-steel); background: var(--p-white); color: var(--p-navy-dark);
+  transition: background var(--ws-in) var(--ws-ease), border-color var(--ws-in) var(--ws-ease);
+}
+.rb-chip:hover { border-color: var(--p-gold); }
+.rb-chip.on { background: var(--p-navy-dark); color: #fff; border-color: var(--p-navy-dark); }
+.rb-save { display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--p-row); padding-top: 12px; }
+.rb-save .plat-input { flex: 1; }
+.rb-saved-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--p-row); }
+.rb-saved-row:first-of-type { border-top: none; }
+.rb-saved-open {
+  flex: 1; text-align: left; background: none; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--p-gold); padding: 0;
+}
+.rb-saved-open:hover { text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { .rb-chip { transition: none; } }
+
 /* ── Reduced motion: collapse everything to instant ── */
 @media (prefers-reduced-motion: reduce) {
   .plat-grid,

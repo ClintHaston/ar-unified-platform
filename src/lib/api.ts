@@ -593,6 +593,67 @@ export interface CallActivityReport {
   total_calls: number
 }
 
+// ── WS2b custom report builder ──
+export type ReportViz = 'table' | 'bar' | 'number' | 'funnel'
+export type MeasureType = 'int' | 'cents' | 'number'
+
+export interface RegistryField {
+  key: string
+  label: string
+  type?: string
+  options?: string[] | null
+}
+
+export interface RegistrySource {
+  key: string
+  label: string
+  has_owner: boolean
+  viz: ReportViz[]
+  dimensions: RegistryField[]
+  measures: RegistryField[]
+  filters: RegistryField[]
+}
+
+export interface ReportFilterClause {
+  field: string
+  value: string
+}
+
+export interface ReportDefinition {
+  source: string
+  dimensions: string[]
+  measures: string[]
+  filters: ReportFilterClause[]
+  date?: { start?: string; end?: string }
+  owner_id?: string
+  viz: ReportViz
+}
+
+export interface RunColumn {
+  key: string
+  label: string
+  type: string
+  role: 'dimension' | 'measure'
+}
+
+// Grouped result (table/bar/number). Funnel returns FunnelReport's shape.
+export interface RunGroupedResult {
+  viz: 'table' | 'bar' | 'number'
+  columns: RunColumn[]
+  rows: Array<Record<string, string | number | null>>
+}
+
+export type RunResult = RunGroupedResult | (FunnelReport & { viz: 'funnel' })
+
+export interface SavedReport {
+  id: string
+  name: string
+  definition: ReportDefinition
+  owner_id: string
+  owner_name: string | null
+  updated_at: string
+}
+
 export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
 
 export interface SearchResult {
@@ -1221,6 +1282,20 @@ export const api = {
     request<DealsByRepReport>(`/platform/reports/deals-by-rep${reportQs(f)}`),
   callActivity: (f: ReportFilters = {}) =>
     request<CallActivityReport>(`/platform/reports/call-activity${reportQs(f)}`),
+
+  // ── WS2b custom report builder (admin-only) ──
+  reportRegistry: () => request<{ sources: RegistrySource[] }>('/platform/reports/registry'),
+  runReport: (definition: ReportDefinition) =>
+    request<RunResult>('/platform/reports/run', { method: 'POST', body: JSON.stringify(definition) }),
+  savedReports: () => request<{ reports: SavedReport[] }>('/platform/reports/saved'),
+  createSavedReport: (name: string, definition: ReportDefinition) =>
+    request<SavedReport>('/platform/reports/saved', {
+      method: 'POST', body: JSON.stringify({ name, definition }),
+    }),
+  updateSavedReport: (id: string, patch: { name?: string; definition?: ReportDefinition }) =>
+    request<SavedReport>(`/platform/reports/saved/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteSavedReport: (id: string) =>
+    request<{ ok: boolean }>(`/platform/reports/saved/${id}`, { method: 'DELETE' }),
 
   salesSheet: (unitId: string) =>
     request<{ html: string; spec_source: 'published' | 'generated' | 'none' }>(

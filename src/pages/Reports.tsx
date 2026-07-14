@@ -13,18 +13,21 @@ import {
 import { Funnel } from '../components/reports/Funnel'
 import { DealsByRepTable } from '../components/reports/DealsByRepTable'
 import { CallActivityTable } from '../components/reports/CallActivityTable'
+import { ReportBuilder } from '../components/reports/ReportBuilder'
 
 // WS2a reporting hub — calls + sales + funnels, the data we fully own. Admin
 // only (data endpoints 403 for reps); reps see a friendly pointer. Every tab
-// shares the date-range + owner filters. Email-open reporting is v2.
+// shares the date-range + owner filters. WS2b adds the Custom builder tab.
+// Email-open reporting is v2.
 
-type TabKey = 'sell' | 'buy' | 'deals' | 'calls'
+type TabKey = 'sell' | 'buy' | 'deals' | 'calls' | 'custom'
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'sell', label: 'Sell funnel' },
   { key: 'buy', label: 'Buy funnel' },
   { key: 'deals', label: 'Deals by rep' },
   { key: 'calls', label: 'Calls' },
+  { key: 'custom', label: 'Custom' },
 ]
 
 // Quick date presets. value = days back from today, or null for all-time.
@@ -64,7 +67,7 @@ export function Reports() {
   }, [isAdmin])
 
   useEffect(() => {
-    if (!isAdmin) return
+    if (!isAdmin || tab === 'custom') return   // the builder fetches its own data
     const filters: ReportFilters = {
       start: start || undefined,
       end: end || undefined,
@@ -142,8 +145,10 @@ export function Reports() {
         </div>
       </div>
 
-      {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
-      {loading && <div className="admin-loading">Loading report…</div>}
+      {tab !== 'custom' && error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
+      {tab !== 'custom' && loading && <div className="admin-loading">Loading report…</div>}
+
+      {tab === 'custom' && <ReportBuilder start={start} end={end} ownerId={ownerId} />}
 
       {!loading && tab === 'sell' && sell && (
         sell.pipelines.length === 0
@@ -158,10 +163,12 @@ export function Reports() {
       {!loading && tab === 'deals' && deals && <DealsByRepTable report={deals} />}
       {!loading && tab === 'calls' && calls && <CallActivityTable report={calls} />}
 
-      <div className="note" style={{ marginTop: 10 }}>
-        Reporting v1 covers calls, sales, and funnels. Numbers are honest to the data —
-        where history is thin (no closed-won yet, calls without outcomes), the report shows it.
-      </div>
+      {tab !== 'custom' && (
+        <div className="note" style={{ marginTop: 10 }}>
+          Reporting v1 covers calls, sales, and funnels. Numbers are honest to the data —
+          where history is thin (no closed-won yet, calls without outcomes), the report shows it.
+        </div>
+      )}
     </div>
   )
 }
