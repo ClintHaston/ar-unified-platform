@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   api, type RegistrySource, type ReportDefinition,
   type ReportViz, type RunResult, type SavedReport,
@@ -111,8 +111,8 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
     return () => { live = false; clearTimeout(t) }
   }, [definition, ready])
 
-  function toggle(list: string[], setList: (v: string[]) => void, key: string) {
-    setList(list.includes(key) ? list.filter((k) => k !== key) : [...list, key])
+  function toggle(setList: Dispatch<SetStateAction<string[]>>, key: string) {
+    setList((cur) => (cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]))
   }
 
   async function save() {
@@ -187,14 +187,14 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
             <div className="rb-chips">
               {source.dimensions.map((d) => (
                 <button key={d.key} className={`rb-chip${dims.includes(d.key) ? ' on' : ''}`}
-                        onClick={() => toggle(dims, setDims, d.key)}>{d.label}</button>
+                        onClick={() => toggle(setDims, d.key)}>{d.label}</button>
               ))}
             </div>
             <label className="rb-lbl">Measures</label>
             <div className="rb-chips">
               {source.measures.map((m) => (
                 <button key={m.key} className={`rb-chip${measures.includes(m.key) ? ' on' : ''}`}
-                        onClick={() => toggle(measures, setMeasures, m.key)}>{m.label}</button>
+                        onClick={() => toggle(setMeasures, m.key)}>{m.label}</button>
               ))}
             </div>
           </>
