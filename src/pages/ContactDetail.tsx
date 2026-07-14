@@ -1,21 +1,69 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api, SALES_LEAD_STATUSES, type CallOutcome, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption, type SalesLeadStatus } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { CALL_OUTCOMES, CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { recordRecent } from '../lib/recentlyViewed'
-import { TYPE_LABEL, TYPE_PILL, ownerLabel } from './Contacts'
+import { TYPE_LABEL, ownerLabel } from './Contacts'
+
+type ActKind = 'note' | 'call' | 'email' | 'meeting'
+type OpenForm = null | ActKind | 'task'
+type TimelineFilter = 'all' | 'notes' | 'emails' | 'calls' | 'meetings' | 'tasks'
+
+// One typed row in the merged activity+task stream.
+interface TimelineActivity {
+  itype: 'activity'
+  kind: string
+  id: string
+  subject: string | null
+  body: string
+  date: string
+  call_outcome: CallOutcome | null | undefined
+  rep_name: string | null
+}
+interface TimelineTask {
+  itype: 'task'
+  id: string
+  title: string
+  date: string | null
+  done_at: string | null
+  owner_name: string | null
+}
+type TimelineItem = TimelineActivity | TimelineTask
+
+const ACT_META: Record<ActKind, { label: string; glyph: string; cls: string }> = {
+  note: { label: 'Note', glyph: '✎', cls: 'tl-note' },
+  call: { label: 'Call', glyph: '☎', cls: 'tl-call' },
+  email: { label: 'Email', glyph: '✉', cls: 'tl-email' },
+  meeting: { label: 'Meeting', glyph: '◎', cls: 'tl-meeting' },
+}
+const FILTERS: { key: TimelineFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'emails', label: 'Emails' },
+  { key: 'calls', label: 'Calls' },
+  { key: 'meetings', label: 'Meetings' },
+  { key: 'tasks', label: 'Tasks' },
+]
 
 function money(cents: number | null): string {
   if (cents === null) return '—'
   return `$${(cents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 }
-
 function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
   })
+}
+function monthLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+}
+function initials(name: string | null, email: string | null): string {
+  const base = (name ?? email ?? '?').trim()
+  const parts = base.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return base.slice(0, 2).toUpperCase()
 }
 
 export function ContactDetail() {
@@ -35,7 +83,8 @@ export function ContactDetail() {
   const [savingLead, setSavingLead] = useState(false)
   const [savingOwner, setSavingOwner] = useState(false)
 
-  const [actKind, setActKind] = useState<'note' | 'call'>('note')
+  // Center composer: which log/task form the action row has opened.
+  const [openForm, setOpenForm] = useState<OpenForm>(null)
   const [actSubject, setActSubject] = useState('')
   const [actBody, setActBody] = useState('')
   const [callOutcome, setCallOutcome] = useState<CallOutcome | ''>('')
@@ -45,8 +94,10 @@ export function ContactDetail() {
   const [taskDue, setTaskDue] = useState('')
   const [taskAssignee, setTaskAssignee] = useState('')  // '' = self
   const [savingTask, setSavingTask] = useState(false)
-  const [uploadingDoc, setUploadingDoc] = useState(false)
   const [completingTask, setCompletingTask] = useState<string | null>(null)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+
+  const [filter, setFilter] = useState<TimelineFilter>('all')
 
   const load = useCallback(() => {
     if (!contactId) return
@@ -57,10 +108,16 @@ export function ContactDetail() {
   }, [contactId])
 
   useEffect(() => { load() }, [load])
-
   useEffect(() => {
     api.contactOwners().then((res) => setOwners(res.owners)).catch(() => setOwners([]))
   }, [])
+
+  function openActivity(kind: ActKind) {
+    setOpenForm(kind); setActSubject(''); setActBody(''); setCallOutcome('')
+  }
+  function openTask() {
+    setOpenForm('task'); setTaskTitle(''); setTaskDue(''); setTaskAssignee('')
+  }
 
   async function uploadContract(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -152,20 +209,19 @@ export function ContactDetail() {
 
   async function submitActivity(e: FormEvent) {
     e.preventDefault()
-    if (!contactId || !actBody.trim()) return
-    if (actKind === 'call' && callOutcome === '') return  // outcome required for a call
-    const outcome: CallOutcome | null = actKind === 'call' ? (callOutcome as CallOutcome) : null
+    if (!contactId || openForm === null || openForm === 'task' || !actBody.trim()) return
+    const kind = openForm
+    if (kind === 'call' && callOutcome === '') return  // outcome required for a call
+    const outcome: CallOutcome | null = kind === 'call' ? (callOutcome as CallOutcome) : null
     setSavingAct(true)
     try {
       await api.logContactActivity(contactId, {
-        kind: actKind,
+        kind,
         subject: actSubject.trim() || undefined,
         body: actBody.trim(),
         call_outcome: outcome,
       })
-      setActSubject('')
-      setActBody('')
-      setCallOutcome('')
+      setActSubject(''); setActBody(''); setCallOutcome(''); setOpenForm(null)
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log activity')
@@ -185,9 +241,7 @@ export function ContactDetail() {
         contact_id: contactId,
         assignee_id: taskAssignee || undefined,
       })
-      setTaskTitle('')
-      setTaskDue('')
-      setTaskAssignee('')
+      setTaskTitle(''); setTaskDue(''); setTaskAssignee(''); setOpenForm(null)
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task')
@@ -208,37 +262,77 @@ export function ContactDetail() {
     }
   }
 
+  // Merge activities + tasks into a single stream, filtered + grouped by month.
+  const groups = useMemo(() => {
+    if (!data) return [] as { key: string; items: TimelineItem[] }[]
+    const items: TimelineItem[] = [
+      ...data.activities.map((a): TimelineItem => ({
+        itype: 'activity', kind: a.kind, id: a.id, subject: a.subject, body: a.body,
+        date: a.occurred_at, call_outcome: a.call_outcome, rep_name: a.rep_name,
+      })),
+      ...data.tasks.map((t): TimelineItem => ({
+        itype: 'task', id: t.id, title: t.title, date: t.due_at, done_at: t.done_at, owner_name: t.owner_name,
+      })),
+    ]
+    const matches = (it: TimelineItem): boolean => {
+      if (filter === 'all') return true
+      if (filter === 'tasks') return it.itype === 'task'
+      if (it.itype !== 'activity') return false
+      if (filter === 'notes') return it.kind === 'note'
+      if (filter === 'emails') return it.kind === 'email'
+      if (filter === 'calls') return it.kind === 'call'
+      if (filter === 'meetings') return it.kind === 'meeting'
+      return false
+    }
+    const filtered = items.filter(matches)
+    // Undated tasks float to the top; everything else newest-first.
+    filtered.sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return -1
+      if (!b.date) return 1
+      return b.date < a.date ? -1 : b.date > a.date ? 1 : 0
+    })
+    const out: { key: string; items: TimelineItem[] }[] = []
+    for (const it of filtered) {
+      const key = it.date ? monthLabel(it.date) : 'No due date'
+      const last = out[out.length - 1]
+      if (last && last.key === key) last.items.push(it)
+      else out.push({ key, items: [it] })
+    }
+    return out
+  }, [data, filter])
+
   if (loading) return <div className="admin-loading">Loading contact…</div>
   if (!data) return <div className="admin-loading">{error || 'Contact not found'}</div>
 
   const { contact, deals, activities, tasks, buy_opps, offers, consignment } = data
+  const timelineCount = activities.length + tasks.length
 
   return (
     <div>
       <Link to="/contacts" className="back-link">← Back to contacts</Link>
 
-      <div className="detail-grid">
-        <div>
+      <div className="contact-record">
+        {/* ── LEFT: About this contact ─────────────────────────────── */}
+        <div className="crecord-col">
           <div className="panel">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {contact.name ?? contact.email ?? '(no name)'}
-              <span className={`pill ${TYPE_PILL[contact.contact_type]}`}>{TYPE_LABEL[contact.contact_type]}</span>
-              {!editing && (
-                <button className="plat-btn ghost" style={{ marginLeft: 'auto' }} onClick={startEdit}>Edit</button>
-              )}
-            </h3>
+            <div className="crecord-head">
+              <div className="crecord-avatar">{initials(contact.name, contact.email)}</div>
+              <div style={{ minWidth: 0 }}>
+                <div className="crecord-name">{contact.name ?? contact.email ?? '(no name)'}</div>
+                {contact.email && <div className="note" style={{ marginTop: 2, wordBreak: 'break-all' }}>{contact.email}</div>}
+              </div>
+            </div>
 
             {editing ? (
-              <form onSubmit={saveEdit}>
+              <form onSubmit={saveEdit} style={{ marginTop: 10 }}>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <input className="plat-input" style={{ flex: 1, minWidth: 130 }} placeholder="First name" value={edit.first_name} onChange={(e) => setEdit({ ...edit, first_name: e.target.value })} />
-                  <input className="plat-input" style={{ flex: 1, minWidth: 130 }} placeholder="Last name" value={edit.last_name} onChange={(e) => setEdit({ ...edit, last_name: e.target.value })} />
+                  <input className="plat-input" style={{ flex: 1, minWidth: 110 }} placeholder="First name" value={edit.first_name} onChange={(e) => setEdit({ ...edit, first_name: e.target.value })} />
+                  <input className="plat-input" style={{ flex: 1, minWidth: 110 }} placeholder="Last name" value={edit.last_name} onChange={(e) => setEdit({ ...edit, last_name: e.target.value })} />
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <input className="plat-input" style={{ flex: 1, minWidth: 170 }} placeholder="Email" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} />
-                  <input className="plat-input" style={{ flex: 1, minWidth: 130 }} placeholder="Phone" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} />
-                </div>
-                <textarea className="plat-input" rows={2} placeholder="Hunting for (feeds buyer-need matching)…" value={edit.hunting_for} onChange={(e) => setEdit({ ...edit, hunting_for: e.target.value })} />
+                <input className="plat-input" placeholder="Email" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} />
+                <input className="plat-input" placeholder="Phone" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} />
+                <textarea className="plat-input" rows={2} placeholder="Hunting for (feeds buyer-need matching)" value={edit.hunting_for} onChange={(e) => setEdit({ ...edit, hunting_for: e.target.value })} />
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="plat-btn" type="submit" disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save'}</button>
                   <button className="plat-btn ghost" type="button" onClick={() => setEditing(false)}>Cancel</button>
@@ -246,44 +340,32 @@ export function ContactDetail() {
               </form>
             ) : (
               <>
-                <div className="fieldrow"><span>Email</span><span>{contact.email ?? '—'}</span></div>
-                <div className="fieldrow"><span>Phone</span><span>{contact.phone ?? '—'}</span></div>
+                <div className="crecord-about-head">
+                  <span className="crecord-section">About this contact</span>
+                  <button className="plat-btn ghost" onClick={startEdit}>Edit</button>
+                </div>
+                <div className="fieldrow"><span>Email</span><span>{contact.email ? <a href={`mailto:${contact.email}`}>{contact.email}</a> : '—'}</span></div>
+                <div className="fieldrow"><span>Phone</span><span>{contact.phone ? <a href={`tel:${contact.phone}`}>{contact.phone}</a> : '—'}</span></div>
                 <div className="fieldrow">
                   <span>Company</span>
-                  <span>
-                    {contact.company_id
-                      ? <Link to={`/contacts?company_id=${contact.company_id}`}>{contact.company_name}</Link>
-                      : '—'}
-                  </span>
-                </div>
-                <div className="fieldrow">
-                  <span>Type</span>
-                  <span>
-                    <select
-                      className="plat-input type-select"
-                      value={contact.contact_type}
-                      disabled={savingType}
-                      onChange={(e) => setType(e.target.value as ContactType)}
-                    >
-                      {(Object.keys(TYPE_LABEL) as ContactType[]).map((t) => (
-                        <option key={t} value={t}>{TYPE_LABEL[t]}</option>
-                      ))}
-                    </select>
-                  </span>
+                  <span>{contact.company_id ? <Link to={`/companies/${contact.company_id}`}>{contact.company_name}</Link> : '—'}</span>
                 </div>
                 <div className="fieldrow">
                   <span>Lead Status</span>
                   <span>
-                    <select
-                      className="plat-input type-select"
-                      value={contact.sales_lead_status ?? ''}
-                      disabled={savingLead}
-                      onChange={(e) => setLeadStatus(e.target.value as SalesLeadStatus | '')}
-                    >
-                      <option value="">— Not set —</option>
-                      {SALES_LEAD_STATUSES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
+                    <select className="plat-input type-select" value={contact.sales_lead_status ?? ''} disabled={savingLead}
+                            onChange={(e) => setLeadStatus(e.target.value as SalesLeadStatus | '')}>
+                      <option value="">Not set</option>
+                      {SALES_LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </span>
+                </div>
+                <div className="fieldrow">
+                  <span>Contact Type</span>
+                  <span>
+                    <select className="plat-input type-select" value={contact.contact_type} disabled={savingType}
+                            onChange={(e) => setType(e.target.value as ContactType)}>
+                      {(Object.keys(TYPE_LABEL) as ContactType[]).map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
                     </select>
                   </span>
                 </div>
@@ -291,63 +373,219 @@ export function ContactDetail() {
                   <span>Owner</span>
                   <span>
                     {isAdmin ? (
-                      <select
-                        className="plat-input type-select"
-                        value={contact.owner_id ?? ''}
-                        disabled={savingOwner}
-                        onChange={(e) => reassignOwner(e.target.value)}
-                      >
+                      <select className="plat-input type-select" value={contact.owner_id ?? ''} disabled={savingOwner}
+                              onChange={(e) => reassignOwner(e.target.value)}>
                         <option value="">Unassigned</option>
-                        {owners.map((o) => (
-                          <option key={o.id} value={o.id}>{ownerLabel(o)}</option>
-                        ))}
+                        {owners.map((o) => <option key={o.id} value={o.id}>{ownerLabel(o)}</option>)}
                       </select>
-                    ) : (
-                      contact.owner_name ?? 'Unassigned'
-                    )}
+                    ) : (contact.owner_name ?? 'Unassigned')}
                   </span>
                 </div>
                 <div className="fieldrow"><span>Hunting for</span><span>{contact.hunting_for ?? '—'}</span></div>
                 <div className="fieldrow"><span>Source</span><span>{contact.source}{contact.lead_status ? ` · ${contact.lead_status}` : ''}</span></div>
-                {contact.legacy_source && (
-                  <div className="note">Imported from HubSpot backfill · created {when(contact.created_at)}</div>
-                )}
+                <div className="fieldrow"><span>Created</span><span>{when(contact.created_at)}</span></div>
+                <div className="fieldrow"><span>Record ID</span><span className="crecord-id">{contact.id}</span></div>
+                {contact.legacy_source && <div className="note" style={{ marginTop: 6 }}>Imported from the HubSpot backfill.</div>}
               </>
             )}
+          </div>
+        </div>
+
+        {/* ── CENTER: action row + unified timeline ────────────────── */}
+        <div className="crecord-col">
+          <div className="panel">
+            <div className="crecord-actions">
+              <button className="plat-btn ghost" onClick={() => openActivity('note')}>Note</button>
+              <button className="plat-btn ghost" onClick={() => openActivity('call')}>Log call</button>
+              <button className="plat-btn ghost" onClick={() => openActivity('email')}>Log email</button>
+              <button className="plat-btn ghost" onClick={() => openActivity('meeting')}>Log meeting</button>
+              <button className="plat-btn ghost" onClick={openTask}>Create task</button>
+            </div>
+
+            {openForm !== null && openForm !== 'task' && (
+              <form onSubmit={submitActivity} className="crecord-composer">
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                  <span className={`tl-badge ${ACT_META[openForm].cls}`}>{ACT_META[openForm].glyph}</span>
+                  <b>Log {ACT_META[openForm].label.toLowerCase()}</b>
+                  <button type="button" className="plat-btn ghost" style={{ marginLeft: 'auto' }} onClick={() => setOpenForm(null)}>Cancel</button>
+                </div>
+                <input className="plat-input" placeholder="Subject (optional)" value={actSubject} onChange={(e) => setActSubject(e.target.value)} />
+                {openForm === 'call' && (
+                  <select className="plat-input" style={{ maxWidth: 240 }} value={callOutcome} onChange={(e) => setCallOutcome(e.target.value as CallOutcome | '')}>
+                    <option value="">Call outcome (required)</option>
+                    {CALL_OUTCOMES.map((o) => <option key={o} value={o}>{CALL_OUTCOME_LABEL[o]}</option>)}
+                  </select>
+                )}
+                <textarea className="plat-input" rows={3} placeholder={`${ACT_META[openForm].label} details`} value={actBody} onChange={(e) => setActBody(e.target.value)} />
+                <button className="plat-btn" type="submit" disabled={savingAct || !actBody.trim() || (openForm === 'call' && callOutcome === '')}>
+                  {savingAct ? 'Saving…' : `Log ${ACT_META[openForm].label.toLowerCase()}`}
+                </button>
+              </form>
+            )}
+
+            {openForm === 'task' && (
+              <form onSubmit={submitTask} className="crecord-composer">
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                  <span className="tl-badge tl-task">✓</span>
+                  <b>Create task</b>
+                  <button type="button" className="plat-btn ghost" style={{ marginLeft: 'auto' }} onClick={() => setOpenForm(null)}>Cancel</button>
+                </div>
+                <input className="plat-input" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
+                <input className="plat-input" type="date" value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
+                <AssigneePicker value={taskAssignee} onChange={setTaskAssignee} />
+                <button className="plat-btn" type="submit" disabled={savingTask || !taskTitle.trim()}>{savingTask ? 'Saving…' : 'Add task'}</button>
+              </form>
+            )}
+
+            <div className="crecord-timeline-head">
+              <span className="crecord-section">Activity <span className="c">{timelineCount}</span></span>
+              <div className="tl-filter">
+                {FILTERS.map((f) => (
+                  <button key={f.key} className={`tl-chip${filter === f.key ? ' on' : ''}`} onClick={() => setFilter(f.key)}>{f.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {groups.length === 0 ? (
+              <div className="note">{filter === 'all' ? 'No activity logged yet.' : 'Nothing of this type yet.'}</div>
+            ) : (
+              groups.map((g) => (
+                <div key={g.key}>
+                  <div className="tl-month">{g.key}</div>
+                  {g.items.map((it) => it.itype === 'activity' ? (
+                    <div className="tl-item" key={it.id}>
+                      <span className={`tl-badge ${ACT_META[(it.kind as ActKind)]?.cls ?? 'tl-note'}`}>{ACT_META[(it.kind as ActKind)]?.glyph ?? '•'}</span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div>
+                          <span className="tl-kind">{ACT_META[(it.kind as ActKind)]?.label ?? it.kind}</span>
+                          {it.kind === 'call' && it.call_outcome && (
+                            <span className="pill trans" style={{ marginLeft: 6 }}>{CALL_OUTCOME_LABEL[it.call_outcome]}</span>
+                          )}
+                          {it.subject && <b style={{ marginLeft: 8 }}>{it.subject}</b>}
+                        </div>
+                        <div style={{ margin: '3px 0' }}>{it.body}</div>
+                        <div className="when">{it.rep_name ?? 'Unknown'} · {when(it.date)}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="tl-item" key={it.id}>
+                      <span className="tl-badge tl-task">✓</span>
+                      <div style={{ minWidth: 0, flex: 1, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <div>
+                          <span className="tl-kind">Task</span>
+                          <span style={{ marginLeft: 8, textDecoration: it.done_at ? 'line-through' : undefined }}>{it.title}</span>
+                          <div className="when">
+                            {it.owner_name ?? '—'}
+                            {it.date ? ` · due ${new Date(it.date).toLocaleDateString()}` : ' · no due date'}
+                            {it.done_at ? ' · done' : ''}
+                          </div>
+                        </div>
+                        {!it.done_at && (
+                          <button className="plat-btn ghost" disabled={completingTask === it.id} onClick={() => completeTask(it.id)}>
+                            {completingTask === it.id ? '…' : 'Done'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── RIGHT: associations rail ─────────────────────────────── */}
+        <div className="crecord-col">
+          <div className="panel">
+            <h3>Deals <span className="c">{deals.length}</span></h3>
+            {deals.length === 0 ? (
+              <div className="note">No deals reference this contact.</div>
+            ) : deals.map((d) => (
+              <div className="hist-item" key={d.id}>
+                <div>
+                  <Link to={`/deals/${d.id}`}><b>{d.name}</b></Link>
+                  {d.outcome && <span className={`pill ${d.outcome === 'won' ? 'green' : 'red'}`} style={{ marginLeft: 8 }}>{d.outcome}</span>}
+                </div>
+                <div className="when">{d.pipeline_name} · {d.stage_name} · {money(d.value_cents)}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="panel">
+            <h3>Buy opps <span className="c">{buy_opps.length}</span></h3>
+            {buy_opps.length === 0 ? (
+              <div className="note">This contact isn't the buyer on any buy opps.</div>
+            ) : buy_opps.map((b) => (
+              <div className="hist-item" key={b.id}>
+                <div>
+                  <Link to={`/buyer-opportunities/${b.id}`}><b>{b.name}</b></Link>
+                  {b.outcome && <span className={`pill ${b.outcome === 'won' ? 'green' : 'red'}`} style={{ marginLeft: 8 }}>{b.outcome}</span>}
+                </div>
+                <div className="when">
+                  {b.stage_name}
+                  {b.probability_to_close !== null ? ` · ${b.probability_to_close}%` : ''}
+                  {b.expected_close ? ` · close ~ ${new Date(b.expected_close).toLocaleDateString()}` : ''}
+                  {` · ${b.unit_count} unit${b.unit_count === 1 ? '' : 's'}`}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="panel">
+            <h3>Offer history <span className="c">{offers.length}</span></h3>
+            {offers.length === 0 ? (
+              <div className="note">No offers from this contact.</div>
+            ) : offers.map((o) => (
+              <div className="hist-item" key={o.id}>
+                <div>
+                  <Link to={`/units/${o.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                    {o.unit_legacy_id ? `#${o.unit_legacy_id} ` : ''}{o.unit_title}
+                  </Link>
+                  <span className={`pill ${o.status === 'accepted' ? 'green' : o.status === 'open' ? 'gold' : 'grey'}`} style={{ marginLeft: 8 }}>
+                    {o.status.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="when">
+                  {money(o.amount_cents)}
+                  {o.status === 'open' && o.expires_at ? ` · expires ${new Date(o.expires_at).toLocaleDateString()}` : ''}
+                  {o.responded_at ? ` · responded ${new Date(o.responded_at).toLocaleDateString()}` : ''}
+                  {' · '}
+                  {o.listed_on_website && o.website_url
+                    ? <a href={o.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
+                    : <span style={{ color: 'var(--p-body)' }}>not listed</span>}
+                  {o.deal_id && o.deal_name ? <> · <Link to={`/deals/${o.deal_id}`} style={{ color: 'var(--p-gold)' }}>{o.deal_name}</Link></> : ''}
+                </div>
+              </div>
+            ))}
           </div>
 
           {consignment && (
             <div className="panel">
-              <h3>Consignment</h3>
+              <h3>Consignment <span className="c">{consignment.units.length}</span></h3>
               <div className="fieldrow">
                 <span>Split terms</span>
-                <span>
-                  {consignment.consigner.split_terms ?? '—'}
-                  {consignment.consigner.split_pct !== null ? ` · ${consignment.consigner.split_pct}%` : ''}
-                </span>
+                <span>{consignment.consigner.split_terms ?? '—'}{consignment.consigner.split_pct !== null ? ` · ${consignment.consigner.split_pct}%` : ''}</span>
               </div>
               <div className="fieldrow"><span>Payout status</span><span>{consignment.consigner.payout_status ?? '—'}</span></div>
-              <div className="fieldrow"><span>Payment details on file</span><span>{consignment.consigner.payment_details_on_file ? 'Yes' : 'No'}</span></div>
+              <div className="fieldrow"><span>Payment on file</span><span>{consignment.consigner.payment_details_on_file ? 'Yes' : 'No'}</span></div>
               {consignment.consigner.notes && <div className="note">{consignment.consigner.notes}</div>}
 
               <h4 style={{ margin: '12px 0 4px' }}>Consigned items <span className="c">{consignment.units.length}</span></h4>
               {consignment.units.length === 0 ? (
-                <div className="note">No consigned units linked yet — intake links units to a consigner; backfilled TAB units may not have one.</div>
-              ) : (
-                consignment.units.map((u) => (
-                  <div className="hist-item" key={u.unit_id}>
-                    <Link to={`/units/${u.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
-                      {u.legacy_id ? `#${u.legacy_id} — ` : ''}{u.title}
-                    </Link>
-                    <span className="pill grey" style={{ marginLeft: 8 }}>{u.status.replace('_', ' ')}</span>
-                    <div className="when">
-                      {u.listed_on_website && u.website_url
-                        ? <a href={u.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
-                        : <span style={{ color: 'var(--p-body)' }}>not listed on the website yet</span>}
-                    </div>
+                <div className="note">No consigned units linked yet.</div>
+              ) : consignment.units.map((u) => (
+                <div className="hist-item" key={u.unit_id}>
+                  <Link to={`/units/${u.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                    {u.legacy_id ? `#${u.legacy_id} ` : ''}{u.title}
+                  </Link>
+                  <span className="pill grey" style={{ marginLeft: 8 }}>{u.status.replace('_', ' ')}</span>
+                  <div className="when">
+                    {u.listed_on_website && u.website_url
+                      ? <a href={u.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
+                      : <span style={{ color: 'var(--p-body)' }}>not listed on the website yet</span>}
                   </div>
-                ))
-              )}
+                </div>
+              ))}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 4px' }}>
                 <h4 style={{ margin: 0 }}>Contract</h4>
@@ -363,187 +601,6 @@ export function ContactDetail() {
               <ConsignDocs docs={consignment.related_docs} configured={consignment.documents_configured} emptyLabel="No related documents." />
             </div>
           )}
-
-          <div className="panel">
-            <h3>Activity</h3>
-            <form onSubmit={submitActivity} style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <div className="roletoggle">
-                  <button type="button" className={actKind === 'note' ? 'active' : ''} onClick={() => setActKind('note')}>Note</button>
-                  <button type="button" className={actKind === 'call' ? 'active' : ''} onClick={() => setActKind('call')}>Call</button>
-                </div>
-                <input
-                  className="plat-input"
-                  style={{ marginBottom: 0, flex: 1 }}
-                  placeholder="Subject (optional)"
-                  value={actSubject}
-                  onChange={(e) => setActSubject(e.target.value)}
-                />
-              </div>
-              {actKind === 'call' && (
-                <select
-                  className="plat-input"
-                  style={{ marginBottom: 8, maxWidth: 220 }}
-                  value={callOutcome}
-                  onChange={(e) => setCallOutcome(e.target.value as CallOutcome | '')}
-                >
-                  <option value="">Call outcome (required)…</option>
-                  {CALL_OUTCOMES.map((o) => (
-                    <option key={o} value={o}>{CALL_OUTCOME_LABEL[o]}</option>
-                  ))}
-                </select>
-              )}
-              <textarea
-                className="plat-input"
-                rows={3}
-                placeholder={actKind === 'call' ? 'Call summary…' : 'Note…'}
-                value={actBody}
-                onChange={(e) => setActBody(e.target.value)}
-              />
-              <button className="plat-btn" type="submit" disabled={savingAct || !actBody.trim() || (actKind === 'call' && callOutcome === '')}>
-                {savingAct ? 'Saving…' : `Log ${actKind}`}
-              </button>
-            </form>
-            {activities.length === 0 ? (
-              <div className="note">No activity logged yet.</div>
-            ) : (
-              activities.map((a) => (
-                <div className="hist-item" key={a.id}>
-                  <div>
-                    <span className={`pill ${a.kind === 'call' ? 'gold' : 'grey'}`}>{a.kind}</span>
-                    {a.kind === 'call' && a.call_outcome && (
-                      <span className="pill trans" style={{ marginLeft: 6 }}>{CALL_OUTCOME_LABEL[a.call_outcome]}</span>
-                    )}
-                    {a.subject && <b style={{ marginLeft: 8 }}>{a.subject}</b>}
-                  </div>
-                  <div style={{ margin: '4px 0' }}>{a.body}</div>
-                  <div className="when">{a.rep_name ?? 'Unknown'} · {when(a.occurred_at)}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div>
-          <div className="panel">
-            <h3>Deals</h3>
-            {deals.length === 0 ? (
-              <div className="note">No deals reference this contact.</div>
-            ) : (
-              deals.map((d) => (
-                <div className="hist-item" key={d.id}>
-                  <div>
-                    <Link to={`/deals/${d.id}`}><b>{d.name}</b></Link>
-                    {d.outcome && (
-                      <span className={`pill ${d.outcome === 'won' ? 'green' : 'red'}`} style={{ marginLeft: 8 }}>{d.outcome}</span>
-                    )}
-                  </div>
-                  <div className="when">{d.pipeline_name} · {d.stage_name} · {money(d.value_cents)}</div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="panel">
-            <h3>Buy opps</h3>
-            {buy_opps.length === 0 ? (
-              <div className="note">This contact isn't the buyer on any buy opps.</div>
-            ) : (
-              buy_opps.map((b) => (
-                <div className="hist-item" key={b.id}>
-                  <div>
-                    <Link to={`/buyer-opportunities/${b.id}`}><b>{b.name}</b></Link>
-                    {b.outcome && (
-                      <span className={`pill ${b.outcome === 'won' ? 'green' : 'red'}`} style={{ marginLeft: 8 }}>{b.outcome}</span>
-                    )}
-                  </div>
-                  <div className="when">
-                    {b.stage_name}
-                    {b.probability_to_close !== null ? ` · ${b.probability_to_close}%` : ''}
-                    {b.expected_close ? ` · close ~ ${new Date(b.expected_close).toLocaleDateString()}` : ''}
-                    {` · ${b.unit_count} unit${b.unit_count === 1 ? '' : 's'}`}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="panel">
-            <h3>Offer history</h3>
-            {offers.length === 0 ? (
-              <div className="note">No offers from this contact.</div>
-            ) : (
-              offers.map((o) => (
-                <div className="hist-item" key={o.id}>
-                  <div>
-                    <Link to={`/units/${o.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
-                      {o.unit_legacy_id ? `#${o.unit_legacy_id} — ` : ''}{o.unit_title}
-                    </Link>
-                    <span className={`pill ${o.status === 'accepted' ? 'green' : o.status === 'open' ? 'gold' : 'grey'}`} style={{ marginLeft: 8 }}>
-                      {o.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="when">
-                    {money(o.amount_cents)}
-                    {o.status === 'open' && o.expires_at ? ` · expires ${new Date(o.expires_at).toLocaleDateString()}` : ''}
-                    {o.responded_at ? ` · responded ${new Date(o.responded_at).toLocaleDateString()}` : ''}
-                    {' · '}
-                    {o.listed_on_website && o.website_url
-                      ? <a href={o.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
-                      : <span style={{ color: 'var(--p-body)' }}>not listed</span>}
-                    {o.deal_id && o.deal_name ? <> · <Link to={`/deals/${o.deal_id}`} style={{ color: 'var(--p-gold)' }}>{o.deal_name}</Link></> : ''}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="panel">
-            <h3>Tasks</h3>
-            <form onSubmit={submitTask} style={{ marginBottom: 12 }}>
-              <input
-                className="plat-input"
-                placeholder="New task for this contact…"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
-              />
-              <input
-                className="plat-input"
-                type="date"
-                value={taskDue}
-                onChange={(e) => setTaskDue(e.target.value)}
-              />
-              <AssigneePicker value={taskAssignee} onChange={setTaskAssignee} />
-              <button className="plat-btn" type="submit" disabled={savingTask || !taskTitle.trim()}>
-                {savingTask ? 'Saving…' : 'Add task'}
-              </button>
-            </form>
-            {tasks.length === 0 ? (
-              <div className="note">No tasks on this contact.</div>
-            ) : (
-              tasks.map((t) => (
-                <div className="hist-item" key={t.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <div>
-                    <div style={{ textDecoration: t.done_at ? 'line-through' : undefined }}>{t.title}</div>
-                    <div className="when">
-                      {t.owner_name ?? '—'}
-                      {t.due_at ? ` · due ${new Date(t.due_at).toLocaleDateString()}` : ''}
-                      {t.done_at ? ' · done' : ''}
-                    </div>
-                  </div>
-                  {!t.done_at && (
-                    <button
-                      className="plat-btn ghost"
-                      disabled={completingTask === t.id}
-                      onClick={() => completeTask(t.id)}
-                    >
-                      {completingTask === t.id ? '…' : 'Done'}
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
         </div>
       </div>
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
@@ -561,7 +618,7 @@ interface ConsignDocsProps {
 // pending state, never a broken link.
 function ConsignDocs({ docs, configured, emptyLabel }: ConsignDocsProps) {
   if (!configured) {
-    return <div className="note">Document storage isn't enabled yet — contracts appear here once R2 is configured.</div>
+    return <div className="note">Document storage isn't enabled yet. Contracts appear here once R2 is configured.</div>
   }
   if (docs.length === 0) return <div className="note">{emptyLabel}</div>
   return (

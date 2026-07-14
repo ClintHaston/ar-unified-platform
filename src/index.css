@@ -870,3 +870,42 @@ input, select, textarea {
   border: 1px solid var(--p-steel); border-radius: 6px; font-size: 13px; }
 .add-to-list-pop { min-width: 260px; }
 .add-to-list-new { display: flex; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--p-row); }
+/* HubSpot-style three-column contact record */
+.contact-record { display: grid; grid-template-columns: 300px minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .contact-record { grid-template-columns: 1fr; } }
+.crecord-col { min-width: 0; }
+.crecord-head { display: flex; gap: 12px; align-items: center; }
+.crecord-avatar { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--p-navy-dark); color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: bold; font-size: 15px; letter-spacing: .5px; }
+.crecord-name { font-weight: bold; font-size: 16px; color: var(--p-navy-dark); }
+.crecord-about-head { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 6px; }
+.crecord-section { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--p-body); font-weight: bold; }
+.crecord-id { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--p-body); word-break: break-all; }
+.panel h3 .c, .crecord-section .c, h4 .c { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px;
+  background: var(--p-row); color: var(--p-body); border-radius: 9px; font-size: 11px; font-weight: bold; text-align: center; }
+
+.crecord-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--p-row); }
+.crecord-composer { margin: 12px 0; padding: 12px; background: var(--p-row); border-radius: 8px; }
+.crecord-timeline-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 12px 0 10px; }
+.tl-filter { display: flex; gap: 4px; flex-wrap: wrap; }
+.tl-chip { background: none; border: 1px solid var(--p-steel); border-radius: 14px; padding: 3px 11px;
+  font-size: 12px; color: var(--p-body); cursor: pointer; }
+.tl-chip.on { background: var(--p-navy-dark); color: #fff; border-color: var(--p-navy-dark); }
+.tl-month { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--p-body);
+  font-weight: bold; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--p-row); }
+.tl-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--p-row); }
+.tl-item:last-child { border-bottom: 0; }
+.tl-badge { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 13px; color: #fff; }
+.tl-badge.tl-note { background: #8a8f98; }
+.tl-badge.tl-call { background: var(--p-gold); color: var(--p-navy-dark); }
+.tl-badge.tl-email { background: var(--p-navy-mid); }
+.tl-badge.tl-meeting { background: var(--p-navy-dark); }
+.tl-badge.tl-task { background: #2e7d5b; }
+.tl-kind { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--p-body); font-weight: bold; }
+/* Company detail overview stat tiles */
+.co-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+.co-stat { border: 1px solid var(--p-steel); border-radius: 8px; padding: 12px; background: var(--p-white); }
+.co-stat-n { font-size: 20px; font-weight: bold; color: var(--p-navy-dark); }
+.co-stat-l { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--p-body); margin-top: 2px; }

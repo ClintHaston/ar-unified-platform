@@ -2,7 +2,7 @@
 // (sessionStorage) — no endpoint, no server write. Records detail-page visits
 // (deal / unit / contact / buy opp) with a label captured from the page.
 
-export type RecentKind = 'deal' | 'unit' | 'contact' | 'buyop'
+export type RecentKind = 'deal' | 'unit' | 'contact' | 'buyop' | 'company'
 
 export interface RecentItem {
   kind: RecentKind
@@ -42,5 +42,6 @@ export function recentPath(r: RecentItem): string {
     case 'unit': return `/units/${r.id}`
     case 'contact': return `/contacts/${r.id}`
     case 'buyop': return `/buyer-opportunities/${r.id}`
+    case 'company': return `/companies/${r.id}`
   }
 }

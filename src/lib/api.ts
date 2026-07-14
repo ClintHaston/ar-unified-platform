@@ -500,6 +500,83 @@ export interface ContactPatch {
   sales_lead_status?: SalesLeadStatus | null
 }
 
+// ── Company detail (reverses Amendment 18) ──
+export interface CompanyDeal {
+  id: string
+  name: string
+  value_cents: number | null
+  outcome: 'won' | 'lost' | null
+  pipeline_name: string
+  stage_name: string
+  owner_name: string | null
+}
+export interface CompanyOffer {
+  id: string
+  amount_cents: number
+  status: string
+  expires_at: string | null
+  created_at: string | null
+  unit_id: string
+  unit_title: string
+  unit_legacy_id: string | null
+  listed_on_website: boolean
+  website_url: string | null
+  deal_id: string | null
+  deal_name: string | null
+  buyer_contact_id: string
+  buyer_name: string | null
+}
+export interface CompanyActivity {
+  id: string
+  kind: string
+  subject: string | null
+  body: string
+  occurred_at: string
+  call_outcome: CallOutcome | null
+  rep_name: string | null
+}
+export interface CompanyDetailResponse {
+  company: {
+    id: string
+    name: string
+    domain: string | null
+    phone: string | null
+    address_line1: string | null
+    address_line2: string | null
+    city: string | null
+    state: string | null
+    postal_code: string | null
+    country: string | null
+    notes: string | null
+    created_at: string
+  }
+  counts: {
+    contacts: number
+    deals: number
+    open_deals: number
+    open_deal_value_cents: number
+    open_offers: number
+  }
+  contacts_total: number
+  contacts: ContactRow[]
+  deals: CompanyDeal[]
+  offers: CompanyOffer[]
+  activity: CompanyActivity[]
+  consignment: Consignment | null
+}
+export interface CompanyPatch {
+  name?: string
+  domain?: string | null
+  phone?: string | null
+  address_line1?: string | null
+  address_line2?: string | null
+  city?: string | null
+  state?: string | null
+  postal_code?: string | null
+  country?: string | null
+  notes?: string | null
+}
+
 // ── 3c-6 notifications (topbar bell) ──
 export interface NotificationItem {
   id: string
@@ -1326,6 +1403,15 @@ export const api = {
   contactDetail: (contactId: string) =>
     request<ContactDetailResponse>(`/platform/contacts/${contactId}`),
 
+  companyDetail: (companyId: string) =>
+    request<CompanyDetailResponse>(`/platform/companies/${companyId}`),
+
+  updateCompany: (companyId: string, patch: CompanyPatch) =>
+    request<{ ok: boolean }>(`/platform/companies/${companyId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+
   updateContact: (contactId: string, patch: ContactPatch) =>
     request<{ ok: boolean }>(`/platform/contacts/${contactId}`, {
       method: 'PATCH',
@@ -1417,7 +1503,7 @@ export const api = {
   removeSegmentMember: (id: string, recordId: string) =>
     request<{ ok: boolean }>(`/platform/segments/${id}/members/${recordId}`, { method: 'DELETE' }),
 
-  logContactActivity: (contactId: string, input: { kind: 'note' | 'call'; subject?: string; body: string; call_outcome?: CallOutcome | null }) =>
+  logContactActivity: (contactId: string, input: { kind: 'note' | 'call' | 'email' | 'meeting'; subject?: string; body: string; call_outcome?: CallOutcome | null }) =>
     request<{ id: string }>(`/platform/contacts/${contactId}/activities`, {
       method: 'POST',
       body: JSON.stringify(input),

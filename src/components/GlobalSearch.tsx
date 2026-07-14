@@ -17,14 +17,13 @@ export const TYPE_META: Record<SearchResultType, { label: string; pill: string }
   company: { label: 'Company', pill: 'grey' },
 }
 
-// Company hits have no detail page by design — they land on the contact list
-// filtered to that company. Shared with the command palette.
+// Company hits land on the company detail page. Shared with the command palette.
 export function resultPath(r: SearchResult): string {
   switch (r.type) {
     case 'unit': return `/units/${r.id}`
     case 'deal': return `/deals/${r.id}`
     case 'contact': return `/contacts/${r.id}`
-    case 'company': return `/contacts?company_id=${r.id}`
+    case 'company': return `/companies/${r.id}`
   }
 }
 

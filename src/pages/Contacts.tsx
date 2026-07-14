@@ -461,9 +461,9 @@ export function Contacts() {
                   </td>
                   <td>{c.sales_lead_status ?? '—'}</td>
                   <td>
-                    {c.company_name
-                      ? <button className="linklike" onClick={() => setSearchParams({ company_id: c.company_id ?? '' })}>{c.company_name}</button>
-                      : '—'}
+                    {c.company_name && c.company_id
+                      ? <button className="linklike" onClick={() => navigate(`/companies/${c.company_id}`)}>{c.company_name}</button>
+                      : (c.company_name ?? '—')}
                   </td>
                   <td>{c.owner_name ?? 'Unassigned'}</td>
                   <td>{fmtDate(c.last_activity_at)}</td>

@@ -15,6 +15,7 @@ import { Inventory } from './pages/Inventory'
 import { UnitDetail } from './pages/UnitDetail'
 import { Contacts } from './pages/Contacts'
 import { ContactDetail } from './pages/ContactDetail'
+import { CompanyDetail } from './pages/CompanyDetail'
 import { Lists } from './pages/Lists'
 import { SegmentDetail } from './pages/SegmentDetail'
 import { SalesSheet } from './pages/SalesSheet'
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="/units/:unitId" element={<AuthGuard><UnitDetail /></AuthGuard>} />
             <Route path="/contacts" element={<AuthGuard><Contacts /></AuthGuard>} />
             <Route path="/contacts/:contactId" element={<AuthGuard><ContactDetail /></AuthGuard>} />
+            <Route path="/companies/:companyId" element={<AuthGuard><CompanyDetail /></AuthGuard>} />
             <Route path="/lists" element={<AuthGuard><Lists /></AuthGuard>} />
             <Route path="/lists/:segmentId" element={<AuthGuard><SegmentDetail /></AuthGuard>} />
             <Route path="/sales-sheet" element={<AuthGuard><SalesSheet /></AuthGuard>} />
