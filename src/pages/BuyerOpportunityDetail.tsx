@@ -4,6 +4,7 @@ import {
   api, type BuyerOppDetailResponse, type BuyerOppUnit, type InterestStatus,
   type SearchResult, type UnitOffer,
 } from '../lib/api'
+import { recordRecent } from '../lib/recentlyViewed'
 
 // Buy opp detail (4e + P1 usability). Buyer + owning rep + probability/timeframe
 // + buy-side stage; an append-only note HISTORY (activities rows anchored by
@@ -62,6 +63,7 @@ export function BuyerOpportunityDetail() {
         setProb(res.opportunity.probability_to_close !== null ? String(res.opportunity.probability_to_close) : '')
         setClose(res.opportunity.expected_close ? res.opportunity.expected_close.slice(0, 10) : '')
         setError('')
+        recordRecent('buyop', res.opportunity.id, res.opportunity.name)
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load'))
   }, [opportunityId])

@@ -12,6 +12,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { DocumentsPanel } from '../components/DocumentsPanel'
 import { TabListingPanel } from '../components/TabListingPanel'
+import { useToast } from '../components/shell/ToastContext'
+import { recordRecent } from '../lib/recentlyViewed'
 
 function money(cents: number | null): string {
   if (cents === null) return '—'
@@ -31,6 +33,7 @@ const AUDIT_LABEL: Record<string, string> = {
 export function DealDetail() {
   const { dealId } = useParams<{ dealId: string }>()
   const { user } = useAuth()
+  const toast = useToast()
   const isAdmin = user?.role === 'admin'
   const [data, setData] = useState<DealDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -67,7 +70,7 @@ export function DealDetail() {
   const load = useCallback(() => {
     if (!dealId) return
     api.dealDetail(dealId)
-      .then((res) => { setData(res); setError('') })
+      .then((res) => { setData(res); setError(''); recordRecent('deal', res.deal.id, res.deal.name) })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load deal'))
       .finally(() => setLoading(false))
   }, [dealId])
@@ -153,19 +156,32 @@ export function DealDetail() {
 
   async function submitActivity(e: FormEvent) {
     e.preventDefault()
-    if (!dealId || !actBody.trim()) return
+    if (!dealId || !actBody.trim() || !data) return
+    const body = actBody.trim()
+    const subject = actSubject.trim() || null
+    const kind = actKind
     setSavingAct(true)
+
+    // Optimistic: the note appears in the timeline instantly (Phase 4).
+    const prev = data
+    setData({
+      ...data,
+      timeline: [{
+        type: 'activity', at: new Date().toISOString(), actor_name: user?.name ?? null,
+        kind, subject, body, summary: null,
+      }, ...data.timeline],
+    })
+    setActSubject('')
+    setActBody('')
+
     try {
-      await api.logActivity(dealId, {
-        kind: actKind,
-        subject: actSubject.trim() || undefined,
-        body: actBody.trim(),
-      })
-      setActSubject('')
-      setActBody('')
-      load()
+      await api.logActivity(dealId, { kind, subject: subject ?? undefined, body })
+      load()  // reconcile with server truth
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to log activity')
+      setData(prev)  // rollback
+      setActSubject(subject ?? '')
+      setActBody(body)
+      toast.error('Note not saved', err instanceof Error ? err.message : 'Please try again.')
     } finally {
       setSavingAct(false)
     }
@@ -174,20 +190,35 @@ export function DealDetail() {
   async function submitTask(e: FormEvent) {
     e.preventDefault()
     if (!dealId || !taskTitle.trim()) return
+    if (!data) return
+    const title = taskTitle.trim()
+    const dueIso = taskDue ? new Date(taskDue + 'T17:00:00').toISOString() : undefined
+    const assignee = taskAssignee
     setSavingTask(true)
+
+    // Optimistic: the task appears in the deal's task list instantly (Phase 4).
+    const prev = data
+    const tempId = `temp-${Date.now()}`
+    setData({
+      ...data,
+      tasks: [...data.tasks, {
+        id: tempId, title, due_at: dueIso ?? null, done_at: null,
+        owner_name: assignee ? null : (user?.name ?? null),
+      }],
+    })
+    setTaskTitle('')
+    setTaskDue('')
+    setTaskAssignee('')
+
     try {
-      await api.createTask({
-        title: taskTitle.trim(),
-        due_at: taskDue ? new Date(taskDue + 'T17:00:00').toISOString() : undefined,
-        deal_id: dealId,
-        assignee_id: taskAssignee || undefined,
-      })
-      setTaskTitle('')
-      setTaskDue('')
-      setTaskAssignee('')
-      load()
+      await api.createTask({ title, due_at: dueIso, deal_id: dealId, assignee_id: assignee || undefined })
+      load()  // reconcile
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create task')
+      setData(prev)  // rollback
+      setTaskTitle(title)
+      setTaskDue(taskDue)
+      setTaskAssignee(assignee)
+      toast.error('Task not created', err instanceof Error ? err.message : 'Please try again.')
     } finally {
       setSavingTask(false)
     }

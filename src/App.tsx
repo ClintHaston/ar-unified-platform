@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { AuthGuard } from './components/AuthGuard'
-import { PlatformShell } from './components/PlatformShell'
+import { AppShell } from './components/shell/AppShell'
 import { Login } from './pages/Login'
 import { ForgotPassword } from './pages/ForgotPassword'
 import { ResetPassword } from './pages/ResetPassword'
@@ -26,6 +26,8 @@ import { Admin } from './pages/Admin'
 import { Spine } from './pages/Spine'
 import { Outbox } from './pages/Outbox'
 import { LeadApprovals } from './pages/LeadApprovals'
+import { Tasks } from './pages/Tasks'
+import { Reports } from './pages/Reports'
 
 export default function App() {
   return (
@@ -37,9 +39,12 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/change-password" element={<AuthGuard><ChangePassword /></AuthGuard>} />
 
-          {/* Prototype shell: brand + topbar + sidebar, preview banner (Amendment 14) */}
-          <Route element={<PlatformShell />}>
+          {/* App shell: grouped sidebar + flyouts, Ctrl+K command bar, quick-add,
+              activity rail, breadcrumbs. Preview banner (Amendment 14) preserved. */}
+          <Route element={<AppShell />}>
             <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+            <Route path="/tasks" element={<AuthGuard><Tasks /></AuthGuard>} />
+            <Route path="/reports" element={<AuthGuard><Reports /></AuthGuard>} />
             <Route path="/pipelines" element={<AuthGuard><Pipelines /></AuthGuard>} />
             <Route path="/buyer-opportunities" element={<AuthGuard><BuyerOpportunities /></AuthGuard>} />
             <Route path="/buyer-opportunities/:opportunityId" element={<AuthGuard><BuyerOpportunityDetail /></AuthGuard>} />

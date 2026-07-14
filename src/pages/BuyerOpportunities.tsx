@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type DragEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   api, type BuyerBoardResponse, type BuyerOppCard, type ContactHit,
   type InterestStatus, type SearchResult,
@@ -51,8 +51,9 @@ export function BuyerOpportunities() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
 
-  // create form
-  const [creating, setCreating] = useState(false)
+  // create form (opens via ?new=1 from quick-add / command bar)
+  const [searchParams] = useSearchParams()
+  const [creating, setCreating] = useState(searchParams.get('new') === '1')
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<ContactHit[]>([])
   const [picked, setPicked] = useState<ContactHit | null>(null)

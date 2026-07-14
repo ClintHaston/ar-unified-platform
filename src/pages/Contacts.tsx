@@ -46,7 +46,7 @@ export function Contacts() {
   const [error, setError] = useState('')
   const [savingTypeFor, setSavingTypeFor] = useState<string | null>(null)
 
-  const [showNew, setShowNew] = useState(false)
+  const [showNew, setShowNew] = useState(searchParams.get('new') === '1')
   const [nc, setNc] = useState({ first_name: '', last_name: '', email: '', phone: '', contact_type: 'other' as ContactType, hunting_for: '' })
   const [savingNew, setSavingNew] = useState(false)
 

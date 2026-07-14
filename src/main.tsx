@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './shell.css'
 import App from './App.tsx'
 
 // Block postMessages from the Manus Previewer injected into embedded tools.

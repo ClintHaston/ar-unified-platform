@@ -1,0 +1,378 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Workstream 1 — App shell + design-language layer.
+   Loaded AFTER index.css so it layers on the signed-off --p-* palette
+   (gold = sell, teal = buy preserved). No palette change; this formalizes
+   motion / elevation / focus and adds the shell chrome. All new classes are
+   ws-* prefixed so existing screens are untouched.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* motion */
+  --ws-ease: cubic-bezier(0.16, 1, 0.3, 1);      /* asymmetric out */
+  --ws-ease-soft: cubic-bezier(0.33, 0, 0.2, 1);
+  --ws-in: 160ms;      /* fast in */
+  --ws-out: 220ms;     /* gentle out */
+
+  /* elevation — tinted to the navy brand hue, never pure black */
+  --ws-sh-sm: 0 1px 2px rgba(26, 43, 71, 0.06), 0 1px 3px rgba(26, 43, 71, 0.07);
+  --ws-sh-md: 0 6px 18px rgba(26, 43, 71, 0.10);
+  --ws-sh-lg: 0 16px 40px rgba(26, 43, 71, 0.18);
+
+  /* radii scale (one system) */
+  --ws-r-sm: 6px;
+  --ws-r-md: 8px;
+  --ws-r-lg: 12px;
+
+  /* focus ring — gold by default, teal in buy context */
+  --ws-focus: 0 0 0 3px rgba(200, 146, 42, 0.35);
+  --ws-focus-buy: 0 0 0 3px rgba(44, 122, 123, 0.35);
+
+  /* shell dimensions */
+  --ws-sidebar: 232px;
+  --ws-sidebar-min: 64px;
+  --ws-rail: 300px;
+}
+
+/* Global focus-visible ring — one consistent, single-pulse style. */
+.plat-grid a:focus-visible,
+.plat-grid button:focus-visible,
+.plat-grid input:focus-visible,
+.plat-grid select:focus-visible,
+.plat-grid textarea:focus-visible,
+.ws-overlay a:focus-visible,
+.ws-overlay button:focus-visible,
+.ws-overlay input:focus-visible {
+  outline: none;
+  box-shadow: var(--ws-focus);
+  border-radius: var(--ws-r-sm);
+}
+
+/* ── Shell grid: add the right activity rail as a 3rd column ── */
+.plat-grid {
+  grid-template-columns: var(--ws-sidebar) 1fr var(--ws-rail);
+  grid-template-areas:
+    "banner banner banner"
+    "brand  top    top"
+    "sidenav main  rail";
+  transition: grid-template-columns var(--ws-out) var(--ws-ease);
+}
+.plat-grid.ws-nav-collapsed { --ws-sidebar: var(--ws-sidebar-min); }
+.plat-grid.ws-rail-collapsed { grid-template-columns: var(--ws-sidebar) 1fr 0; }
+
+@media (max-width: 1180px) {
+  .plat-grid { grid-template-columns: var(--ws-sidebar) 1fr 0; }
+  .plat-grid .ws-rail { display: none; }
+}
+
+/* ── Brand cell: gets the nav collapse toggle ── */
+.ws-brand {
+  grid-area: brand;
+  background: var(--p-navy-dark);
+  color: var(--p-white);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 0 16px;
+  font-weight: bold;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ws-brand .ws-brand-mark { color: var(--p-gold); }
+.ws-brand .ws-collapse {
+  margin-left: auto;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--ws-r-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--p-blue-muted);
+  border: 0; cursor: pointer;
+  transition: background var(--ws-in) var(--ws-ease), color var(--ws-in) var(--ws-ease);
+}
+.ws-brand .ws-collapse:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.ws-nav-collapsed .ws-brand .ws-brand-text { display: none; }
+
+/* ── Sidebar (grouped, flyouts) ── */
+.ws-sidebar {
+  grid-area: sidenav;
+  background: var(--p-navy-mid);
+  padding: 10px 10px 20px;
+  overflow-y: auto;
+  overflow-x: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ws-sidebar::-webkit-scrollbar { width: 8px; }
+.ws-sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 8px; }
+
+.ws-navsect {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px;
+  color: #6f86a3; padding: 14px 12px 6px;
+}
+.ws-nav-collapsed .ws-navsect { text-align: center; padding: 12px 0 4px; font-size: 8px; }
+
+.ws-navitem {
+  position: relative;
+  display: flex; align-items: center; gap: 11px;
+  color: var(--p-blue-muted);
+  padding: 9px 12px; border-radius: var(--ws-r-md); cursor: pointer;
+  font-size: 14px; border: 0; background: transparent; width: 100%;
+  text-align: left;
+  transition: background var(--ws-in) var(--ws-ease),
+              color var(--ws-in) var(--ws-ease),
+              transform var(--ws-in) var(--ws-ease);
+}
+.ws-navitem:hover { background: rgba(255, 255, 255, 0.07); color: var(--p-white); transform: translateX(2px); }
+.ws-navitem .ws-ic { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.ws-navitem .ws-ic svg { width: 18px; height: 18px; }
+.ws-navitem .ws-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-navitem .ws-caret { opacity: 0.5; transition: transform var(--ws-in) var(--ws-ease); }
+
+.ws-navitem.active {
+  background: var(--p-gold); color: var(--p-navy-dark); font-weight: bold;
+  box-shadow: 0 0 0 1px rgba(200, 146, 42, 0.4), 0 4px 14px rgba(200, 146, 42, 0.28);
+}
+.ws-navitem.active.buy {
+  background: var(--p-buy); color: #fff;
+  box-shadow: 0 0 0 1px rgba(44, 122, 123, 0.5), 0 4px 14px rgba(44, 122, 123, 0.30);
+}
+
+.ws-nav-collapsed .ws-navitem { justify-content: center; padding: 10px 0; }
+.ws-nav-collapsed .ws-navitem .ws-label,
+.ws-nav-collapsed .ws-navitem .ws-caret { display: none; }
+.ws-nav-collapsed .ws-navitem:hover { transform: none; }
+
+/* Flyout submenu */
+.ws-flywrap { position: relative; }
+.ws-flyout {
+  position: absolute; left: calc(100% + 8px); top: -4px; z-index: 60;
+  min-width: 190px;
+  background: var(--p-white); color: var(--p-navy-dark);
+  border: 1px solid var(--p-steel); border-radius: var(--ws-r-lg);
+  box-shadow: var(--ws-sh-lg);
+  padding: 6px;
+  opacity: 0; transform: translateX(-6px) scale(0.98);
+  pointer-events: none;
+  transition: opacity var(--ws-in) var(--ws-ease), transform var(--ws-in) var(--ws-ease);
+}
+.ws-flywrap:hover > .ws-flyout,
+.ws-flyout:hover,
+.ws-flywrap.ws-open > .ws-flyout {
+  opacity: 1; transform: translateX(0) scale(1); pointer-events: auto;
+}
+.ws-flyout::before {
+  content: ''; position: absolute; left: -8px; top: 0; bottom: 0; width: 8px;
+}
+.ws-flyout .ws-flyhead {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--p-body); padding: 6px 10px 4px;
+}
+.ws-flyout .ws-flyitem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: var(--ws-r-sm); cursor: pointer;
+  font-size: 13px; color: var(--p-navy-dark); border: 0; background: transparent;
+  width: 100%; text-align: left;
+  transition: background var(--ws-in) var(--ws-ease);
+}
+.ws-flyout .ws-flyitem:hover { background: var(--p-row); }
+.ws-flyout .ws-flyitem.active { background: rgba(200, 146, 42, 0.14); color: var(--p-navy-dark); font-weight: bold; }
+.ws-flyout .ws-flyitem .ws-ic svg { width: 16px; height: 16px; }
+
+/* ── Topbar cluster ── */
+.topbar { gap: 12px; }
+.ws-crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; }
+.ws-crumbs .ws-crumb { color: var(--p-body); white-space: nowrap; }
+.ws-crumbs .ws-crumb.here { color: var(--p-navy-dark); font-weight: bold; }
+.ws-crumbs a.ws-crumb:hover { color: var(--p-gold); }
+.ws-crumbs .ws-sep { color: var(--p-steel); }
+
+.ws-topbtn {
+  display: flex; align-items: center; gap: 7px;
+  height: 34px; padding: 0 11px;
+  background: var(--p-row); border: 1px solid var(--p-steel); border-radius: var(--ws-r-md);
+  color: var(--p-body); font-size: 12px; cursor: pointer;
+  transition: border-color var(--ws-in) var(--ws-ease), background var(--ws-in) var(--ws-ease),
+              transform var(--ws-in) var(--ws-ease), box-shadow var(--ws-in) var(--ws-ease);
+}
+.ws-topbtn:hover { border-color: var(--p-gold); background: var(--p-white); color: var(--p-navy-dark); }
+.ws-topbtn:active { transform: translateY(1px); }
+.ws-topbtn .ws-ic svg { width: 16px; height: 16px; }
+.ws-topbtn.ws-cmd { min-width: 210px; }
+.ws-topbtn.ws-cmd .ws-cmd-hint {
+  margin-left: auto; font-size: 10px; font-weight: bold; letter-spacing: 0.4px;
+  color: var(--p-body); background: var(--p-white); border: 1px solid var(--p-steel);
+  border-radius: 4px; padding: 1px 5px;
+}
+.ws-topbtn.ws-primary {
+  background: var(--p-gold); color: var(--p-navy-dark); border-color: var(--p-gold); font-weight: bold;
+}
+.ws-topbtn.ws-primary:hover { background: #d9a23a; border-color: #d9a23a; }
+.ws-topbtn .ws-caret svg { width: 12px; height: 12px; }
+
+/* Menus (quick-add, dashboard switcher) */
+.ws-menuwrap { position: relative; }
+.ws-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 70;
+  min-width: 230px;
+  background: var(--p-white); border: 1px solid var(--p-steel); border-radius: var(--ws-r-lg);
+  box-shadow: var(--ws-sh-lg); padding: 6px;
+  animation: wsPop var(--ws-in) var(--ws-ease) both;
+}
+@keyframes wsPop { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
+.ws-menu .ws-menuhead {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--p-body); padding: 6px 10px 4px;
+}
+.ws-menu .ws-menuitem {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 10px; border-radius: var(--ws-r-sm); cursor: pointer;
+  font-size: 13px; color: var(--p-navy-dark); border: 0; background: transparent;
+  width: 100%; text-align: left;
+  transition: background var(--ws-in) var(--ws-ease);
+}
+.ws-menu .ws-menuitem:hover { background: var(--p-row); }
+.ws-menu .ws-menuitem .ws-ic {
+  width: 28px; height: 28px; border-radius: var(--ws-r-sm);
+  background: var(--p-row); color: var(--p-gold);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.ws-menu .ws-menuitem .ws-ic.buy { color: var(--p-buy); }
+.ws-menu .ws-menuitem .ws-ic svg { width: 16px; height: 16px; }
+.ws-menu .ws-menuitem small { display: block; color: var(--p-body); font-size: 11px; margin-top: 1px; }
+.ws-menu .ws-menudiv { height: 1px; background: var(--p-row); margin: 5px 4px; }
+
+/* ── Command palette ── */
+.ws-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(26, 43, 71, 0.32);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 12vh;
+  animation: wsFade var(--ws-in) ease both;
+}
+@keyframes wsFade { from { opacity: 0; } to { opacity: 1; } }
+.ws-palette {
+  width: 620px; max-width: 92vw; max-height: 66vh;
+  background: var(--p-white); border: 1px solid var(--p-steel);
+  border-radius: var(--ws-r-lg); box-shadow: var(--ws-sh-lg);
+  display: flex; flex-direction: column; overflow: hidden;
+  animation: wsPalette var(--ws-in) var(--ws-ease) both;
+}
+@keyframes wsPalette { from { opacity: 0; transform: translateY(-10px) scale(0.985); } to { opacity: 1; transform: none; } }
+.ws-palette-in {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--p-row);
+}
+.ws-palette-in .ws-ic { color: var(--p-body); flex-shrink: 0; }
+.ws-palette-in input {
+  flex: 1; border: 0; outline: none; font-size: 15px; color: var(--p-navy-dark); background: transparent;
+}
+.ws-palette-in .ws-esc {
+  font-size: 10px; font-weight: bold; color: var(--p-body);
+  border: 1px solid var(--p-steel); border-radius: 4px; padding: 2px 6px;
+}
+.ws-palette-body { overflow-y: auto; padding: 6px; }
+.ws-palette-group { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--p-body); padding: 8px 10px 4px; }
+.ws-palette-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 11px; border-radius: var(--ws-r-md); cursor: pointer; font-size: 13px;
+}
+.ws-palette-item .ws-ic { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--p-body); flex-shrink: 0; }
+.ws-palette-item .ws-ic svg { width: 16px; height: 16px; }
+.ws-palette-item .ws-pi-title { font-weight: bold; color: var(--p-navy-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-palette-item .ws-pi-sub { font-size: 11px; color: var(--p-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-palette-item.active { background: var(--p-row); }
+.ws-palette-item.active .ws-ic { color: var(--p-gold); }
+.ws-palette-empty { padding: 22px; text-align: center; color: var(--p-body); font-size: 13px; }
+
+/* ── Activity rail ── */
+.ws-rail {
+  grid-area: rail;
+  background: var(--p-white);
+  border-left: 1px solid var(--p-steel);
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.ws-rail-sect > h4 {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--p-body); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.ws-rail-sect > h4 .ws-count {
+  background: var(--p-row); color: var(--p-body); border-radius: 9px; padding: 0 6px; font-size: 10px;
+}
+.ws-rail-item {
+  display: block; width: 100%; text-align: left; border: 0; background: transparent;
+  padding: 8px; border-radius: var(--ws-r-md); cursor: pointer; margin-bottom: 2px;
+  transition: background var(--ws-in) var(--ws-ease);
+}
+.ws-rail-item:hover { background: var(--p-row); }
+.ws-rail-item .ws-ri-title { font-size: 12px; font-weight: bold; color: var(--p-navy-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-rail-item .ws-ri-sub { font-size: 11px; color: var(--p-body); margin-top: 2px; }
+.ws-rail-item.due .ws-ri-sub { color: var(--p-gold); font-weight: bold; }
+.ws-rail-item.over .ws-ri-sub { color: #B4432B; font-weight: bold; }
+.ws-rail-empty { font-size: 12px; color: var(--p-body); padding: 4px 8px; }
+.ws-rail-toggle {
+  width: 32px; height: 32px; border-radius: var(--ws-r-md);
+  background: var(--p-row); border: 1px solid var(--p-steel); color: var(--p-navy-dark);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: border-color var(--ws-in) var(--ws-ease);
+}
+.ws-rail-toggle:hover { border-color: var(--p-gold); }
+.ws-rail-toggle.on { background: var(--p-gold); border-color: var(--p-gold); }
+
+/* ── Toasts ── */
+.ws-toasts {
+  position: fixed; right: 18px; bottom: 18px; z-index: 300;
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+}
+.ws-toast {
+  min-width: 240px; max-width: 360px;
+  background: var(--p-white); border: 1px solid var(--p-steel);
+  border-left: 4px solid var(--p-gold);
+  border-radius: var(--ws-r-md); box-shadow: var(--ws-sh-lg);
+  padding: 11px 13px; font-size: 13px; color: var(--p-navy-dark);
+  animation: wsToastIn var(--ws-in) var(--ws-ease) both;
+}
+.ws-toast.err { border-left-color: #B4432B; }
+.ws-toast .ws-toast-t { font-weight: bold; }
+.ws-toast .ws-toast-b { color: var(--p-body); font-size: 12px; margin-top: 2px; }
+@keyframes wsToastIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* ── Empty / placeholder surface ── */
+.ws-placeholder {
+  max-width: 520px; margin: 8vh auto 0; text-align: center;
+  background: var(--p-white); border: 1px solid var(--p-steel);
+  border-radius: var(--ws-r-lg); padding: 40px 32px; box-shadow: var(--ws-sh-sm);
+}
+.ws-placeholder .ws-ph-ic {
+  width: 52px; height: 52px; margin: 0 auto 16px; border-radius: 14px;
+  background: var(--p-row); color: var(--p-gold);
+  display: flex; align-items: center; justify-content: center;
+}
+.ws-placeholder .ws-ph-ic svg { width: 26px; height: 26px; }
+.ws-placeholder h2 { font-size: 20px; color: var(--p-navy-dark); margin-bottom: 8px; }
+.ws-placeholder p { font-size: 13px; color: var(--p-body); line-height: 1.5; }
+
+/* Optimistic pending shimmer on freshly-added rows */
+.ws-pending { position: relative; }
+.ws-pending::after {
+  content: ''; position: absolute; inset: 0; border-radius: var(--ws-r-sm);
+  background: linear-gradient(90deg, transparent, rgba(200,146,42,0.10), transparent);
+  background-size: 200% 100%;
+  animation: wsShimmer 1.1s var(--ws-ease) infinite; pointer-events: none;
+}
+@keyframes wsShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ── Reduced motion: collapse everything to instant ── */
+@media (prefers-reduced-motion: reduce) {
+  .plat-grid,
+  .ws-navitem, .ws-flyout, .ws-menu, .ws-topbtn, .ws-overlay, .ws-palette,
+  .ws-toast, .ws-rail-item, .ws-brand .ws-collapse, .ws-rail-toggle {
+    transition: none !important;
+    animation: none !important;
+  }
+  .ws-navitem:hover { transform: none; }
+  .ws-pending::after { animation: none; }
+}

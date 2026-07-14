@@ -10,14 +10,16 @@ import { api, type SearchResult, type SearchResultType } from '../lib/api'
 const SEARCH_DEBOUNCE_MS = 200
 const MIN_CHARS = 2
 
-const TYPE_META: Record<SearchResultType, { label: string; pill: string }> = {
+export const TYPE_META: Record<SearchResultType, { label: string; pill: string }> = {
   unit: { label: 'Unit', pill: 'av' },
   deal: { label: 'Deal', pill: 'gold' },
   contact: { label: 'Contact', pill: 'trans' },
   company: { label: 'Company', pill: 'grey' },
 }
 
-function resultPath(r: SearchResult): string {
+// Company hits have no detail page by design — they land on the contact list
+// filtered to that company. Shared with the command palette.
+export function resultPath(r: SearchResult): string {
   switch (r.type) {
     case 'unit': return `/units/${r.id}`
     case 'deal': return `/deals/${r.id}`

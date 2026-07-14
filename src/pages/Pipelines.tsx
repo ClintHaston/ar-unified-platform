@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type DragEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type DealCard, type DealScope, type Pipeline } from '../lib/api'
 import { NewDealForm } from '../components/NewDealForm'
+import { useToast } from '../components/shell/ToastContext'
 
 // Pipelines board per prototype_4: switcher, stage columns with counts,
 // gold-accent deal cards. Drag-and-drop stage moves POST to the backend,
@@ -23,6 +24,7 @@ function initials(name: string | null): string {
 
 export function Pipelines() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -131,8 +133,10 @@ export function Pipelines() {
     try {
       await api.moveDeal(dealId, stageId)
     } catch (err) {
-      setDeals(previous)
-      setError(err instanceof Error ? err.message : 'Stage move failed')
+      setDeals(previous)  // rollback the optimistic move
+      const msg = err instanceof Error ? err.message : 'Stage move failed'
+      setError(msg)
+      toast.error('Stage move failed', `${deal.name} snapped back. ${msg}`)
     }
   }
 

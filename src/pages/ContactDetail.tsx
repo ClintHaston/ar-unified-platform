@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { api, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
+import { recordRecent } from '../lib/recentlyViewed'
 import { TYPE_LABEL, TYPE_PILL, ownerLabel } from './Contacts'
 
 function money(cents: number | null): string {
@@ -47,7 +48,7 @@ export function ContactDetail() {
   const load = useCallback(() => {
     if (!contactId) return
     api.contactDetail(contactId)
-      .then((res) => { setData(res); setError('') })
+      .then((res) => { setData(res); setError(''); recordRecent('contact', res.contact.id, res.contact.name ?? res.contact.email ?? 'Contact') })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load contact'))
       .finally(() => setLoading(false))
   }, [contactId])

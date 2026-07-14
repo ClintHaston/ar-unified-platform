@@ -8,6 +8,7 @@ import { STATUS_PILL, money, moneyShort, snapshotAge, statusPillText } from './I
 import { AssigneePicker } from '../components/AssigneePicker'
 import { DocumentsPanel } from '../components/DocumentsPanel'
 import { BuyerInterestPanel } from '../components/BuyerInterestPanel'
+import { recordRecent } from '../lib/recentlyViewed'
 
 // Unit detail per prototype_4 + §3: fields, inline taxonomy assignment,
 // status history from unit_status_events, expenses (no workflow — held
@@ -106,6 +107,7 @@ export function UnitDetail() {
         setTaxMake(res.unit.make_id ?? '')
         setTaxModel(res.unit.model_id ?? '')
         setError('')
+        recordRecent('unit', res.unit.id, res.unit.title)
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load unit'))
       .finally(() => setLoading(false))
