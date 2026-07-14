@@ -284,8 +284,18 @@ export interface ContactRow {
   company_name: string | null
   owner_id: string | null
   owner_name: string | null
+  sales_lead_status: SalesLeadStatus | null
+  last_activity_at: string | null
   created_at: string
 }
+
+// HubSpot "Lead Status" parity (Step 0). Distinct from the inbound-door
+// lead_status. Forward-populated by reps; NULL until set.
+export type SalesLeadStatus = 'New' | 'Open' | 'In Progress' | 'Connected' | 'Unqualified' | 'Bad Timing'
+export const SALES_LEAD_STATUSES: SalesLeadStatus[] = ['New', 'Open', 'In Progress', 'Connected', 'Unqualified', 'Bad Timing']
+
+export type ContactSort = 'name' | 'email' | 'type' | 'lead_status' | 'company' | 'owner' | 'last_activity' | 'created'
+export type SortDir = 'asc' | 'desc'
 
 export interface ContactListResponse {
   total: number
@@ -305,8 +315,80 @@ export interface ContactListParams {
   contact_type?: string
   owner_id?: string
   company_id?: string
+  sort?: ContactSort
+  dir?: SortDir
   page?: number
   page_size?: number
+}
+
+// ── Segments (Lists) ──
+export type SegmentObjectType = 'contact' | 'company'
+export type SegmentType = 'active' | 'static'
+export type SegmentPropType = 'enum' | 'uuid_ref' | 'text' | 'date'
+
+export interface SegmentCondition {
+  field: string
+  operator: string
+  value?: string | null
+}
+export interface SegmentGroup { conditions: SegmentCondition[] }
+export interface SegmentCriteria { groups: SegmentGroup[] }
+
+export interface SegmentOperator { key: string; label: string }
+export interface SegmentProp {
+  key: string
+  label: string
+  type: SegmentPropType
+  ref?: 'owner' | 'company' | null
+  options?: string[] | null
+  operators: SegmentOperator[]
+}
+export interface SegmentSource {
+  key: string
+  label: string
+  object_type: SegmentObjectType
+  props: SegmentProp[]
+}
+
+export interface SegmentListItem {
+  id: string
+  name: string
+  description: string | null
+  object_type: SegmentObjectType
+  type: SegmentType
+  criteria: SegmentCriteria
+  owner_id: string
+  owner_name: string | null
+  count: number
+  updated_at: string
+}
+export interface SegmentDetailResponse {
+  id: string
+  name: string
+  description: string | null
+  object_type: SegmentObjectType
+  type: SegmentType
+  criteria: SegmentCriteria
+  owner_id: string
+  owner_name: string | null
+  count: number
+  created_at: string
+  updated_at: string
+}
+export interface CompanyMemberRow {
+  id: string
+  name: string
+  domain: string | null
+  city: string | null
+  state: string | null
+  created_at: string
+}
+export interface SegmentMembersResponse {
+  total: number
+  page: number
+  page_size: number
+  object_type: SegmentObjectType
+  members: Array<ContactRow | CompanyMemberRow>
 }
 
 // P1 contacts-coherence (read-only)
@@ -415,6 +497,7 @@ export interface ContactPatch {
   phone?: string | null
   contact_type?: ContactType
   hunting_for?: string | null
+  sales_lead_status?: SalesLeadStatus | null
 }
 
 // ── 3c-6 notifications (topbar bell) ──
@@ -1254,6 +1337,85 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ owner_id: ownerId }),
     }),
+
+  // Bulk owner reassignment from the list multi-select bar (admin-only,
+  // server-enforced 403 for non-admins).
+  batchReassignContactOwner: (contactIds: string[], ownerId: string | null) =>
+    request<{ ok: boolean; requested: number; changed: number }>(
+      '/platform/contacts/batch-owner', {
+        method: 'POST',
+        body: JSON.stringify({ contact_ids: contactIds, owner_id: ownerId }),
+      }),
+
+  // CSV of the current filtered+sorted set (no pagination). Returns a Blob so
+  // the caller can trigger a browser download. Refreshes once on a 401 like
+  // request(), since the export is a deliberate user action.
+  exportContactsCsv: async (params: ContactListParams = {}): Promise<Blob> => {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '' && k !== 'page' && k !== 'page_size') qs.set(k, String(v))
+    }
+    const path = `/platform/contacts/export.csv${qs.toString() ? `?${qs.toString()}` : ''}`
+    let res = await rawRequest(path)
+    if (res.status === 401) {
+      const refreshed = await tryRefresh()
+      if (refreshed) res = await rawRequest(path)
+    }
+    if (!res.ok) throw new Error('Export failed')
+    return res.blob()
+  },
+
+  // ── Segments (Lists) ──
+  segmentRegistry: () => request<{ sources: SegmentSource[] }>('/platform/segments/registry'),
+
+  listSegments: (params: { object_type?: SegmentObjectType; type?: SegmentType } = {}) => {
+    const qs = new URLSearchParams()
+    if (params.object_type) qs.set('object_type', params.object_type)
+    if (params.type) qs.set('type', params.type)
+    const s = qs.toString()
+    return request<{ segments: SegmentListItem[] }>(`/platform/segments${s ? `?${s}` : ''}`)
+  },
+
+  createSegment: (body: {
+    name: string
+    description?: string | null
+    object_type: SegmentObjectType
+    type: SegmentType
+    criteria?: SegmentCriteria
+    member_ids?: string[]
+  }) => request<{ id: string; seeded: number }>('/platform/segments', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+
+  getSegment: (id: string) => request<SegmentDetailResponse>(`/platform/segments/${id}`),
+
+  updateSegment: (id: string, patch: { name?: string; description?: string | null; criteria?: SegmentCriteria }) =>
+    request<{ id: string; ok?: boolean; unchanged?: boolean }>(`/platform/segments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+
+  archiveSegment: (id: string) =>
+    request<{ ok: boolean }>(`/platform/segments/${id}/archive`, { method: 'POST' }),
+
+  segmentMembers: (id: string, params: { sort?: ContactSort; dir?: SortDir; page?: number; page_size?: number } = {}) => {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined) qs.set(k, String(v))
+    }
+    const s = qs.toString()
+    return request<SegmentMembersResponse>(`/platform/segments/${id}/members${s ? `?${s}` : ''}`)
+  },
+
+  addSegmentMembers: (id: string, recordIds: string[]) =>
+    request<{ ok: boolean; requested: number; added: number }>(`/platform/segments/${id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ record_ids: recordIds }),
+    }),
+
+  removeSegmentMember: (id: string, recordId: string) =>
+    request<{ ok: boolean }>(`/platform/segments/${id}/members/${recordId}`, { method: 'DELETE' }),
 
   logContactActivity: (contactId: string, input: { kind: 'note' | 'call'; subject?: string; body: string; call_outcome?: CallOutcome | null }) =>
     request<{ id: string }>(`/platform/contacts/${contactId}/activities`, {

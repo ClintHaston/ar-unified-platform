@@ -829,3 +829,44 @@ input, select, textarea {
 .wizard-step { font-size: 11px; padding: 4px 10px; border-radius: 10px; background: var(--p-row); color: var(--p-body); border: 1px solid var(--p-steel); }
 .wizard-step.active { background: var(--p-navy-dark); color: #fff; border-color: var(--p-navy-dark); font-weight: bold; }
 .wizard-step.done { background: var(--p-gold); color: var(--p-navy-dark); border-color: var(--p-gold); }
+
+/* Contacts list-view parity (multi-select, sortable headers, bulk bar) */
+.plat-table th.th-sort { cursor: pointer; user-select: none; }
+.plat-table th.th-sort:hover { color: var(--p-gold); }
+.plat-table .sort-caret { font-size: 10px; }
+.plat-table tr.row-selected td { background: var(--p-row); }
+.linklike {
+  background: none; border: 0; padding: 0; margin: 0; cursor: pointer;
+  color: var(--p-navy-dark); font: inherit; text-align: left;
+}
+.linklike:hover { color: var(--p-gold); text-decoration: underline; }
+.plat-table td a { color: var(--p-buy); text-decoration: none; }
+.plat-table td a:hover { text-decoration: underline; }
+.bulk-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 16px; border-left: 3px solid var(--p-gold);
+}
+/* Segments (Lists) — criteria builder, type cards, pickers */
+.seg-criteria { display: flex; flex-direction: column; }
+.seg-group { border: 1px solid var(--p-steel); border-left: 3px solid var(--p-gold);
+  border-radius: 6px; padding: 10px 12px; background: var(--p-white); }
+.seg-group-head { display: flex; align-items: center; margin-bottom: 8px; }
+.seg-cond { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.seg-or { text-align: center; font-size: 11px; font-weight: bold; color: var(--p-body);
+  letter-spacing: 1px; margin: 8px 0; }
+.seg-type-choices { display: flex; gap: 10px; flex-wrap: wrap; }
+.seg-type-card { display: flex; gap: 8px; align-items: flex-start; flex: 1; min-width: 220px;
+  border: 1px solid var(--p-steel); border-radius: 6px; padding: 10px; cursor: pointer; }
+.seg-type-card.on { border-color: var(--p-gold); background: var(--p-row); }
+.seg-type-card input { margin-top: 3px; }
+.seg-company-picker { position: relative; display: inline-block; }
+.seg-company-results, .add-to-list-pop { position: absolute; top: 100%; left: 0; z-index: 50;
+  margin-top: 4px; background: var(--p-white); border: 1px solid var(--p-steel);
+  border-radius: 6px; box-shadow: 0 6px 18px rgba(26,43,71,.16); min-width: 220px; padding: 6px; }
+.seg-company-opt { display: block; width: 100%; text-align: left; background: none; border: 0;
+  padding: 6px 8px; cursor: pointer; font: inherit; color: var(--p-navy-dark); border-radius: 4px; }
+.seg-company-opt:hover { background: var(--p-row); }
+.seg-picked { display: inline-flex; align-items: center; padding: 4px 8px; background: var(--p-row);
+  border: 1px solid var(--p-steel); border-radius: 6px; font-size: 13px; }
+.add-to-list-pop { min-width: 260px; }
+.add-to-list-new { display: flex; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--p-row); }

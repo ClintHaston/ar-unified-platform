@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { api, type CallOutcome, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption } from '../lib/api'
+import { api, SALES_LEAD_STATUSES, type CallOutcome, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption, type SalesLeadStatus } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { CALL_OUTCOMES, CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { recordRecent } from '../lib/recentlyViewed'
@@ -32,6 +32,7 @@ export function ContactDetail() {
   const [edit, setEdit] = useState({ first_name: '', last_name: '', email: '', phone: '', hunting_for: '' })
   const [savingEdit, setSavingEdit] = useState(false)
   const [savingType, setSavingType] = useState(false)
+  const [savingLead, setSavingLead] = useState(false)
   const [savingOwner, setSavingOwner] = useState(false)
 
   const [actKind, setActKind] = useState<'note' | 'call'>('note')
@@ -120,6 +121,19 @@ export function ContactDetail() {
       setError(err instanceof Error ? err.message : 'Failed to update type')
     } finally {
       setSavingType(false)
+    }
+  }
+
+  async function setLeadStatus(status: SalesLeadStatus | '') {
+    if (!contactId) return
+    setSavingLead(true)
+    try {
+      await api.updateContact(contactId, { sales_lead_status: status || null })
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update lead status')
+    } finally {
+      setSavingLead(false)
     }
   }
 
@@ -253,6 +267,22 @@ export function ContactDetail() {
                     >
                       {(Object.keys(TYPE_LABEL) as ContactType[]).map((t) => (
                         <option key={t} value={t}>{TYPE_LABEL[t]}</option>
+                      ))}
+                    </select>
+                  </span>
+                </div>
+                <div className="fieldrow">
+                  <span>Lead Status</span>
+                  <span>
+                    <select
+                      className="plat-input type-select"
+                      value={contact.sales_lead_status ?? ''}
+                      disabled={savingLead}
+                      onChange={(e) => setLeadStatus(e.target.value as SalesLeadStatus | '')}
+                    >
+                      <option value="">— Not set —</option>
+                      {SALES_LEAD_STATUSES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
                   </span>
