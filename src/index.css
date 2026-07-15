@@ -647,7 +647,14 @@ input, select, textarea {
 }
 .colb {
   padding: 9px; display: flex; flex-direction: column; gap: 9px;
-  min-height: 50px; max-height: calc(100vh - 320px); overflow-y: auto;
+  /* Fill the full column height so the ENTIRE stage lane is a drop target.
+     Empty stages (e.g. Requested, the first stage) otherwise collapse to a
+     ~50px strip, so a card dragged over the lower part of that lane lands in
+     dead space and the browser shows the no-drop cursor (the "red circle").
+     Pinning min-height to max-height makes every lane the same height, so any
+     grab position in one column maps to a valid drop position in every other
+     column. Cards still scroll inside a full lane via overflow-y. */
+  min-height: calc(100vh - 320px); max-height: calc(100vh - 320px); overflow-y: auto;
 }
 .card {
   background: var(--p-white); border: 1px solid var(--p-border);
