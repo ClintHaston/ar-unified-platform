@@ -5,9 +5,10 @@
 }
 
 :root {
-  --navy: #0b1723;
-  --navy-light: #1a3a52;
-  --navy-dark: #060e17;
+  /* Retired the stale near-black --navy #0b1723 (and its unused -light/-dark
+     siblings); aligned to the Sales Command brand navy so legacy surfaces
+     (login, Admin titles, access-denied) share the platform navy. */
+  --navy: #1A2B47;
   --gold: #d4a017;
   --gold-bright: #f0b820;
   --gold-hover: #f5c830;
@@ -350,26 +351,30 @@ input, select, textarea {
 .admin-table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--surface);
+  background: var(--p-white);
+  border: 1px solid var(--p-border);
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: var(--p-sh-sm);
 }
 
 .admin-table th {
-  background: var(--navy);
-  color: rgba(255,255,255,0.85);
-  font-family: 'Bebas Neue', Arial, sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.06em;
-  padding: 12px 16px;
+  background: var(--p-row);
+  color: var(--p-blue-muted);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 14px;
   text-align: left;
+  border-bottom: 1px solid var(--p-border);
 }
 
 .admin-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--p-row);
   vertical-align: middle;
+  color: var(--p-navy-dark);
 }
 
 .admin-table tr:last-child td {
@@ -377,7 +382,7 @@ input, select, textarea {
 }
 
 .admin-table tr:hover td {
-  background: #f8f9fb;
+  background: var(--p-row);
 }
 
 .toggle {
