@@ -354,7 +354,7 @@ export function Contacts() {
             <button className="plat-btn" type="submit" disabled={savingNew || !(nc.first_name.trim() || nc.last_name.trim() || nc.email.trim())}>
               {savingNew ? 'Creating…' : 'Create contact'}
             </button>
-            <span className="note" style={{ marginLeft: 10 }}>Born in Postgres with source "rep" — mirrors to HubSpot when the step-4 outbox ships.</span>
+            <span className="note" style={{ marginLeft: 10 }}>Born in Postgres with source "rep". Mirrors to HubSpot when the step-4 outbox ships.</span>
           </form>
         </div>
       )}
@@ -494,7 +494,7 @@ export function Contacts() {
 
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       <div className="note">
-        The HubSpot backfill imported every contact as type "Other" — use the inline Type
+        The HubSpot backfill imported every contact as type "Other". Use the inline Type
         column to classify as you go. Search, sort, and paging run server-side.
       </div>
     </div>

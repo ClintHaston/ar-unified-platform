@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { api, type CompanyDetailResponse, type ConsignmentDoc } from '../lib/api'
 import { CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { recordRecent } from '../lib/recentlyViewed'
+import { useBreadcrumbTitle } from '../components/shell/BreadcrumbTitle'
 import { TYPE_LABEL } from './Contacts'
 
 // Company detail (reverses Amendment 18). HubSpot three-column shape: left
@@ -59,6 +60,9 @@ export function CompanyDetail() {
   }, [companyId])
 
   useEffect(() => { load() }, [load])
+
+  // Show the company name in the breadcrumb once the record loads.
+  useBreadcrumbTitle(data?.company.name)
 
   function startEdit() {
     if (!data) return

@@ -96,7 +96,7 @@ export function TabListingPanel({ dealId }: Props) {
         </div>
       ) : !data.at_publish_stage ? (
         <div className="note" style={{ marginBottom: 10 }}>
-          This deal isn't at the "Requested" (publish) stage — capture fields now; publishing
+          This deal isn't at the "Requested" (publish) stage. Capture fields now; publishing
           happens once it reaches Requested.
         </div>
       ) : null}
@@ -196,7 +196,7 @@ export function TabListingPanel({ dealId }: Props) {
       )}
       {data.resubmit_to_tab && !data.tab_publish_armed && (
         <div className="note" style={{ marginTop: 6 }}>
-          Queued — publishing is disarmed until cutover, so nothing goes to TAB yet.
+          Queued. Publishing is disarmed until cutover, so nothing goes to TAB yet.
         </div>
       )}
       {data.tab_publish_error && (

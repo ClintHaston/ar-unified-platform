@@ -34,14 +34,14 @@ export function CommissionReport() {
           <b>Commission % not set.</b>
           <div className="note" style={{ marginTop: 4 }}>
             The company default (<code>commission_default</code>) has never been entered, so deals
-            without their own percent are not counted — totals below are incomplete by design,
+            without their own percent are not counted. Totals below are incomplete by design,
             never invented. Set it in <Link to="/admin">Team &amp; settings</Link>.
           </div>
         </div>
       )}
       {!defaultUnset && (
         <div className="note" style={{ marginBottom: 12 }}>
-          Company default: <b>{report.commission_default_pct}%</b> — applied to won deals without
+          Company default: <b>{report.commission_default_pct}%</b>, applied to won deals without
           their own percent.
         </div>
       )}
@@ -55,7 +55,7 @@ export function CommissionReport() {
             {report.reps.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ textAlign: 'center', color: 'var(--p-body)', padding: 18 }}>
-                  No won deals yet — the Sold stage has never held a deal (Amendment 2).
+                  No won deals yet. The Sold stage has never held a deal (Amendment 2).
                   Analytics baselines start at cutover.
                 </td>
               </tr>

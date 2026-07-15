@@ -164,7 +164,7 @@ export function Admin() {
         </table>
         <div className="note">
           Settings are rows, not constants (§4). commission_default drives the commission
-          report — until it is set, deals without their own percent stay uncounted.
+          report. Until it is set, deals without their own percent stay uncounted.
         </div>
       </div>
 
@@ -191,7 +191,7 @@ export function Admin() {
           </table>
         )}
         <div className="note">
-          While preview mode is on, only admin users receive real email — everything else is
+          While preview mode is on, only admin users receive real email. Everything else is
           suppressed and recorded here, so cutover traffic is previewable.
         </div>
       </div>

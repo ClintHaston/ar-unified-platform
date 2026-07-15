@@ -535,6 +535,35 @@ export interface CompanyActivity {
   call_outcome: CallOutcome | null
   rep_name: string | null
 }
+export interface CompanyRow {
+  id: string
+  name: string
+  domain: string | null
+  phone: string | null
+  city: string | null
+  state: string | null
+  n_contacts: number
+  n_open_deals: number
+  created_at: string
+}
+
+export type CompanySort = 'name' | 'domain' | 'city' | 'contacts' | 'open_deals' | 'created'
+
+export interface CompanyListResponse {
+  total: number
+  page: number
+  page_size: number
+  companies: CompanyRow[]
+}
+
+export interface CompanyListParams {
+  q?: string
+  sort?: CompanySort
+  dir?: SortDir
+  page?: number
+  page_size?: number
+}
+
 export interface CompanyDetailResponse {
   company: {
     id: string
@@ -1402,6 +1431,15 @@ export const api = {
 
   contactDetail: (contactId: string) =>
     request<ContactDetailResponse>(`/platform/contacts/${contactId}`),
+
+  companies: (params: CompanyListParams = {}) => {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') qs.set(k, String(v))
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : ''
+    return request<CompanyListResponse>(`/platform/companies${suffix}`)
+  },
 
   companyDetail: (companyId: string) =>
     request<CompanyDetailResponse>(`/platform/companies/${companyId}`),

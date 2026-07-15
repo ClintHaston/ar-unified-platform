@@ -5,6 +5,7 @@ import { api } from '../../lib/api'
 import { NotificationBell } from '../NotificationBell'
 import { PersistentIframes } from '../PersistentIframes'
 import { ToastProvider } from './ToastContext'
+import { BreadcrumbTitleProvider } from './BreadcrumbTitle'
 import { AppSidebar } from './AppSidebar'
 import { Breadcrumbs } from './Breadcrumbs'
 import { CommandPalette } from './CommandPalette'
@@ -66,10 +67,11 @@ export function AppShell() {
 
   return (
     <ToastProvider>
+      <BreadcrumbTitleProvider>
       <div className={gridClass}>
         {preview && (
           <div className="preview-banner">
-            Preview — not yet live for reps. Deals still live in HubSpot until cutover.
+            Preview: not yet live for reps. Deals still live in HubSpot until cutover.
           </div>
         )}
         {!preview && <div style={{ gridArea: 'banner' }} />}
@@ -116,10 +118,11 @@ export function AppShell() {
           <Outlet />
         </main>
 
-        {!railCollapsed && <ActivityRail />}
+        {user && !railCollapsed && <ActivityRail />}
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      </BreadcrumbTitleProvider>
     </ToastProvider>
   )
 }

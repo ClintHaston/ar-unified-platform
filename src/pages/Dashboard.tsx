@@ -141,8 +141,8 @@ export function Dashboard() {
               <div className="note">
                 {buyBoard.opportunities.filter((o) => !o.outcome).length} open ·{' '}
                 {buyBoard.opportunities.filter((o) => o.outcome === 'won').length} won ·{' '}
-                {buyBoard.opportunities.filter((o) => o.outcome === 'lost').length} lost —
-                buy-side interest, separate from the sell-side pipelines above.
+                {buyBoard.opportunities.filter((o) => o.outcome === 'lost').length} lost.{' '}
+                Buy-side interest, separate from the sell-side pipelines above.
               </div>
             </>
           )}
@@ -150,7 +150,7 @@ export function Dashboard() {
       )}
 
       <div className="panel">
-        <h3>My tasks{user ? ` — ${user.name}` : ''}</h3>
+        <h3>My tasks{user ? `: ${user.name}` : ''}</h3>
         {tasks.length === 0 ? (
           <div className="note">No open tasks. The due-today view is a query over tasks, per the data model.</div>
         ) : (

@@ -312,7 +312,7 @@ export function UnitDetail() {
                 </div>
                 {unit.valuation.revalue && (
                   <div className="note" style={{ color: '#B4432B' }}>
-                    Hours or condition changed since this snapshot — run a new valuation.
+                    Hours or condition changed since this snapshot. Run a new valuation.
                   </div>
                 )}
               </>
@@ -326,13 +326,13 @@ export function UnitDetail() {
                   {busy === 'val-run' ? 'Running…' : 'Run valuation'}
                 </button>
                 <span className="note" style={{ margin: 0 }}>
-                  Runs the Evaluator — nothing is saved until you save the snapshot.
+                  Runs the Evaluator. Nothing is saved until you save the snapshot.
                 </span>
               </div>
             ) : (
               <div style={{ marginTop: 10, border: '1px solid var(--p-steel)', borderRadius: 8, padding: '10px 12px' }}>
                 <div style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--p-navy-dark)' }}>
-                  Engine result — review before saving
+                  Engine result: review before saving
                 </div>
                 <div className="val-row">
                   <div><b>{moneyShort(valRun.flv_cents)}</b><small>FLV</small></div>
@@ -413,7 +413,7 @@ export function UnitDetail() {
                 <div className="fieldrow"><span>Make</span><span>{unit.make_name ?? 'not linked'}</span></div>
                 <div className="fieldrow"><span>Model</span><span>{unit.model_name ?? 'not linked'}</span></div>
                 {(!unit.category_id || !unit.make_id || !unit.model_id) && (
-                  <div className="note">TAB carried make/model as free text — assign the links here.</div>
+                  <div className="note">TAB carried make/model as free text. Assign the links here.</div>
                 )}
               </>
             ) : (
@@ -447,7 +447,7 @@ export function UnitDetail() {
                 <div style={{ position: 'relative' }}>
                   <input
                     className="plat-input"
-                    placeholder="Buyer contact — type to search…"
+                    placeholder="Buyer contact: type to search…"
                     value={contactQuery}
                     onChange={(e) => { setContactQuery(e.target.value); setBuyer(null) }}
                   />
@@ -494,7 +494,7 @@ export function UnitDetail() {
                   {busy === 'offer' ? 'Saving…' : 'Log offer'}
                 </button>
                 <span className="note" style={{ marginLeft: 10 }}>
-                  Logging holds nothing — accepting is what reserves the unit.
+                  Logging holds nothing. Accepting is what reserves the unit.
                 </span>
               </form>
             )}
@@ -605,7 +605,7 @@ export function UnitDetail() {
                   </div>
                 )}
                 <div className="note">
-                  Reserving is not a button — it happens only by accepting an offer.
+                  Reserving is not a button. It happens only by accepting an offer.
                 </div>
               </>
             )}

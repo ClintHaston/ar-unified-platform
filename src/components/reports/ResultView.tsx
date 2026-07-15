@@ -24,7 +24,7 @@ export function ResultView({ result, accent }: { result: RunResult; accent: stri
   const measures = columns.filter((c) => c.role === 'measure')
 
   if (rows.length === 0) {
-    return <div className="panel"><div className="note">No rows match — honest-empty by design.</div></div>
+    return <div className="panel"><div className="note">No rows match. Honest-empty by design.</div></div>
   }
 
   // number: one big figure per measure, no dimension

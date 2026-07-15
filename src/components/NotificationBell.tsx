@@ -99,7 +99,7 @@ export function NotificationBell() {
             )}
           </div>
           {items.length === 0 ? (
-            <div className="bell-empty">Nothing yet — stage moves and stall alerts land here.</div>
+            <div className="bell-empty">Nothing yet. Stage moves and stall alerts land here.</div>
           ) : (
             items.map((n) => (
               <div

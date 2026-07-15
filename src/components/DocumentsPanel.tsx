@@ -66,7 +66,7 @@ export function DocumentsPanel({ unitId, dealId }: DocumentsPanelProps) {
   }
 
   async function archive(id: string, name: string) {
-    if (!window.confirm(`Archive "${name}"? The stored file is kept — provenance is never erased.`)) return
+    if (!window.confirm(`Archive "${name}"? The stored file is kept. Provenance is never erased.`)) return
     try {
       await api.archiveDocument(id)
       load()
@@ -93,7 +93,7 @@ export function DocumentsPanel({ unitId, dealId }: DocumentsPanelProps) {
 
       {!configured && (
         <div className="note" style={{ marginBottom: 10 }}>
-          Document storage is pending — R2 needs one-time enablement on the Cloudflare
+          Document storage is pending. R2 needs one-time enablement on the Cloudflare
           account plus a bucket token (steps are in the session log). Existing rows and
           everything else keep working; uploads unlock the moment the credentials land.
         </div>
@@ -153,7 +153,7 @@ export function DocumentsPanel({ unitId, dealId }: DocumentsPanelProps) {
       )}
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       <div className="note">
-        Every file carries a server-computed SHA-256 — a document that changed is detectable,
+        Every file carries a server-computed SHA-256. A document that changed is detectable,
         not arguable.
       </div>
     </div>

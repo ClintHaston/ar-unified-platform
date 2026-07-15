@@ -77,7 +77,7 @@ export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, acc
     <div className="seg-criteria">
       {groups.length === 0 && (
         <div className="note" style={{ marginBottom: 8 }}>
-          No filters yet — this list matches <b>every {source.object_type}</b>. Add a filter group to narrow it.
+          No filters yet. This list matches <b>every {source.object_type}</b>. Add a filter group to narrow it.
         </div>
       )}
       {groups.map((g, gi) => (

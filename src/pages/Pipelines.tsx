@@ -135,7 +135,7 @@ export function Pipelines() {
     } catch (err) {
       setDeals(previous)  // rollback the optimistic move
       const msg = err instanceof Error ? err.message : 'Stage move failed'
-      setError(msg)
+      // Floating toast only, matching note/task rollback. No inline red banner.
       toast.error('Stage move failed', `${deal.name} snapped back. ${msg}`)
     }
   }
@@ -170,7 +170,7 @@ export function Pipelines() {
             {selectMode ? 'Done' : 'Select'}
           </button>
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--p-body)' }}>
-            Changes are Postgres-local — nothing mirrors to HubSpot until the outbox ships
+            Changes are Postgres-local. Nothing mirrors to HubSpot until the outbox ships
           </span>
         </div>
 
@@ -274,8 +274,8 @@ export function Pipelines() {
       )}
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       <div className="note">
-        Cards are the real backfilled deals in Postgres. Drag a card to move its stage —
-        every move writes deal_stage_events with your name on it.
+        Cards are the real backfilled deals in Postgres. Drag a card to move its stage.
+        Every move writes deal_stage_events with your name on it.
       </div>
     </div>
   )

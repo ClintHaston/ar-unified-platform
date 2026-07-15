@@ -168,8 +168,8 @@ export function Reports() {
 
       {tab !== 'custom' && tab !== 'dashboards' && (
         <div className="note" style={{ marginTop: 10 }}>
-          Reporting v1 covers calls, sales, and funnels. Numbers are honest to the data —
-          where history is thin (no closed-won yet, calls without outcomes), the report shows it.
+          Reporting v1 covers calls, sales, and funnels. Numbers are honest to the data.
+          Where history is thin (no closed-won yet, calls without outcomes), the report shows it.
         </div>
       )}
     </div>

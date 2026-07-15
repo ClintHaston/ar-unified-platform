@@ -123,7 +123,7 @@ export function NewDealForm({ onCreated, onCancel }: NewDealFormProps) {
         Deal name
         <input
           className="plat-input"
-          placeholder="e.g. 2018 Cat 336 excavator — listing"
+          placeholder="e.g. 2018 Cat 336 excavator, listing"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
