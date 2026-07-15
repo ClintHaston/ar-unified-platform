@@ -15,6 +15,7 @@ const TOP: Record<string, string> = {
   '/inventory': 'Inventory',
   '/inventory/intake': 'Intake unit',
   '/contacts': 'Contacts',
+  '/companies': 'Companies',
   '/lists': 'Lists',
   '/tasks': 'Tasks',
   '/sales-sheet': 'Sales sheet',
