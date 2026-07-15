@@ -1,17 +1,14 @@
 import type { RunColumn, RunResult } from '../../lib/api'
 import { Funnel } from './Funnel'
+import { fmt } from './reportFormat'
+import {
+  DonutChart, GroupedBarChart, LineChartViz, SimpleBarChart, StackedBarChart,
+} from './charts/ReportCharts'
 
-// WS2b: render a builder run result. Funnel reuses the WS2a component; bar /
-// table / number are generic over the engine's {columns, rows}. Money columns
-// (type 'cents') render as dollars.
-
-function fmt(value: string | number | null, type: string): string {
-  if (value === null || value === undefined) return '—'
-  if (type === 'cents') return `$${(Number(value) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-  if (type === 'number') return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })
-  if (type === 'int') return Number(value).toLocaleString()
-  return String(value)
-}
+// WS2b: render a builder run result. Funnel reuses the WS2a component. Every
+// other viz is generic over the engine's {columns, rows}; bar/stacked/grouped/
+// line/donut render through recharts (charts/ReportCharts), table and number
+// stay native. Money columns (type 'cents') render as dollars.
 
 export function ResultView({ result, accent }: { result: RunResult; accent: string }) {
   if (result.viz === 'funnel') {
@@ -20,7 +17,6 @@ export function ResultView({ result, accent }: { result: RunResult; accent: stri
   }
 
   const { columns, rows } = result
-  const dims = columns.filter((c) => c.role === 'dimension')
   const measures = columns.filter((c) => c.role === 'measure')
 
   if (rows.length === 0) {
@@ -43,34 +39,11 @@ export function ResultView({ result, accent }: { result: RunResult; accent: stri
     )
   }
 
-  // bar: one dimension label + first measure as the bar, extra measures as text
-  if (result.viz === 'bar') {
-    const dim = dims[0]
-    const primary = measures[0]
-    const max = Math.max(1, ...rows.map((r) => Number(r[primary.key] ?? 0)))
-    return (
-      <div className="panel">
-        <div className="rep-funnel">
-          {rows.map((r, i) => (
-            <div key={i} className="rep-fstage">
-              <div className="rep-fhead">
-                <span className="rep-fname">{fmt(r[dim.key], dim.type)}</span>
-                <span className="rep-fcount">{fmt(r[primary.key], primary.type)}</span>
-              </div>
-              <div className="rep-ftrack">
-                <div className="rep-fbar" style={{ width: `${(Number(r[primary.key] ?? 0) / max) * 100}%`, background: accent }} />
-              </div>
-              {measures.length > 1 && (
-                <div className="rep-fmeta">
-                  {measures.slice(1).map((m) => <span key={m.key}>{m.label}: {fmt(r[m.key], m.type)}</span>)}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  if (result.viz === 'bar') return <SimpleBarChart columns={columns} rows={rows} accent={accent} />
+  if (result.viz === 'stacked_bar') return <StackedBarChart columns={columns} rows={rows} accent={accent} />
+  if (result.viz === 'grouped_bar') return <GroupedBarChart columns={columns} rows={rows} accent={accent} />
+  if (result.viz === 'line') return <LineChartViz columns={columns} rows={rows} accent={accent} />
+  if (result.viz === 'donut') return <DonutChart columns={columns} rows={rows} accent={accent} />
 
   // table: all columns
   const render = (c: RunColumn, r: Record<string, string | number | null>) => fmt(r[c.key], c.type)

@@ -19,20 +19,41 @@ interface Props {
 
 const VIZ_LABEL: Record<ReportViz, string> = {
   table: 'Table', bar: 'Bar', number: 'Number', funnel: 'Funnel',
+  stacked_bar: 'Stacked bar', grouped_bar: 'Grouped bar', line: 'Line', donut: 'Donut',
+}
+
+// Series (breakdown) modes — mirror the server: stacked/grouped require a
+// second dimension, line may take one, everything else takes none.
+type SeriesMode = 'required' | 'optional' | 'none'
+function seriesMode(viz: ReportViz): SeriesMode {
+  if (viz === 'stacked_bar' || viz === 'grouped_bar') return 'required'
+  if (viz === 'line') return 'optional'
+  return 'none'
 }
 
 // Which viz needs what shape — mirrors the server's validation so the preview
 // only fires on a runnable definition (the server still enforces).
-function isRunnable(viz: ReportViz, dims: string[], measures: string[]): boolean {
+function isRunnable(viz: ReportViz, dims: string[], measures: string[], series: string): boolean {
   if (viz === 'funnel') return true
   if (viz === 'number') return dims.length === 0 && measures.length >= 1
   if (viz === 'bar') return dims.length === 1 && measures.length >= 1
+  if (viz === 'donut') return dims.length === 1 && measures.length === 1
+  if (viz === 'stacked_bar' || viz === 'grouped_bar') {
+    return dims.length === 1 && measures.length === 1 && !!series && !dims.includes(series)
+  }
+  if (viz === 'line') {
+    if (dims.length !== 1 || measures.length < 1) return false
+    return series ? (measures.length === 1 && !dims.includes(series)) : true
+  }
   return dims.length >= 1 && measures.length >= 1   // table
 }
 
 function shapeHint(viz: ReportViz): string {
   if (viz === 'number') return 'Pick one or more measures (no dimensions).'
   if (viz === 'bar') return 'Pick exactly one dimension and at least one measure.'
+  if (viz === 'donut') return 'Pick exactly one dimension and exactly one measure.'
+  if (viz === 'stacked_bar' || viz === 'grouped_bar') return 'Pick one dimension, one breakdown, and one measure.'
+  if (viz === 'line') return 'Pick one dimension and at least one measure. A breakdown takes one measure.'
   if (viz === 'table') return 'Pick at least one dimension and one measure.'
   return ''
 }
@@ -43,6 +64,7 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
   const [sourceKey, setSourceKey] = useState('')
   const [dims, setDims] = useState<string[]>([])
   const [measures, setMeasures] = useState<string[]>([])
+  const [series, setSeries] = useState<string>('')                     // '' = no breakdown
   const [filters, setFilters] = useState<Record<string, string>>({})   // field -> value ('' = any)
   const [viz, setViz] = useState<ReportViz>('table')
 
@@ -73,11 +95,13 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
   // switching source resets the selection to a clean slate
   function chooseSource(key: string) {
     setSourceKey(key)
-    setDims([]); setMeasures([]); setFilters({})
+    setDims([]); setMeasures([]); setSeries(''); setFilters({})
     const s = sources.find((x) => x.key === key)
     setViz(s && s.viz.includes('table') ? 'table' : (s?.viz[0] ?? 'table'))
     setResult(null); setPreviewErr(''); setEditingId(null); setName('')
   }
+
+  const usesSeries = seriesMode(viz) !== 'none'
 
   const definition: ReportDefinition | null = useMemo(() => {
     if (!source) return null
@@ -88,14 +112,15 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
       source: source.key,
       dimensions: viz === 'funnel' ? [] : dims,
       measures: viz === 'funnel' ? [] : measures,
+      series: usesSeries && series ? series : undefined,
       filters: clauses,
       date: (start || end) ? { start: start || undefined, end: end || undefined } : undefined,
       owner_id: source.has_owner && ownerId ? ownerId : undefined,
       viz,
     }
-  }, [source, dims, measures, filters, viz, start, end, ownerId])
+  }, [source, dims, measures, series, usesSeries, filters, viz, start, end, ownerId])
 
-  const ready = !!source && isRunnable(viz, viz === 'funnel' ? [] : dims, viz === 'funnel' ? [] : measures)
+  const ready = !!source && isRunnable(viz, viz === 'funnel' ? [] : dims, viz === 'funnel' ? [] : measures, series)
 
   // live preview, debounced
   useEffect(() => {
@@ -140,6 +165,7 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
     setSourceKey(d.source)
     setDims(d.dimensions ?? [])
     setMeasures(d.measures ?? [])
+    setSeries(d.series ?? '')
     setFilters(Object.fromEntries((d.filters ?? []).map((f) => [f.field, f.value])))
     setViz(d.viz)
     setName(r.name)
@@ -197,6 +223,20 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
                         onClick={() => toggle(setMeasures, m.key)}>{m.label}</button>
               ))}
             </div>
+
+            {usesSeries && (
+              <>
+                <label className="rb-lbl">
+                  Breakdown (series){seriesMode(viz) === 'optional' ? ' — optional' : ''}
+                </label>
+                <select className="plat-input" value={series} onChange={(e) => setSeries(e.target.value)}>
+                  <option value="">{seriesMode(viz) === 'required' ? 'Choose a breakdown…' : 'No breakdown'}</option>
+                  {source.dimensions.filter((d) => !dims.includes(d.key)).map((d) => (
+                    <option key={d.key} value={d.key}>{d.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
           </>
         )}
 

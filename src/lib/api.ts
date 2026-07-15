@@ -783,7 +783,9 @@ export interface CallActivityReport {
 }
 
 // ── WS2b custom report builder ──
-export type ReportViz = 'table' | 'bar' | 'number' | 'funnel'
+export type ReportViz =
+  | 'table' | 'bar' | 'number' | 'funnel'
+  | 'stacked_bar' | 'grouped_bar' | 'line' | 'donut'
 export type MeasureType = 'int' | 'cents' | 'number'
 
 export interface RegistryField {
@@ -812,6 +814,7 @@ export interface ReportDefinition {
   source: string
   dimensions: string[]
   measures: string[]
+  series?: string          // optional 2nd (breakdown) dimension for stacked/grouped/line
   filters: ReportFilterClause[]
   date?: { start?: string; end?: string }
   owner_id?: string
@@ -822,12 +825,13 @@ export interface RunColumn {
   key: string
   label: string
   type: string
-  role: 'dimension' | 'measure'
+  role: 'dimension' | 'series' | 'measure'
 }
 
-// Grouped result (table/bar/number). Funnel returns FunnelReport's shape.
+// Grouped result for every non-funnel viz. Breakdown charts carry an extra
+// role:'series' column; the frontend pivots the long rows into wide chart data.
 export interface RunGroupedResult {
-  viz: 'table' | 'bar' | 'number'
+  viz: 'table' | 'bar' | 'number' | 'stacked_bar' | 'grouped_bar' | 'line' | 'donut'
   columns: RunColumn[]
   rows: Array<Record<string, string | number | null>>
 }
