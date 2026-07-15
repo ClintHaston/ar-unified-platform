@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type EmailLogRow, type SettingRow } from '../lib/api'
-
-interface RosterUser {
-  id: string
-  email: string
-  name: string
-  role: string
-  is_active: boolean
-  must_change_password: boolean
-  created_at: string
-}
+import { UserManagement } from '../components/UserManagement'
 
 // Step 3c-1: tab-level permission toggles retired with the legacy auth —
 // access is rep-vs-admin by role now. 3c-7 adds the Settings editor over
@@ -122,16 +113,14 @@ function SettingEditor({ setting, onSaved, onError }: {
 }
 
 export function Admin() {
-  const [users, setUsers] = useState<RosterUser[]>([])
   const [settings, setSettings] = useState<SettingRow[]>([])
   const [emails, setEmails] = useState<EmailLogRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   const load = useCallback(() => {
-    Promise.all([api.listUsers(), api.settings(), api.emailLog()])
-      .then(([u, s, e]) => {
-        setUsers(u.users)
+    Promise.all([api.settings(), api.emailLog()])
+      .then(([s, e]) => {
         setSettings(s.settings)
         setEmails(e.emails)
         setError('')
@@ -196,35 +185,9 @@ export function Admin() {
         </div>
       </div>
 
-      <h1 className="admin-title bebas">Platform Users</h1>
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Password</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id}>
-              <td>
-                <div style={{ fontWeight: 600 }}>{u.name}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{u.email}</div>
-              </td>
-              <td>
-                <span className={`badge-role ${u.role}`}>{u.role}</span>
-              </td>
-              <td>{u.is_active ? 'Active' : 'Inactive'}</td>
-              <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                {u.must_change_password ? 'Change required at next login' : 'Set'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
+
+      <UserManagement />
     </div>
   )
 }
