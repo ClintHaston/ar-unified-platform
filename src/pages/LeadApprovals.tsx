@@ -66,7 +66,7 @@ export function LeadApprovals() {
   return (
     <div>
       <div className="note" style={{ marginBottom: 12 }}>
-        New HubSpot contacts (created after the backfill snapshot) land here every 15 minutes —
+        New HubSpot contacts (created after the backfill snapshot) land here every 15 minutes,
         read-only against HubSpot. Approving births the contact in the platform with its HubSpot
         id already mapped; dismissing keeps it out. Each HubSpot contact passes through once.
       </div>

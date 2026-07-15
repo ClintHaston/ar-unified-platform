@@ -274,8 +274,8 @@ export function Pipelines() {
       )}
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       <div className="note">
-        Cards are the real backfilled deals in Postgres. Drag a card to move its stage —
-        every move writes deal_stage_events with your name on it.
+        Cards are the real backfilled deals in Postgres. Drag a card to move its stage.
+        Every move writes deal_stage_events with your name on it.
       </div>
     </div>
   )

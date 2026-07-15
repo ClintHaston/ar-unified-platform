@@ -476,8 +476,8 @@ export function DealDetail() {
             <h3>Stage history</h3>
             {stage_history.length === 0 ? (
               <div className="note">
-                No stage moves recorded yet. History starts with the first move in this app —
-                the backfill imported deals at their HubSpot stage.
+                No stage moves recorded yet. History starts with the first move in this app.
+                The backfill imported deals at their HubSpot stage.
               </div>
             ) : (
               stage_history.map((h, i) => (
