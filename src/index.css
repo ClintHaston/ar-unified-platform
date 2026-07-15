@@ -21,8 +21,11 @@
 
   --nav-height: 56px;
 
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   color: var(--text);
   background: var(--body-bg);
 }
@@ -456,6 +459,22 @@ input, select, textarea {
   --p-white: #FFFFFF;
   --p-blue-muted: #A8BDD4;
   --p-body: #555555;
+  --p-border: #E5E7EB;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* SC card elevation — subtle, near-black at very low alpha (matches
+     ar-sales-command --shadow-sm exactly). */
+  --p-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.05);
+
+  /* Soft-tint status pill palette, ported verbatim from ar-sales-command.
+     Reps scan these colours; the sell/buy accent semantic lives on surfaces
+     (boards, nav, buttons), never on status pills. */
+  --pill-green-bg: #EAF3DE; --pill-green-fg: #3B6D11;  /* active / available */
+  --pill-amber-bg: #FAEEDA; --pill-amber-fg: #854F0B;  /* pending / reserved */
+  --pill-grey-bg:  #EEF1F5; --pill-grey-fg:  #6B7280;  /* sold / neutral */
+  --pill-red-bg:   #FDECEA; --pill-red-fg:   #B4432B;  /* maintenance / alert */
+  --pill-navy-bg:  #E6ECF4; --pill-navy-fg:  #2C3E50;  /* in transport / info */
+  --pill-buy-bg:   #E1F0F0; --pill-buy-fg:   #2C7A7B;  /* buy — teal preserved */
 }
 
 .plat-grid {
@@ -547,42 +566,50 @@ input, select, textarea {
 /* KPIs / panels (prototype) */
 .kpis { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
 .kpi {
-  background: var(--p-white); border: 1px solid var(--p-steel);
-  border-radius: 9px; padding: 14px 18px; flex: 1; min-width: 150px;
+  background: var(--p-white); border: 1px solid var(--p-border);
+  border-radius: 8px; padding: 16px 18px; flex: 1; min-width: 150px;
+  box-shadow: var(--p-sh-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
-.kpi .l { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--p-body); }
-.kpi .v { font-size: 24px; font-weight: bold; margin-top: 4px; color: var(--p-navy-dark); }
-.kpi .s { font-size: 12px; color: var(--p-gold); margin-top: 2px; }
+.kpi:hover { border-color: var(--p-gold); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26, 43, 71, 0.12); }
+.kpi .l { font-size: 10px; text-transform: lowercase; letter-spacing: .2px; color: var(--p-blue-muted); }
+.kpi .v { font-size: 22px; font-weight: 500; margin-top: 6px; color: var(--p-navy-dark); font-family: var(--mono); line-height: 1.1; }
+.kpi .s { font-size: 10px; color: var(--p-gold); margin-top: 4px; }
 
 .panel {
-  background: var(--p-white); border: 1px solid var(--p-steel);
-  border-radius: 10px; padding: 18px; margin-bottom: 20px;
+  background: var(--p-white); border: 1px solid var(--p-border);
+  border-radius: 8px; padding: 18px; margin-bottom: 20px;
+  box-shadow: var(--p-sh-sm);
 }
 .panel h3 {
-  font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
-  color: var(--p-body); margin-bottom: 14px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0;
+  color: var(--p-navy-dark); margin-bottom: 14px;
 }
 .note { font-size: 12px; color: var(--p-body); margin-top: 6px; }
 
 .plat-table { width: 100%; border-collapse: collapse; }
 .plat-table th {
-  background: var(--p-navy-dark); color: #fff; font-size: 11px;
-  text-transform: uppercase; letter-spacing: .4px; text-align: left;
-  padding: 9px 12px;
+  background: var(--p-row); color: var(--p-blue-muted); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: .5px; text-align: left;
+  padding: 10px 14px; border-bottom: 1px solid var(--p-border);
 }
 .plat-table td {
-  padding: 9px 12px; font-size: 13px;
+  padding: 11px 14px; font-size: 13px;
   border-bottom: 1px solid var(--p-row); color: var(--p-navy-dark);
 }
 .plat-table tr:last-child td { border-bottom: 0; }
-.plat-table .num { font-weight: bold; color: var(--p-navy-mid); }
+.plat-table .num { font-weight: 500; color: var(--p-navy-dark); font-family: var(--mono); }
 
-.pill { font-size: 10px; border-radius: 10px; padding: 2px 9px; color: #fff; }
-.pill.green { background: #2e7d5b; }
-.pill.gold { background: var(--p-gold); color: var(--p-navy-dark); }
-.pill.grey { background: #8a8f98; }
-.pill.red { background: #B4432B; }
-.pill.buy { background: var(--p-buy); }
+.pill {
+  display: inline-block; font-size: 10px; font-weight: 500;
+  border-radius: 20px; padding: 2px 8px; white-space: nowrap; line-height: 1.5;
+  background: var(--pill-grey-bg); color: var(--pill-grey-fg);
+}
+.pill.green { background: var(--pill-green-bg); color: var(--pill-green-fg); }
+.pill.gold { background: var(--pill-amber-bg); color: var(--pill-amber-fg); }
+.pill.grey { background: var(--pill-grey-bg); color: var(--pill-grey-fg); }
+.pill.red { background: var(--pill-red-bg); color: var(--pill-red-fg); }
+.pill.buy { background: var(--pill-buy-bg); color: var(--pill-buy-fg); }
 
 .roletoggle {
   display: flex; background: var(--p-row); border-radius: 7px;
@@ -599,8 +626,9 @@ input, select, textarea {
 /* Board (prototype) */
 .board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: flex-start; }
 .col {
-  background: var(--p-white); border: 1px solid var(--p-steel);
-  border-radius: 9px; min-width: 230px; width: 230px; flex-shrink: 0;
+  background: var(--p-white); border: 1px solid var(--p-border);
+  border-radius: 8px; min-width: 230px; width: 230px; flex-shrink: 0;
+  box-shadow: var(--p-sh-sm);
 }
 .col.drag-over { outline: 2px dashed var(--p-gold); outline-offset: -2px; }
 .colh {
@@ -617,10 +645,13 @@ input, select, textarea {
   min-height: 50px; max-height: calc(100vh - 320px); overflow-y: auto;
 }
 .card {
-  background: var(--p-white); border: 1px solid var(--p-steel);
+  background: var(--p-white); border: 1px solid var(--p-border);
   border-left: 4px solid var(--p-gold); border-radius: 6px;
   padding: 9px 10px; cursor: grab;
+  box-shadow: var(--p-sh-sm);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
+.card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26, 43, 71, 0.12); }
 .card:active { cursor: grabbing; }
 .card.dragging { opacity: 0.4; }
 
@@ -633,7 +664,7 @@ input, select, textarea {
 .card .co { font-size: 12px; font-weight: bold; color: var(--p-navy-dark); }
 .card .eq { font-size: 11px; color: var(--p-body); margin: 2px 0 6px; }
 .card .mt { display: flex; justify-content: space-between; align-items: center; }
-.card .vv { font-size: 12px; font-weight: bold; color: var(--p-navy-mid); }
+.card .vv { font-size: 12px; font-weight: 500; color: var(--p-navy-mid); font-family: var(--mono); }
 .card .rp {
   font-size: 9px; background: var(--p-navy-dark); color: #fff;
   border-radius: 9px; padding: 1px 7px;
@@ -674,10 +705,12 @@ input, select, textarea {
   gap: 14px;
 }
 .unit-card {
-  background: var(--p-white); border: 1px solid var(--p-steel);
-  border-radius: 9px; overflow: hidden; cursor: pointer;
+  background: var(--p-white); border: 1px solid var(--p-border);
+  border-radius: 8px; overflow: hidden; cursor: pointer;
+  box-shadow: var(--p-sh-sm);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
-.unit-card:hover { border-color: var(--p-gold); }
+.unit-card:hover { border-color: var(--p-gold); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26, 43, 71, 0.12); }
 .unit-card .ph {
   height: 60px;
   background: linear-gradient(135deg, var(--p-steel), var(--p-blue-muted));
@@ -699,12 +732,12 @@ input, select, textarea {
 }
 .unit-card .r span:first-child { color: var(--p-body); }
 
-/* unit status pills (prototype: av/res/sold/maint + in_transport) */
-.pill.av { background: #2e7d5b; }
-.pill.res { background: var(--p-gold); color: var(--p-navy-dark); }
-.pill.sold { background: #8a8f98; }
-.pill.maint { background: #B4432B; }
-.pill.trans { background: var(--p-navy-mid); }
+/* unit status pills (prototype: av/res/sold/maint + in_transport) — soft tints */
+.pill.av { background: var(--pill-green-bg); color: var(--pill-green-fg); }
+.pill.res { background: var(--pill-amber-bg); color: var(--pill-amber-fg); }
+.pill.sold { background: var(--pill-grey-bg); color: var(--pill-grey-fg); }
+.pill.maint { background: var(--pill-red-bg); color: var(--pill-red-fg); }
+.pill.trans { background: var(--pill-navy-bg); color: var(--pill-navy-fg); }
 
 /* ── 3c-4 Valuation (prototype_4 .val triplet + snapshot age line) ── */
 .val-row { display: flex; gap: 8px; margin-top: 7px; }
@@ -712,7 +745,7 @@ input, select, textarea {
   flex: 1; background: var(--p-row); border: 1px solid var(--p-steel);
   border-radius: 6px; padding: 5px 6px; text-align: center;
 }
-.val-row b { display: block; font-size: 13px; color: var(--p-navy-dark); }
+.val-row b { display: block; font-size: 13px; color: var(--p-navy-dark); font-family: var(--mono); font-weight: 500; }
 .val-row small { font-size: 9px; color: var(--p-body); letter-spacing: 0.6px; }
 .val-meta { font-size: 10px; color: var(--p-body); margin-top: 4px; }
 .val-meta .stale { color: #B4432B; font-weight: bold; }
@@ -906,6 +939,13 @@ input, select, textarea {
 .tl-kind { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--p-body); font-weight: bold; }
 /* Company detail overview stat tiles */
 .co-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
-.co-stat { border: 1px solid var(--p-steel); border-radius: 8px; padding: 12px; background: var(--p-white); }
-.co-stat-n { font-size: 20px; font-weight: bold; color: var(--p-navy-dark); }
+.co-stat { border: 1px solid var(--p-border); border-radius: 8px; padding: 12px; background: var(--p-white); box-shadow: var(--p-sh-sm); }
+.co-stat-n { font-size: 20px; font-weight: 500; color: var(--p-navy-dark); font-family: var(--mono); }
 .co-stat-l { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--p-body); margin-top: 2px; }
+
+/* Reduced-motion: the retheme's card hover lifts collapse to instant, matching
+   the shell.css gating so the whole app honours the preference consistently. */
+@media (prefers-reduced-motion: reduce) {
+  .kpi, .card, .unit-card { transition: none !important; }
+  .kpi:hover, .card:hover, .unit-card:hover { transform: none; }
+}
