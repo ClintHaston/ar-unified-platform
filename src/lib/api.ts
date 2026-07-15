@@ -708,6 +708,17 @@ export interface EmailLogRow {
   created_at: string
 }
 
+export interface PlatformUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  is_active: boolean
+  locked_until: string | null
+  last_active: string | null
+  created_at: string
+}
+
 export interface CommissionRepRow {
   rep_id: string | null
   rep_name: string
@@ -1632,6 +1643,17 @@ export const api = {
   emailLog: () => request<{ emails: EmailLogRow[] }>('/platform/settings/email-log'),
 
   commissionReport: () => request<CommissionReport>('/platform/reports/commission'),
+
+  // ── Task B: admin user management (Settings > Team) ──
+  adminUsers: () => request<{ users: PlatformUser[] }>('/platform/users'),
+  createPlatformUser: (input: { email: string; name: string; role: string }) =>
+    request<{ user: PlatformUser; temp_password: string }>('/platform/users', {
+      method: 'POST', body: JSON.stringify(input),
+    }),
+  resetPlatformUserPassword: (id: string) =>
+    request<{ temp_password: string }>(`/platform/users/${id}/reset-password`, { method: 'POST' }),
+  updatePlatformUser: (id: string, patch: { role?: string; is_active?: boolean; name?: string }) =>
+    request<{ ok: boolean }>(`/platform/users/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
   // ── WS2a prebuilt reports (admin-only, read-only) ──
   sellFunnel: (f: ReportFilters = {}) =>
