@@ -53,7 +53,7 @@ export function BuyerInterestPanel({ unitId }: BuyerInterestPanelProps) {
         {interest && interest.length > 0 && <span className="c">{interest.length}</span>}
       </h3>
       <div className="note" style={{ marginTop: 0 }}>
-        Open buy opps working this unit, across all reps — read-only.
+        Open buy opps working this unit, across all reps. Read-only.
         {websiteUrl ? (
           <> · <a href={websiteUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>View live listing ↗</a></>
         ) : (

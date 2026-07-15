@@ -9,7 +9,7 @@ import { api, type UnitCard } from '../lib/api'
 const SOURCE_NOTE: Record<string, string> = {
   published: 'Spec section is the published Spec Builder description for this listing.',
   generated: 'Spec section rendered live from the OEM baseline (no published listing description).',
-  none: 'No spec template or taxonomy links for this unit — showing unit facts only.',
+  none: 'No spec template or taxonomy links for this unit. Showing unit facts only.',
 }
 
 export function SalesSheet() {
@@ -85,7 +85,7 @@ export function SalesSheet() {
           )}
         </div>
         {filter && shortlist.length === 30 && (
-          <div className="note">Showing the first 30 matches — refine the filter.</div>
+          <div className="note">Showing the first 30 matches. Refine the filter.</div>
         )}
       </div>
 
@@ -105,7 +105,7 @@ export function SalesSheet() {
       )}
       {!html && !rendering && !loadingUnits && (
         <div className="note">
-          Server-rendered, brand-styled, ready to send or print. Asking price only — internal
+          Server-rendered, brand-styled, ready to send or print. Asking price only. Internal
           valuations never appear on a sheet.
         </div>
       )}

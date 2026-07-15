@@ -36,8 +36,8 @@ const DETAIL: Array<{ prefix: string; parent: Crumb; leaf: string }> = [
   { prefix: '/deals/', parent: { label: 'Pipeline', to: '/pipelines' }, leaf: 'Deal detail' },
   { prefix: '/units/', parent: { label: 'Inventory', to: '/inventory' }, leaf: 'Unit detail' },
   { prefix: '/contacts/', parent: { label: 'Contacts', to: '/contacts' }, leaf: 'Contact detail' },
-  { prefix: '/companies/', parent: { label: 'Contacts', to: '/contacts' }, leaf: 'Company detail' },
-  { prefix: '/lists/', parent: { label: 'Lists', to: '/lists' }, leaf: 'List detail' },
+  { prefix: '/companies/', parent: { label: 'Contacts', to: '/contacts' }, leaf: 'Company' },
+  { prefix: '/lists/', parent: { label: 'Lists', to: '/lists' }, leaf: 'List' },
   { prefix: '/buyer-opportunities/', parent: { label: 'Buy opps', to: '/buyer-opportunities' }, leaf: 'Buy opp' },
 ]
 

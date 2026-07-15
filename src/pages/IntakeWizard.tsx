@@ -184,7 +184,7 @@ export function IntakeWizard() {
           </button>
         </div>
         <div className="note">
-          Pricing from a real number beats guessing — the Valuation panel on the unit runs
+          Pricing from a real number beats guessing. The Valuation panel on the unit runs
           the Evaluator and saves an immutable snapshot.
         </div>
       </div>
@@ -208,7 +208,7 @@ export function IntakeWizard() {
           <>
             <h3>Consigner</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-              <label><input type="radio" checked={consignerMode === 'none'} onChange={() => setConsignerMode('none')} /> No consigner — owned / purchased unit</label>
+              <label><input type="radio" checked={consignerMode === 'none'} onChange={() => setConsignerMode('none')} /> No consigner: owned / purchased unit</label>
               <label><input type="radio" checked={consignerMode === 'existing'} onChange={() => setConsignerMode('existing')} /> Existing consigner</label>
               {consignerMode === 'existing' && (
                 <select className="plat-input" value={consignerId} onChange={(e) => setConsignerId(e.target.value)}>
@@ -254,7 +254,7 @@ export function IntakeWizard() {
               <input className="plat-input" style={{ maxWidth: 120 }} type="number" placeholder="Year" value={year} onChange={(e) => setYear(e.target.value)} />
               <input className="plat-input" style={{ flex: 1 }} placeholder="Serial / VIN" value={serial} onChange={(e) => setSerial(e.target.value)} />
             </div>
-            <div className="note">Taxonomy links feed valuation and search — set them now if known; they stay editable on the unit.</div>
+            <div className="note">Taxonomy links feed valuation and search. Set them now if known; they stay editable on the unit.</div>
           </>
         )}
 
@@ -297,7 +297,7 @@ export function IntakeWizard() {
             >
               + Add expense
             </button>
-            <div className="note">Transport, inspection, repairs at intake — margin math reads these later; no approvals, no workflow.</div>
+            <div className="note">Transport, inspection, repairs at intake. Margin math reads these later; no approvals, no workflow.</div>
           </>
         )}
 
@@ -306,7 +306,7 @@ export function IntakeWizard() {
             <h3>Inspection checklist</h3>
             {!storageOk ? (
               <div className="note">
-                Document storage is pending (R2 setup) — the checklist can't be saved as a
+                Document storage is pending (R2 setup). The checklist can't be saved as a
                 document yet, so this step is skipped. The unit can be inspected later.
               </div>
             ) : (

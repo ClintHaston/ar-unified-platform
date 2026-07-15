@@ -17,7 +17,7 @@ function initials(name: string | null): string {
 }
 
 const INTEREST_OPTIONS: InterestStatus[] = ['info_sent', 'negotiating', 'cooling', 'offer_made']
-const INTEREST_HINT = 'Buy-side only — nothing here touches unit availability or HubSpot.'
+const INTEREST_HINT = 'Buy-side only. Nothing here touches unit availability or HubSpot.'
 
 interface PickedUnit {
   unit_id: string
@@ -32,7 +32,7 @@ function unitCardLabel(card: BuyerOppCard): string | null {
   const fu = card.first_unit
   const num = fu.legacy_id ? `#${fu.legacy_id}` : (fu.serial || 'no #')
   const desc = (fu.description || fu.title || '').trim()
-  let s = `${num} — ${desc}`
+  let s = `${num} · ${desc}`
   if (card.unit_count > 1) s += `  +${card.unit_count - 1} more`
   return s
 }
@@ -174,7 +174,7 @@ export function BuyerOpportunities() {
         {creating && (
           <div style={{ border: '1px solid var(--p-steel)', borderRadius: 8, padding: '12px 14px', marginTop: 12 }}>
             <div style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--p-navy-dark)', marginBottom: 8 }}>
-              New buy opp — who is the buyer?
+              New buy opp: who is the buyer?
             </div>
             {picked ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -255,7 +255,7 @@ export function BuyerOpportunities() {
 
             <textarea
               className="plat-input"
-              placeholder="Notes (optional) — what are they hunting for?"
+              placeholder="Notes (optional): what are they hunting for?"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               style={{ marginTop: 8, minHeight: 60, resize: 'vertical' }}
@@ -323,7 +323,7 @@ export function BuyerOpportunities() {
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       <div className="note">
         Drag a card to move its buy-side stage (only your own, or as an admin). Each card is a
-        buyer you're working — open one to manage the units they're interested in.
+        buyer you're working. Open one to manage the units they're interested in.
       </div>
     </div>
   )

@@ -185,7 +185,7 @@ export function BuyerOpportunityDetail() {
                   value={noteDraft}
                   onChange={(e) => setNoteDraft(e.target.value)}
                   style={{ minHeight: 60, resize: 'vertical' }}
-                  placeholder="Add a note — budget, timing, conversation recap…"
+                  placeholder="Add a note: budget, timing, conversation recap…"
                 />
                 <div style={{ marginTop: 6 }}>
                   <button className="plat-btn" disabled={busy !== '' || !noteDraft.trim()} onClick={addNote}>
@@ -214,7 +214,7 @@ export function BuyerOpportunityDetail() {
           <div className="panel">
             <h3>Interested units <span className="c">{units.length}</span></h3>
             <div className="note" style={{ marginTop: 0 }}>
-              Interest only — attaching a unit never changes its availability. To actually reserve a
+              Interest only. Attaching a unit never changes its availability. To actually reserve a
               unit, log and accept an offer on the unit itself.
             </div>
 
@@ -318,7 +318,7 @@ function UnitLinkRow({ oppId, link, canEdit, busy, onChange, setError }: UnitLin
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div>
           <Link to={`/units/${link.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
-            {link.legacy_id ? `#${link.legacy_id} — ` : ''}{link.unit_title}
+            {link.legacy_id ? `#${link.legacy_id} · ` : ''}{link.unit_title}
           </Link>
           <span className={`pill ${link.unit_status === 'available' ? 'av' : link.unit_status === 'reserved' ? 'res' : link.unit_status === 'sold' ? 'sold' : 'grey'}`} style={{ marginLeft: 8 }}>
             {link.unit_status.replace('_', ' ')}

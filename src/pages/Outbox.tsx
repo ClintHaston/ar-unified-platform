@@ -34,12 +34,12 @@ const ACTION_LABEL: Record<string, string> = {
   archive: 'would ARCHIVE the mirrored record',
   associate: 'would ASSOCIATE the two mirrored records',
   held_for_approval: 'held at the first-push approval gate',
-  waiting_on_parents: 'waiting — both ends must be mapped first',
-  waiting_on_gate: 'waiting — a parent is held at the approval gate',
+  waiting_on_parents: 'waiting: both ends must be mapped first',
+  waiting_on_gate: 'waiting: a parent is held at the approval gate',
   config_error: 'configuration gap',
-  done_nothing_to_archive: 'nothing to do — never pushed, no mirror object',
-  done_entity_missing: 'nothing to do — entity row no longer exists',
-  done_archived_before_first_push: 'nothing to do — archived before first push',
+  done_nothing_to_archive: 'nothing to do: never pushed, no mirror object',
+  done_entity_missing: 'nothing to do: entity row no longer exists',
+  done_archived_before_first_push: 'nothing to do: archived before first push',
 }
 
 function when(iso: string): string {
@@ -71,7 +71,7 @@ function PlanDetail({ plan }: { plan: OutboxPlan }) {
       {plan.intended_lifecyclestage && (
         <div className="note" style={{ marginTop: 6 }}>
           Lifecycle stamp intended: <b>{plan.intended_lifecyclestage}</b>
-          {plan.ratchet_note ? ` — ${plan.ratchet_note}` : ''}
+          {plan.ratchet_note ? ` · ${plan.ratchet_note}` : ''}
         </div>
       )}
     </div>
@@ -153,12 +153,12 @@ export function Outbox() {
     <div>
       <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <span className={`pill ${data?.drain_armed ? 'red' : 'grey'}`}>
-          {data?.drain_armed ? 'DRAIN ARMED — writes to HubSpot' : 'Drain disarmed'}
+          {data?.drain_armed ? 'DRAIN ARMED: writes to HubSpot' : 'Drain disarmed'}
         </span>
         <span className="note" style={{ marginTop: 0 }}>
           {data?.drain_armed
             ? 'The drain pushes this queue to HubSpot every 10 minutes.'
-            : 'Queue accumulates by design until cutover — nothing is pushed while disarmed.'}
+            : 'Queue accumulates by design until cutover. Nothing is pushed while disarmed.'}
         </span>
         <div style={{ flex: 1 }} />
         <button className="btn-primary" onClick={runDryRun} disabled={dryRunning}>
@@ -170,10 +170,10 @@ export function Outbox() {
         <div className="panel" data-testid="dryrun-summary">
           <b>Dry run:</b>{' '}
           {Object.entries(dryRun.planned).length === 0
-            ? 'queue is empty — nothing would be written.'
+            ? 'queue is empty. Nothing would be written.'
             : Object.entries(dryRun.planned).map(([k, v]) => `${v} ${k}`).join(' · ')}
           <div className="note">
-            HubSpot writes performed: <b>{dryRun.hubspot_writes_performed}</b> — reads only,
+            HubSpot writes performed: <b>{dryRun.hubspot_writes_performed}</b>, reads only,
             the queue was not mutated.
           </div>
         </div>
@@ -207,7 +207,7 @@ export function Outbox() {
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', color: 'var(--p-body)', padding: 18 }}>
                   {tab === 'failed'
-                    ? 'No failed rows — the floor is clean.'
+                    ? 'No failed rows. The floor is clean.'
                     : tab === 'pending_approval'
                       ? 'No first-push approvals waiting.'
                       : 'Nothing pending.'}
@@ -272,7 +272,7 @@ export function Outbox() {
 
       <div className="note">
         Gated rows are first pushes of scraper/form-import contacts (§5). Approve releases the
-        row to the drain; Dismiss keeps the contact local-only — a later edit re-enters the gate.
+        row to the drain; Dismiss keeps the contact local-only. A later edit re-enters the gate.
         Dismissed and completed rows leave this screen; every action is recorded in the audit log.
       </div>
     </div>

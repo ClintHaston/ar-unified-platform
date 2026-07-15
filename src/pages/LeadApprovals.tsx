@@ -73,7 +73,7 @@ export function LeadApprovals() {
 
       {lastApproved && (
         <div className="panel" style={{ borderLeft: '4px solid #2e7d5b' }} data-testid="approved-banner">
-          Approved — <b>{lastApproved.leadName}</b> is now a platform contact
+          Approved: <b>{lastApproved.leadName}</b> is now a platform contact
           (source <code>form_import</code>, HubSpot id mapped at birth).{' '}
           <Link to={`/contacts/${lastApproved.contactId}`}>Open contact</Link>
         </div>
@@ -109,7 +109,7 @@ export function LeadApprovals() {
               <tr>
                 <td colSpan={7} style={{ textAlign: 'center', color: 'var(--p-body)', padding: 18 }}>
                   {tab === 'pending_approval'
-                    ? 'No leads awaiting a decision — the door is clear.'
+                    ? 'No leads awaiting a decision. The door is clear.'
                     : 'Nothing here yet.'}
                 </td>
               </tr>

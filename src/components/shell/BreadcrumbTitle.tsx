@@ -1,36 +1,40 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 // Lets a detail page publish its own leaf label (a company name, a segment
-// name) so the breadcrumb can show it instead of a static fallback. The page
-// calls useBreadcrumbTitle(name) once its record loads; the title clears on
-// unmount so the next route starts from its static label. Purely display
-// state, no data written.
+// name) so the breadcrumb shows it instead of a static fallback. The page calls
+// useBreadcrumbTitle(name) once its record loads; the title clears on unmount.
+//
+// Two separate contexts on purpose: the VALUE changes as the title changes, but
+// the SETTER is the identity-stable useState dispatcher. useBreadcrumbTitle only
+// depends on the setter (stable) and the title arg (a primitive), so its effect
+// runs exactly once per real title change — no re-render loop. (An earlier
+// single-context version memoized {title,setTitle} on [title], so the context
+// object changed every update, the hook's effect re-ran, and its cleanup+set
+// toggled the title back and forth: a render storm that froze detail pages.)
 
-interface BreadcrumbTitleApi {
-  title: string | null
-  setTitle: (title: string | null) => void
-}
-
-const BreadcrumbTitleContext = createContext<BreadcrumbTitleApi | null>(null)
+const TitleValueContext = createContext<string | null>(null)
+const SetTitleContext = createContext<(title: string | null) => void>(() => {})
 
 export function BreadcrumbTitleProvider({ children }: { children: ReactNode }) {
   const [title, setTitle] = useState<string | null>(null)
-  const value = useMemo(() => ({ title, setTitle }), [title])
-  return <BreadcrumbTitleContext.Provider value={value}>{children}</BreadcrumbTitleContext.Provider>
+  return (
+    <SetTitleContext.Provider value={setTitle}>
+      <TitleValueContext.Provider value={title}>{children}</TitleValueContext.Provider>
+    </SetTitleContext.Provider>
+  )
 }
 
 // Read the current published leaf title (null when none). Used by Breadcrumbs.
 export function useBreadcrumbTitleValue(): string | null {
-  return useContext(BreadcrumbTitleContext)?.title ?? null
+  return useContext(TitleValueContext)
 }
 
-// Publish this page's leaf title. Falls back to nothing when the name is empty
-// or not yet loaded, and clears on unmount.
+// Publish this page's leaf title. Empty/whitespace/undefined publishes nothing
+// (breadcrumb keeps its static fallback), and the title clears on unmount.
 export function useBreadcrumbTitle(title: string | null | undefined): void {
-  const ctx = useContext(BreadcrumbTitleContext)
+  const setTitle = useContext(SetTitleContext)
   useEffect(() => {
-    if (!ctx) return
-    ctx.setTitle(title && title.trim() ? title : null)
-    return () => ctx.setTitle(null)
-  }, [ctx, title])
+    setTitle(title && title.trim() ? title : null)
+    return () => setTitle(null)
+  }, [title, setTitle])
 }

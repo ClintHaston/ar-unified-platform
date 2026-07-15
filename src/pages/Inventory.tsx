@@ -276,7 +276,7 @@ export function Inventory() {
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       <div className="note">
         The 798 TAB-backfilled units. Taxonomy links are partial by design (TAB make/model
-        were free text) — open a unit to assign its category, make, and model.
+        were free text). Open a unit to assign its category, make, and model.
       </div>
     </div>
   )

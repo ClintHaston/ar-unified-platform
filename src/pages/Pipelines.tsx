@@ -170,7 +170,7 @@ export function Pipelines() {
             {selectMode ? 'Done' : 'Select'}
           </button>
           <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--p-body)' }}>
-            Changes are Postgres-local — nothing mirrors to HubSpot until the outbox ships
+            Changes are Postgres-local. Nothing mirrors to HubSpot until the outbox ships
           </span>
         </div>
 
