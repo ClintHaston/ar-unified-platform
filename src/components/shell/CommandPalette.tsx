@@ -65,7 +65,7 @@ export function CommandPalette({ open, onClose }: Props) {
   }, [q])
 
   const commands = useMemo<Command[]>(() => {
-    const goto: Command[] = NAV
+    const gotoAll: Command[] = NAV
       .filter((n) => !n.adminOnly || isAdmin)
       .flatMap((n) => {
         const base: Command[] = [{
@@ -80,6 +80,15 @@ export function CommandPalette({ open, onClose }: Props) {
           }))
         return [...base, ...sub]
       })
+    // A destination can surface both as a top-level nav item and inside a
+    // flyout (Contacts, Lists, Commission report), which would list the same
+    // "Go to X" twice. Keep the first occurrence of each label.
+    const seenLabels = new Set<string>()
+    const goto: Command[] = gotoAll.filter((c) => {
+      if (seenLabels.has(c.label)) return false
+      seenLabels.add(c.label)
+      return true
+    })
     const create: Command[] = [
       { id: 'new-deal', label: 'New deal', hint: 'Create', icon: 'deal', run: () => navigate('/pipelines?new=1') },
       { id: 'new-contact', label: 'New contact', hint: 'Create', icon: 'contacts', run: () => navigate('/contacts?new=1') },
@@ -131,7 +140,7 @@ export function CommandPalette({ open, onClose }: Props) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search units, deals, contacts, companies — or jump to a page…"
+            placeholder="Search units, deals, contacts, companies, or jump to a page…"
             aria-label="Command palette input"
           />
           <span className="ws-esc">ESC</span>

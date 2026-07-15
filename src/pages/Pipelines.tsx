@@ -135,7 +135,7 @@ export function Pipelines() {
     } catch (err) {
       setDeals(previous)  // rollback the optimistic move
       const msg = err instanceof Error ? err.message : 'Stage move failed'
-      setError(msg)
+      // Floating toast only, matching note/task rollback. No inline red banner.
       toast.error('Stage move failed', `${deal.name} snapped back. ${msg}`)
     }
   }

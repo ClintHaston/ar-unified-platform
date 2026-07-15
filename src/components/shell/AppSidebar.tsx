@@ -15,13 +15,28 @@ function useIsActive() {
 
 // The flyout is position:fixed (so the sidebar's overflow scroll container can't
 // clip it). fixed is viewport-relative, so anchor it to the nav item's rect on
-// hover/focus, just to its right and aligned to its top.
+// hover/focus, just to its right. It aligns to the item's top by default, but a
+// bottom-anchored item (Settings) whose menu is tall enough to run past the
+// viewport bottom is flipped to open upward instead, so no entry is clipped.
+const FLY_MARGIN = 8
+
 function positionFlyout(wrap: HTMLElement) {
   const btn = wrap.querySelector<HTMLElement>('.ws-navitem')
   const fly = wrap.querySelector<HTMLElement>('.ws-flyout')
   if (!btn || !fly) return
   const r = btn.getBoundingClientRect()
-  fly.style.top = `${Math.round(r.top - 4)}px`
+  // Measured even while closed: the flyout is opacity:0 but still laid out.
+  const flyH = fly.getBoundingClientRect().height
+  const viewH = window.innerHeight
+  let top = r.top - 4
+  // If opening downward from the item top would overflow the viewport bottom,
+  // shift up so the menu's bottom sits near the item's bottom (open upward),
+  // clamped to stay fully on-screen.
+  if (top + flyH > viewH - FLY_MARGIN) {
+    top = Math.min(r.bottom - flyH + 4, viewH - flyH - FLY_MARGIN)
+  }
+  if (top < FLY_MARGIN) top = FLY_MARGIN
+  fly.style.top = `${Math.round(top)}px`
   fly.style.left = `${Math.round(r.right + 8)}px`
 }
 

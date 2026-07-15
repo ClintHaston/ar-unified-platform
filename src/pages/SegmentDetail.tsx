@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type CompanyMemberRow, type ContactRow, type ContactSort, type OwnerOption, type SearchResult, type SegmentCriteria, type SegmentDetailResponse, type SegmentSource, type SortDir } from '../lib/api'
 import { SegmentCriteriaBuilder } from '../components/SegmentCriteriaBuilder'
+import { useBreadcrumbTitle } from '../components/shell/BreadcrumbTitle'
 import { TYPE_LABEL, fmtDate } from './Contacts'
 
 const PAGE_SIZE = 50
@@ -57,6 +58,9 @@ export function SegmentDetail() {
 
   useEffect(() => { loadSeg() }, [loadSeg])
   useEffect(() => { loadMembers() }, [loadMembers])
+
+  // Show the list/segment name in the breadcrumb once it loads.
+  useBreadcrumbTitle(seg?.name)
   useEffect(() => {
     api.segmentRegistry().then((r) => setSources(r.sources)).catch(() => setSources([]))
     api.contactOwners().then((r) => setOwners(r.owners)).catch(() => setOwners([]))
@@ -172,7 +176,7 @@ export function SegmentDetail() {
         </div>
         {seg.description && <div className="note" style={{ marginTop: 4 }}>{seg.description}</div>}
         {seg.type === 'active' && !editingCriteria && (
-          <div className="note" style={{ marginTop: 6 }}>Membership is computed live from the criteria — records join and leave automatically.</div>
+          <div className="note" style={{ marginTop: 6 }}>Membership is computed live from the criteria. Records join and leave automatically.</div>
         )}
         {seg.type === 'static' && (
           <div className="note" style={{ marginTop: 6 }}>Frozen snapshot. Add or remove members by hand below.</div>

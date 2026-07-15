@@ -136,7 +136,7 @@ export function Lists() {
                 </tr>
               ))}
               {!loading && segments.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--p-body)' }}>No lists yet — create one to segment your contacts or companies.</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--p-body)' }}>No lists yet. Create one to segment your contacts or companies.</td></tr>
               )}
             </tbody>
           </table>
