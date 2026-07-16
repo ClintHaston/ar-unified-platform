@@ -8,8 +8,13 @@ import { useToast } from '../shell/ToastContext'
 import { Icon } from '../shell/icons'
 
 // WS2c dashboards tab: list existing dashboards (favorites first, from the
-// server) and a builder that composes saved reports into panels. The shared
-// Reports filter bar values become the dashboard's default filters on save.
+// server) and a builder that composes saved reports into panels.
+//
+// Default filters: a NEW dashboard adopts the shared Reports filter bar. An
+// EDIT keeps the dashboard's own saved filters, because editing panels must not
+// silently rewrite them — the bar is wherever the admin last dragged it and has
+// nothing to do with the dashboard being edited. Adopting the bar on an edit is
+// an explicit button, never a side effect of pressing Save.
 
 interface Props {
   start: string
@@ -28,7 +33,25 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [panels, setPanels] = useState<DashboardPanel[]>([])
+  const [filters, setFilters] = useState<DashboardFilters>({})
   const [saving, setSaving] = useState(false)
+
+  // The filter bar's current state, as a dashboard's default_filters.
+  const barFilters = useCallback((): DashboardFilters => {
+    const f: DashboardFilters = {}
+    if (start || end) f.date = { start: start || undefined, end: end || undefined }
+    if (ownerId) f.owner_id = ownerId
+    return f
+  }, [start, end, ownerId])
+
+  function describeFilters(f: DashboardFilters): string {
+    const bits: string[] = []
+    if (f.date?.start || f.date?.end) {
+      bits.push(`${f.date.start || 'any'} to ${f.date.end || 'any'}`)
+    }
+    if (f.owner_id) bits.push('one owner')
+    return bits.length > 0 ? bits.join(', ') : 'none'
+  }
 
   const reportName = useMemo(() => {
     const m: Record<string, string> = {}
@@ -48,10 +71,12 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
 
   function startNew() {
     setBuilding(true); setEditingId(null); setName(''); setPanels([])
+    setFilters(barFilters())          // a new dashboard adopts the bar
   }
 
   function editDashboard(d: DashboardListItem) {
     setBuilding(true); setEditingId(d.id); setName(d.name); setPanels(d.layout ?? [])
+    setFilters(d.default_filters ?? {})   // keep the dashboard's own filters
   }
 
   function addPanel(reportId: string) {
@@ -75,9 +100,7 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
 
   async function save() {
     if (!name.trim() || panels.length === 0) return
-    const default_filters: DashboardFilters = {}
-    if (start || end) default_filters.date = { start: start || undefined, end: end || undefined }
-    if (ownerId) default_filters.owner_id = ownerId
+    const default_filters = filters
     setSaving(true)
     try {
       if (editingId) {
@@ -87,7 +110,7 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
         await api.createDashboard({ name: name.trim(), layout: panels, default_filters })
         toast.info('Dashboard saved', name.trim())
       }
-      setBuilding(false); setEditingId(null); setName(''); setPanels([])
+      setBuilding(false); setEditingId(null); setName(''); setPanels([]); setFilters({})
       load()
     } catch (e) {
       toast.error('Save failed', e instanceof Error ? e.message : 'Please try again.')
@@ -125,6 +148,20 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
             {saving ? 'Saving…' : editingId ? 'Update dashboard' : 'Save dashboard'}
           </button>
           <button className="plat-btn ghost" onClick={() => setBuilding(false)}>Cancel</button>
+        </div>
+
+        {/* Filters are shown, not guessed at. Saving never adopts the bar on its
+            own; that takes a deliberate click. */}
+        <div className="note" style={{ display: 'flex', gap: 8, alignItems: 'center',
+                                       flexWrap: 'wrap', marginBottom: 12 }}>
+          <span>Default filters: <b>{describeFilters(filters)}</b></span>
+          <button className="plat-btn ghost" onClick={() => setFilters(barFilters())}
+                  title="Replace this dashboard's default filters with the filter bar above">
+            Use current filters
+          </button>
+          {Object.keys(filters).length > 0 && (
+            <button className="plat-btn ghost" onClick={() => setFilters({})}>Clear</button>
+          )}
         </div>
 
         <div className="dash-build-grid">

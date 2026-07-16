@@ -4,13 +4,19 @@ import { useAuth } from '../contexts/AuthContext'
 import { Icon } from '../components/shell/icons'
 import { api, type DashboardRun, type OwnerOption, type ReportFilters } from '../lib/api'
 import { ResultView } from '../components/reports/ResultView'
+import { companyTz, todayIn } from '../components/reports/companyTz'
 
 // WS2c dashboard view. Composes a saved dashboard's panels by running each
 // referenced report back through the 2b engine (server-side), with the
 // dashboard-level date/owner filters overlaid. A panel whose report was
 // deleted degrades to a friendly card, never a crash. Admin-only.
 
-const PRESETS: Array<{ label: string; days: number | null }> = [
+// The days-back presets are open-ended ("since X", no end bound). Today is the
+// odd one out: it is a BOUNDED single day, so it carries its own flag rather
+// than pretending to be a days-back offset.
+type Preset = { label: string; days: number | null; today?: boolean }
+const PRESETS: Preset[] = [
+  { label: 'Today', days: null, today: true },
   { label: '30d', days: 30 }, { label: '90d', days: 90 },
   { label: '12mo', days: 365 }, { label: 'All', days: null },
 ]
@@ -80,9 +86,19 @@ export function DashboardView() {
     }
   }
 
-  function applyPreset(days: number | null) {
+  async function applyPreset(p: Preset) {
+    if (p.today) {
+      // Today = start and end BOTH set to today's date in the company timezone.
+      // The server reads those dates in that same timezone, so the window runs
+      // local midnight to local midnight. Sending the browser's date, or letting
+      // the server read UTC, would put the boundary 5-6 hours out.
+      const d = todayIn(await companyTz())
+      setStart(d)
+      setEnd(d)
+      return
+    }
     setEnd('')
-    setStart(days === null ? '' : isoDaysAgo(days))
+    setStart(p.days === null ? '' : isoDaysAgo(p.days))
   }
 
   const panels = useMemo(() => run?.panels ?? [], [run])
@@ -116,7 +132,9 @@ export function DashboardView() {
           <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
                  value={end} onChange={(e) => setEnd(e.target.value)} />
           <div className="roletoggle">
-            {PRESETS.map((p) => <button key={p.label} onClick={() => applyPreset(p.days)}>{p.label}</button>)}
+            {PRESETS.map((p) => (
+              <button key={p.label} onClick={() => { void applyPreset(p) }}>{p.label}</button>
+            ))}
           </div>
           <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
                   value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>

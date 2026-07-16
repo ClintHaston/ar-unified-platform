@@ -798,7 +798,7 @@ export interface CallActivityReport {
 // ── WS2b custom report builder ──
 export type ReportViz =
   | 'table' | 'bar' | 'number' | 'funnel'
-  | 'stacked_bar' | 'grouped_bar' | 'line' | 'donut'
+  | 'stacked_bar' | 'grouped_bar' | 'line' | 'donut' | 'pie' | 'scatter'
 export type MeasureType = 'int' | 'cents' | 'number'
 
 export interface RegistryField {
@@ -843,8 +843,11 @@ export interface RunColumn {
 
 // Grouped result for every non-funnel viz. Breakdown charts carry an extra
 // role:'series' column; the frontend pivots the long rows into wide chart data.
+// viz is DERIVED from ReportViz rather than restated: this list was previously a
+// second hand-written union and had already drifted behind it, which is exactly
+// the bug a derived type cannot have.
 export interface RunGroupedResult {
-  viz: 'table' | 'bar' | 'number' | 'stacked_bar' | 'grouped_bar' | 'line' | 'donut'
+  viz: Exclude<ReportViz, 'funnel'>
   columns: RunColumn[]
   rows: Array<Record<string, string | number | null>>
 }

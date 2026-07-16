@@ -17,9 +17,13 @@ interface Props {
   ownerId: string
 }
 
+// 'number' is labelled "Metric" because that is what it is: one big figure per
+// measure, no dimension. The viz KEY stays 'number' so saved reports and the
+// server allow-list are untouched — this is a label, not a new viz.
 const VIZ_LABEL: Record<ReportViz, string> = {
-  table: 'Table', bar: 'Bar', number: 'Number', funnel: 'Funnel',
-  stacked_bar: 'Stacked bar', grouped_bar: 'Grouped bar', line: 'Line', donut: 'Donut',
+  table: 'Table', bar: 'Bar', number: 'Metric', funnel: 'Funnel',
+  stacked_bar: 'Stacked bar', grouped_bar: 'Grouped bar', line: 'Line',
+  donut: 'Donut', pie: 'Pie', scatter: 'Scatter',
 }
 
 // Series (breakdown) modes — mirror the server: stacked/grouped require a
@@ -37,7 +41,10 @@ function isRunnable(viz: ReportViz, dims: string[], measures: string[], series: 
   if (viz === 'funnel') return true
   if (viz === 'number') return dims.length === 0 && measures.length >= 1
   if (viz === 'bar') return dims.length === 1 && measures.length >= 1
-  if (viz === 'donut') return dims.length === 1 && measures.length === 1
+  if (viz === 'donut' || viz === 'pie') return dims.length === 1 && measures.length === 1
+  // scatter plots one point per group: x = first measure, y = second. Exactly
+  // two, mirroring the server — a third has nowhere to go, one leaves an axis bare.
+  if (viz === 'scatter') return dims.length === 1 && measures.length === 2
   if (viz === 'stacked_bar' || viz === 'grouped_bar') {
     return dims.length === 1 && measures.length === 1 && !!series && !dims.includes(series)
   }

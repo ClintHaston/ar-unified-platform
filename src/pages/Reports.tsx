@@ -15,6 +15,7 @@ import { DealsByRepTable } from '../components/reports/DealsByRepTable'
 import { CallActivityTable } from '../components/reports/CallActivityTable'
 import { ReportBuilder } from '../components/reports/ReportBuilder'
 import { DashboardsPanel } from '../components/reports/DashboardsPanel'
+import { companyTz, todayIn } from '../components/reports/companyTz'
 
 // WS2a reporting hub — calls + sales + funnels, the data we fully own. Admin
 // only (data endpoints 403 for reps); reps see a friendly pointer. Every tab
@@ -32,8 +33,12 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'dashboards', label: 'Dashboards' },
 ]
 
-// Quick date presets. value = days back from today, or null for all-time.
-const PRESETS: Array<{ label: string; days: number | null }> = [
+// Quick date presets. days = days back from today (open-ended, no end bound),
+// or null for all-time. Today is the odd one out: a BOUNDED single day in the
+// company timezone, so it carries its own flag instead of faking a days offset.
+type Preset = { label: string; days: number | null; today?: boolean }
+const PRESETS: Preset[] = [
+  { label: 'Today', days: null, today: true },
   { label: '30d', days: 30 },
   { label: '90d', days: 90 },
   { label: '12mo', days: 365 },
@@ -104,9 +109,18 @@ export function Reports() {
     )
   }
 
-  function applyPreset(days: number | null) {
+  async function applyPreset(p: Preset) {
+    if (p.today) {
+      // Today = start and end BOTH set to today's date in the company timezone.
+      // The server reads those dates in that same timezone, so the window runs
+      // local midnight to local midnight rather than cutting the day at UTC.
+      const d = todayIn(await companyTz())
+      setStart(d)
+      setEnd(d)
+      return
+    }
     setEnd('')
-    setStart(days === null ? '' : isoDaysAgo(days))
+    setStart(p.days === null ? '' : isoDaysAgo(p.days))
   }
 
   return (
@@ -134,7 +148,7 @@ export function Reports() {
                  value={end} onChange={(e) => setEnd(e.target.value)} />
           <div className="roletoggle">
             {PRESETS.map((p) => (
-              <button key={p.label} onClick={() => applyPreset(p.days)}>{p.label}</button>
+              <button key={p.label} onClick={() => { void applyPreset(p) }}>{p.label}</button>
             ))}
           </div>
           <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}

@@ -2,13 +2,14 @@ import type { RunColumn, RunResult } from '../../lib/api'
 import { Funnel } from './Funnel'
 import { fmt } from './reportFormat'
 import {
-  DonutChart, GroupedBarChart, LineChartViz, SimpleBarChart, StackedBarChart,
+  DonutChart, GroupedBarChart, LineChartViz, PieChartViz, ScatterChartViz,
+  SimpleBarChart, StackedBarChart,
 } from './charts/ReportCharts'
 
 // WS2b: render a builder run result. Funnel reuses the WS2a component. Every
 // other viz is generic over the engine's {columns, rows}; bar/stacked/grouped/
-// line/donut render through recharts (charts/ReportCharts), table and number
-// stay native. Money columns (type 'cents') render as dollars.
+// line/donut/pie/scatter render through recharts (charts/ReportCharts), table
+// and number stay native. Money columns (type 'cents') render as dollars.
 
 export function ResultView({ result, accent }: { result: RunResult; accent: string }) {
   if (result.viz === 'funnel') {
@@ -23,7 +24,8 @@ export function ResultView({ result, accent }: { result: RunResult; accent: stri
     return <div className="panel"><div className="note">No rows match. Honest-empty by design.</div></div>
   }
 
-  // number: one big figure per measure, no dimension
+  // number (labelled "Metric" in the picker): one big figure per measure, no
+  // dimension. The viz KEY stays 'number' so existing saved reports keep running.
   if (result.viz === 'number') {
     return (
       <div className="panel" style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
@@ -44,6 +46,8 @@ export function ResultView({ result, accent }: { result: RunResult; accent: stri
   if (result.viz === 'grouped_bar') return <GroupedBarChart columns={columns} rows={rows} accent={accent} />
   if (result.viz === 'line') return <LineChartViz columns={columns} rows={rows} accent={accent} />
   if (result.viz === 'donut') return <DonutChart columns={columns} rows={rows} accent={accent} />
+  if (result.viz === 'pie') return <PieChartViz columns={columns} rows={rows} accent={accent} />
+  if (result.viz === 'scatter') return <ScatterChartViz columns={columns} rows={rows} accent={accent} />
 
   // table: all columns
   const render = (c: RunColumn, r: Record<string, string | number | null>) => fmt(r[c.key], c.type)
