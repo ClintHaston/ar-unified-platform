@@ -5,8 +5,8 @@ import { DrillPopup } from './DrillPopup'
 import { Funnel } from './Funnel'
 import { fmt } from './reportFormat'
 import {
-  DonutChart, GroupedBarChart, LineChartViz, PieChartViz, ScatterChartViz,
-  SimpleBarChart, StackedBarChart,
+  ComboChart, DonutChart, GaugeChart, GroupedBarChart, LineChartViz, PieChartViz,
+  ScatterChartViz, SimpleBarChart, StackedBarChart,
 } from './charts/ReportCharts'
 
 // WS2b: render a builder run result. Funnel reuses the WS2a component. Every
@@ -87,7 +87,17 @@ export function ResultView({ result, accent, definition }: Props) {
   }
 
   let chart: JSX.Element
-  if (result.viz === 'bar') chart = <SimpleBarChart columns={columns} rows={rows} accent={accent} onPoint={onPoint} />
+  if (result.viz === 'gauge') {
+    // The gauge config is server-normalised and arrives with the result. If it
+    // is somehow absent (an older saved panel), say so rather than render a
+    // scale that was never configured.
+    chart = result.gauge
+      ? <GaugeChart columns={columns} rows={rows} accent={accent} gauge={result.gauge} />
+      : <div className="panel"><div className="note">This gauge has no scale configured.</div></div>
+  } else if (result.viz === 'combo') {
+    chart = <ComboChart columns={columns} rows={rows} accent={accent}
+                        combo={result.combo ?? {}} onPoint={onPoint} />
+  } else if (result.viz === 'bar') chart = <SimpleBarChart columns={columns} rows={rows} accent={accent} onPoint={onPoint} />
   else if (result.viz === 'stacked_bar') chart = <StackedBarChart columns={columns} rows={rows} accent={accent} onPoint={onPoint} />
   else if (result.viz === 'grouped_bar') chart = <GroupedBarChart columns={columns} rows={rows} accent={accent} onPoint={onPoint} />
   else if (result.viz === 'line') chart = <LineChartViz columns={columns} rows={rows} accent={accent} onPoint={onPoint} />

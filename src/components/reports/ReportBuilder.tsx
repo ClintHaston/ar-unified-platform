@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import {
-  api, type RegistrySource, type ReportDefinition,
+  api, GAUGE_TONES, type ComboAs, type ComboAxis, type ComboConfig,
+  type GaugeConfig, type GaugeTone, type RegistrySource, type ReportDefinition,
   type ReportViz, type RunResult, type SavedReport,
 } from '../../lib/api'
 import { useToast } from '../shell/ToastContext'
@@ -25,6 +26,20 @@ const VIZ_LABEL: Record<ReportViz, string> = {
   stacked_bar: 'Stacked bar', grouped_bar: 'Grouped bar', line: 'Line',
   donut: 'Donut', pie: 'Pie', scatter: 'Scatter',
   scatter_records: 'Scatter (per record)',
+  combo: 'Combination', gauge: 'Gauge',
+}
+
+// Short labels: the tone select shares a narrow row with a bound input and a
+// Remove button, and a longer word crowds the dropdown arrow.
+const TONE_LABEL: Record<GaugeTone, string> = {
+  good: 'Good', warn: 'Warn', bad: 'Bad', neutral: 'Neutral', accent: 'Accent',
+}
+
+// A gauge needs a scale before it can render, and an empty one is not a sensible
+// starting state. This seeds a valid three-band scale the user then edits; the
+// server re-validates whatever comes back regardless.
+function defaultGauge(): GaugeConfig {
+  return { min: 0, max: 100, bands: [{ to: 50, tone: 'bad' }, { to: 80, tone: 'warn' }, { to: 100, tone: 'good' }] }
 }
 
 // Series (breakdown) modes — mirror the server: stacked/grouped require a
@@ -50,6 +65,10 @@ function isRunnable(viz: ReportViz, dims: string[], measures: string[], series: 
   // dimension, and two measures that have a per-record value (the server rejects
   // a total like Count, which only exists for a group).
   if (viz === 'scatter_records') return dims.length === 0 && measures.length === 2
+  // A combo combines measures, so two is the minimum that means anything.
+  if (viz === 'combo') return dims.length === 1 && measures.length >= 2
+  // A gauge is one figure against a scale: same shape as a Metric.
+  if (viz === 'gauge') return dims.length === 0 && measures.length === 1
   if (viz === 'stacked_bar' || viz === 'grouped_bar') {
     return dims.length === 1 && measures.length === 1 && !!series && !dims.includes(series)
   }
@@ -66,6 +85,8 @@ function shapeHint(viz: ReportViz): string {
   if (viz === 'donut' || viz === 'pie') return 'Pick exactly one dimension and exactly one measure.'
   if (viz === 'scatter') return 'Pick one dimension and exactly two measures. The first is the x axis, the second is the y axis, and each point is one group.'
   if (viz === 'scatter_records') return 'Pick exactly two measures and no dimension. Each point is one record. Totals like Count cannot be plotted per record.'
+  if (viz === 'combo') return 'Pick exactly one dimension and at least two measures, then choose how each one draws.'
+  if (viz === 'gauge') return 'Pick exactly one measure and no dimension, then set the scale below.'
   if (viz === 'stacked_bar' || viz === 'grouped_bar') return 'Pick one dimension, one breakdown, and one measure.'
   if (viz === 'line') return 'Pick one dimension and at least one measure. A breakdown takes one measure.'
   if (viz === 'table') return 'Pick at least one dimension and one measure.'
@@ -81,6 +102,8 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
   const [series, setSeries] = useState<string>('')                     // '' = no breakdown
   const [filters, setFilters] = useState<Record<string, string>>({})   // field -> value ('' = any)
   const [viz, setViz] = useState<ReportViz>('table')
+  const [combo, setCombo] = useState<ComboConfig>({})
+  const [gauge, setGauge] = useState<GaugeConfig>(defaultGauge)
 
   const [result, setResult] = useState<RunResult | null>(null)
   const [previewErr, setPreviewErr] = useState('')
@@ -110,15 +133,16 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
   function chooseSource(key: string) {
     setSourceKey(key)
     setDims([]); setMeasures([]); setSeries(''); setFilters({})
+    setCombo({}); setGauge(defaultGauge())
     const s = sources.find((x) => x.key === key)
     setViz(s && s.viz.includes('table') ? 'table' : (s?.viz[0] ?? 'table'))
     setResult(null); setPreviewErr(''); setEditingId(null); setName('')
   }
 
   const usesSeries = seriesMode(viz) !== 'none'
-  // A funnel groups by its own stages; a per-record scatter groups by nothing.
-  // Neither takes a dimension, so neither offers one.
-  const usesDims = viz !== 'funnel' && viz !== 'scatter_records'
+  // A funnel groups by its own stages; a per-record scatter and a gauge group by
+  // nothing. None of them take a dimension, so none of them offer one.
+  const usesDims = viz !== 'funnel' && viz !== 'scatter_records' && viz !== 'gauge'
 
   const definition: ReportDefinition | null = useMemo(() => {
     if (!source) return null
@@ -134,8 +158,13 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
       date: (start || end) ? { start: start || undefined, end: end || undefined } : undefined,
       owner_id: source.has_owner && ownerId ? ownerId : undefined,
       viz,
+      // A viz-specific config only travels with its own viz — the server 400s it
+      // anywhere else, so sending it would break every other preview.
+      combo: viz === 'combo' ? combo : undefined,
+      gauge: viz === 'gauge' ? gauge : undefined,
     }
-  }, [source, dims, measures, series, usesSeries, usesDims, filters, viz, start, end, ownerId])
+  }, [source, dims, measures, series, usesSeries, usesDims, filters, viz, start, end,
+      ownerId, combo, gauge])
 
   const ready = !!source && isRunnable(viz, usesDims ? dims : [], viz === 'funnel' ? [] : measures, series)
 
@@ -185,6 +214,10 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
     setSeries(d.series ?? '')
     setFilters(Object.fromEntries((d.filters ?? []).map((f) => [f.field, f.value])))
     setViz(d.viz)
+    // Restore the viz config exactly as saved, so reopening a report reproduces
+    // the chart rather than resetting it to defaults.
+    setCombo(d.combo ?? {})
+    setGauge(d.gauge ?? defaultGauge())
     setName(r.name)
     setEditingId(r.id)
     setResult(null); setPreviewErr('')
@@ -236,6 +269,10 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
                   ))}
                 </div>
               </>
+            ) : viz === 'gauge' ? (
+              <div className="note" style={{ marginTop: 10 }}>
+                A gauge shows one figure against a scale, so there is nothing to group by.
+              </div>
             ) : (
               <div className="note" style={{ marginTop: 10 }}>
                 Each point is one record, so there is nothing to group by. Pick the two
@@ -249,6 +286,89 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
                         onClick={() => toggle(setMeasures, m.key)}>{m.label}</button>
               ))}
             </div>
+
+            {viz === 'combo' && measures.length > 0 && (
+              <>
+                <label className="rb-lbl">How each measure draws</label>
+                {measures.map((mk) => {
+                  const m = source.measures.find((x) => x.key === mk)
+                  const spec = combo[mk] ?? { as: 'bar' as ComboAs, axis: 'left' as ComboAxis }
+                  const set = (patch: Partial<{ as: ComboAs; axis: ComboAxis }>) =>
+                    setCombo((cur) => ({ ...cur, [mk]: { ...spec, ...patch } }))
+                  return (
+                    <div key={mk} className="rb-combo-row">
+                      <span className="rb-combo-name">{m?.label ?? mk}</span>
+                      <select className="plat-input" style={{ marginBottom: 0 }} value={spec.as}
+                              aria-label={`${m?.label ?? mk} draw type`}
+                              onChange={(e) => set({ as: e.target.value as ComboAs })}>
+                        <option value="bar">Bar</option>
+                        <option value="line">Line</option>
+                      </select>
+                      <select className="plat-input" style={{ marginBottom: 0 }} value={spec.axis}
+                              aria-label={`${m?.label ?? mk} axis`}
+                              onChange={(e) => set({ axis: e.target.value as ComboAxis })}>
+                        <option value="left">Left axis</option>
+                        <option value="right">Right axis</option>
+                      </select>
+                    </div>
+                  )
+                })}
+                <div className="note" style={{ marginTop: 6 }}>
+                  Put measures with different units on opposite axes, for example a count
+                  as bars on the left and a money total as a line on the right.
+                </div>
+              </>
+            )}
+
+            {viz === 'gauge' && (
+              <>
+                <label className="rb-lbl">Scale</label>
+                <div className="rb-gauge-mm">
+                  <input className="plat-input" type="number" style={{ marginBottom: 0 }}
+                         aria-label="Gauge minimum" value={gauge.min}
+                         onChange={(e) => setGauge((g) => ({ ...g, min: Number(e.target.value) }))} />
+                  <span className="note">to</span>
+                  <input className="plat-input" type="number" style={{ marginBottom: 0 }}
+                         aria-label="Gauge maximum" value={gauge.max}
+                         onChange={(e) => setGauge((g) => ({ ...g, max: Number(e.target.value) }))} />
+                </div>
+                <label className="rb-lbl">Bands</label>
+                {gauge.bands.map((b, i) => (
+                  <div key={i} className="rb-band-row">
+                    <span className="rb-band-lbl">up to</span>
+                    <input className="plat-input rb-band-to" type="number"
+                           aria-label={`Band ${i + 1} upper bound`} value={b.to}
+                           onChange={(e) => setGauge((g) => ({
+                             ...g,
+                             bands: g.bands.map((x, j) => (j === i ? { ...x, to: Number(e.target.value) } : x)),
+                           }))} />
+                    <select className="plat-input rb-band-tone" value={b.tone}
+                            aria-label={`Band ${i + 1} tone`}
+                            onChange={(e) => setGauge((g) => ({
+                              ...g,
+                              bands: g.bands.map((x, j) => (j === i ? { ...x, tone: e.target.value as GaugeTone } : x)),
+                            }))}>
+                      {GAUGE_TONES.map((t) => <option key={t} value={t}>{TONE_LABEL[t]}</option>)}
+                    </select>
+                    <button className="plat-btn ghost" aria-label={`Remove band ${i + 1}`}
+                            disabled={gauge.bands.length <= 1}
+                            onClick={() => setGauge((g) => ({
+                              ...g, bands: g.bands.filter((_, j) => j !== i),
+                            }))}>Remove</button>
+                  </div>
+                ))}
+                <button className="plat-btn ghost" style={{ marginTop: 6 }}
+                        onClick={() => setGauge((g) => {
+                          const last = g.bands[g.bands.length - 1]
+                          const to = last ? Math.max(last.to + 1, g.max) : g.max
+                          return { ...g, bands: [...g.bands, { to, tone: 'neutral' }] }
+                        })}>Add band</button>
+                <div className="note" style={{ marginTop: 6 }}>
+                  Bands must rise in order and the last one must end at the maximum, so the
+                  whole scale is covered. The server checks this and says what is wrong.
+                </div>
+              </>
+            )}
 
             {usesSeries && (
               <>

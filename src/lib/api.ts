@@ -803,6 +803,22 @@ export type ReportViz =
   // It returns the same {dimension, measure, measure} shape as 'scatter', so the
   // same chart renders it.
   | 'scatter_records'
+  // combo: several measures over one category axis, each a bar or a line, on a
+  // left or right axis. gauge: one value against a banded scale.
+  | 'combo' | 'gauge'
+
+// combo's per-measure render spec. Both are closed enums server-side; the
+// frontend maps them to a recharts component and an axis id, never to a string.
+export type ComboAs = 'bar' | 'line'
+export type ComboAxis = 'left' | 'right'
+export type ComboConfig = Record<string, { as: ComboAs; axis: ComboAxis }>
+
+// A gauge band's tone is a PALETTE ENUM, never a colour: the concrete hex lives
+// in the frontend palette, so no user-supplied string can reach CSS.
+export type GaugeTone = 'good' | 'warn' | 'bad' | 'neutral' | 'accent'
+export const GAUGE_TONES: GaugeTone[] = ['good', 'warn', 'bad', 'neutral', 'accent']
+export interface GaugeBand { to: number; tone: GaugeTone }
+export interface GaugeConfig { min: number; max: number; bands: GaugeBand[] }
 export type MeasureType = 'int' | 'cents' | 'number'
 
 export interface RegistryField {
@@ -839,6 +855,8 @@ export interface ReportDefinition {
   date?: { start?: string; end?: string }
   owner_id?: string
   viz: ReportViz
+  combo?: ComboConfig      // viz 'combo' only; the server 400s it anywhere else
+  gauge?: GaugeConfig      // viz 'gauge' only; likewise
 }
 
 export interface RunColumn {
@@ -861,6 +879,10 @@ export interface RunGroupedResult {
   // cap truncated the plot. Absent on every grouped viz.
   route?: string | null
   capped?: boolean
+  // The SERVER-NORMALISED config, echoed back so the chart renders exactly what
+  // validation accepted (defaults filled, enums checked) rather than re-deriving it.
+  combo?: ComboConfig
+  gauge?: GaugeConfig
 }
 
 export type RunResult = RunGroupedResult | (FunnelReport & { viz: 'funnel' })

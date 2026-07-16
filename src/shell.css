@@ -447,6 +447,27 @@
 .ws-star[aria-pressed="true"], .ws-star:hover { color: var(--p-gold); }
 .ws-star svg { color: inherit; }
 
+/* ── Phase 3 combo + gauge config rows ── */
+.rb-combo-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+}
+.rb-combo-row .plat-input { flex: 1; min-width: 0; }
+.rb-combo-name {
+  flex: 0 0 92px; font-size: 12px; color: var(--p-body);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rb-gauge-mm { display: flex; align-items: center; gap: 8px; }
+.rb-gauge-mm .plat-input { flex: 1; min-width: 0; }
+
+/* A band row carries four controls in a ~300px column, so it cannot reuse the
+   combo row's 92px label: that squeezed the inputs to 37px, too narrow to read
+   a three-digit bound or a tone name. Each control is sized for its content. */
+.rb-band-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.rb-band-lbl { flex: 0 0 auto; font-size: 12px; color: var(--p-body); }
+.rb-band-row .rb-band-to { flex: 0 0 76px; margin-bottom: 0; }
+.rb-band-row .rb-band-tone { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+.rb-band-row .plat-btn { flex: 0 0 auto; padding: 5px 9px; font-size: 11px; }
+
 /* ── Phase 3 drill-down: the records behind a datapoint ── */
 .drill-scrim {
   position: fixed; inset: 0; z-index: 200;

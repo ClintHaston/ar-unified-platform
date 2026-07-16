@@ -1,10 +1,13 @@
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
-  ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,
+  Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line, LineChart,
+  Pie, PieChart, PolarAngleAxis, RadialBar, RadialBarChart, ResponsiveContainer,
+  Scatter, ScatterChart, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import type { DrillAt, RunColumn } from '../../../lib/api'
+import type { ComboConfig, DrillAt, GaugeConfig, RunColumn } from '../../../lib/api'
 import { fmt } from '../reportFormat'
-import { AXIS_INK, GRID_INK, LABEL_INK, seriesColors, useReducedMotion } from './palette'
+import {
+  AXIS_INK, GRID_INK, LABEL_INK, seriesColors, toneHex, useReducedMotion,
+} from './palette'
 import { pivotSeries } from './pivot'
 
 // recharts-backed chart layer for the WS2b builder. Every chart is theme-anchored
@@ -195,6 +198,142 @@ export function LineChartViz({ columns, rows, accent, onPoint }: ChartProps) {
           ))}
         </LineChart>
       </ResponsiveContainer>
+    </div>
+  )
+}
+
+// ── Combo (one dimension, >=2 measures, each a bar or line on left/right) ──
+// The engine already emits one column per measure, so this needed no new query
+// shape: it is the same {dimension, measure, measure, ...} rows every bar chart
+// gets, rendered through a ComposedChart instead.
+//
+// A money axis needs a wider band than the recharts default 60px or the ticks
+// collide with the label — the same fix the scatter Y axis carries.
+const MONEY_AXIS_W = 116
+const PLAIN_AXIS_W = 64
+
+function axisWidth(types: string[]): number {
+  return types.includes('cents') ? MONEY_AXIS_W : PLAIN_AXIS_W
+}
+
+export function ComboChart({ columns, rows, accent, combo, onPoint }: ChartProps & {
+  combo: ComboConfig
+}) {
+  const reduced = useReducedMotion()
+  const dim = columns.find((c) => c.role === 'dimension')!
+  const measures = columns.filter((c) => c.role === 'measure')
+  const colors = seriesColors(accent, measures.length)
+  const typeByKey = Object.fromEntries(measures.map((m) => [m.key, m.type]))
+
+  // `combo` is the server's NORMALISED spec, so every measure has an entry; the
+  // fallback is belt-and-braces for a panel rendered from an older saved result.
+  const specOf = (k: string) => combo?.[k] ?? { as: 'bar' as const, axis: 'left' as const }
+  const onAxis = (side: 'left' | 'right') => measures.filter((m) => specOf(m.key).axis === side)
+  const leftM = onAxis('left')
+  const rightM = onAxis('right')
+
+  const click = onPoint
+    ? (entry: unknown) => {
+        const r = rowOf(entry)
+        onPoint({ [dim.key]: r[dim.key] ?? null }, `${dim.label}: ${shown(r[dim.key])}`)
+      }
+    : undefined
+
+  return (
+    <div className="panel">
+      <ResponsiveContainer width="100%" height={360}>
+        <ComposedChart data={rows} margin={{ top: 12, right: 16, bottom: 6, left: 6 }}>
+          <CartesianGrid stroke={GRID_INK} />
+          <XAxis dataKey={dim.key} tick={AXIS_TICK} tickFormatter={truncate} />
+          <YAxis yAxisId="left" tick={AXIS_TICK} width={axisWidth(leftM.map((m) => m.type))}
+                 tickFormatter={(v) => fmt(v, leftM[0]?.type ?? 'int')} />
+          {/* The right axis only exists if a measure asked for it, so a
+              single-axis combo does not render an empty band. */}
+          {rightM.length > 0 && (
+            <YAxis yAxisId="right" orientation="right" tick={AXIS_TICK}
+                   width={axisWidth(rightM.map((m) => m.type))}
+                   tickFormatter={(v) => fmt(v, rightM[0].type)} />
+          )}
+          <Tooltip {...TOOLTIP_STYLE}
+                   formatter={(value, name) => [fmt(value as number, typeByKey[name as string] ?? 'int'), name]} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          {measures.map((m, i) => {
+            const spec = specOf(m.key)
+            // A measure on the right axis when no right axis exists would throw;
+            // normalisation makes that unreachable, but fall back to left anyway.
+            const yAxisId = spec.axis === 'right' && rightM.length > 0 ? 'right' : 'left'
+            return spec.as === 'line' ? (
+              <Line key={m.key} yAxisId={yAxisId} type="monotone" dataKey={m.key} name={m.label}
+                    stroke={colors[i]} strokeWidth={2} dot={{ r: 2 }} isAnimationActive={!reduced} />
+            ) : (
+              <Bar key={m.key} yAxisId={yAxisId} dataKey={m.key} name={m.label} fill={colors[i]}
+                   radius={[3, 3, 0, 0]} isAnimationActive={!reduced}
+                   onClick={click} cursor={onPoint ? 'pointer' : undefined} />
+            )
+          })}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+// ── Gauge (one measure, no dimension, against a banded scale) ──────────────
+// The value arc is drawn over a full-circumference track split into the
+// configured bands, so the bands READ as a scale rather than as decoration. The
+// tone -> hex map is the frontend's; the server only ever sends the enum.
+// `accent` is intentionally unused: a gauge's colour comes from its band tone,
+// not the source accent, so a "bad" band reads red on a sell report too.
+export function GaugeChart({ columns, rows, gauge }: ChartProps & {
+  gauge: GaugeConfig
+}) {
+  const reduced = useReducedMotion()
+  const measure = columns.find((c) => c.role === 'measure')!
+  const raw = Number(rows[0]?.[measure.key] ?? 0)
+  const { min, max, bands } = gauge
+  const span = max - min || 1
+  // Clamp for the ARC only: an out-of-range value must not draw past the track.
+  // The printed figure below stays the real number, so the gauge never lies.
+  const clamped = Math.min(Math.max(raw, min), max)
+  const pct = ((clamped - min) / span) * 100
+
+  // Which band the value lands in decides the arc's tone.
+  const band = bands.find((b) => clamped <= b.to) ?? bands[bands.length - 1]
+  const arc = toneHex(band?.tone ?? 'neutral')
+  const outOfRange = raw < min || raw > max
+
+  return (
+    <div className="panel" style={{ position: 'relative' }}>
+      {/* The band scale, as a plain proportional strip under the dial. */}
+      <ResponsiveContainer width="100%" height={210}>
+        <RadialBarChart innerRadius="72%" outerRadius="100%" data={[{ value: pct }]}
+                        startAngle={210} endAngle={-30}>
+          <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+          <RadialBar background={{ fill: GRID_INK }} dataKey="value" cornerRadius={6}
+                     fill={arc} isAnimationActive={!reduced} angleAxisId={0} />
+        </RadialBarChart>
+      </ResponsiveContainer>
+      <div style={{ textAlign: 'center', marginTop: -74, paddingBottom: 18 }}>
+        <div style={{ fontSize: 30, fontWeight: 700, color: LABEL_INK, fontVariantNumeric: 'tabular-nums' }}>
+          {fmt(raw, measure.type)}
+        </div>
+        <div className="note" style={{ marginTop: 2 }}>{measure.label}</div>
+        {outOfRange && (
+          <div className="note" style={{ color: '#B4432B', marginTop: 2 }}>
+            Outside the {fmt(min, measure.type)} to {fmt(max, measure.type)} scale.
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 2, marginTop: 4 }}>
+        {bands.map((b, i) => {
+          const from = i === 0 ? min : bands[i - 1].to
+          return (
+            <div key={i} style={{ flex: Math.max(b.to - from, 0.0001), minWidth: 2 }} title={`up to ${b.to}`}>
+              <div style={{ height: 6, borderRadius: 3, background: toneHex(b.tone) }} />
+              <div className="note" style={{ fontSize: 10, textAlign: 'right' }}>{fmt(b.to, measure.type)}</div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

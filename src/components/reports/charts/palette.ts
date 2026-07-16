@@ -22,6 +22,22 @@ export const AXIS_INK = '#555555' // --p-body
 export const LABEL_INK = '#1A2B47' // --p-navy-dark
 export const GRID_INK = '#E6EAF0'
 
+// Gauge band tones. THIS map is the only place a gauge colour exists: the
+// server validates `tone` against the same fixed enum and never accepts a
+// colour, so a user string cannot reach CSS. An unknown tone resolves to
+// neutral rather than undefined — a chart must never render a blank band.
+export const GAUGE_TONE_HEX: Record<string, string> = {
+  good: '#2C7A7B',    // teal
+  warn: '#D4A94E',    // light gold
+  bad: '#B4432B',     // the error red already used in report copy
+  neutral: '#A8BDD4', // muted blue
+  accent: GOLD,
+}
+
+export function toneHex(tone: string): string {
+  return GAUGE_TONE_HEX[tone] ?? GAUGE_TONE_HEX.neutral
+}
+
 // ResultView passes accent as a CSS var string; resolve it to a concrete hex so
 // recharts and the palette-exclusion below can use it.
 export function accentHex(accent: string): string {
