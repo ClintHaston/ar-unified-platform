@@ -149,7 +149,7 @@ function PieFamily({ columns, rows, accent, innerRadius }: ChartProps & { innerR
   const reduced = useReducedMotion()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measure = columns.find((c) => c.role === 'measure')!
-  const data = rows.map((r) => ({ name: String(r[dim.key] ?? '—'), value: Number(r[measure.key] ?? 0) }))
+  const data = rows.map((r) => ({ name: String(r[dim.key] ?? '-'), value: Number(r[measure.key] ?? 0) }))
   const colors = seriesColors(accent, data.length)
 
   return (
@@ -191,7 +191,7 @@ function ScatterTip({ active, payload, dim, mx, my }: {
   const row = payload[0].payload
   return (
     <div style={{ ...TOOLTIP_STYLE.contentStyle, background: '#fff', padding: '6px 9px' }}>
-      <div style={{ ...TOOLTIP_STYLE.labelStyle }}>{String(row[dim.key] ?? '—')}</div>
+      <div style={{ ...TOOLTIP_STYLE.labelStyle }}>{String(row[dim.key] ?? '-')}</div>
       <div>{mx.label}: {fmt(row[mx.key] as number, mx.type)}</div>
       <div>{my.label}: {fmt(row[my.key] as number, my.type)}</div>
     </div>

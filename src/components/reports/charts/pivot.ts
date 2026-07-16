@@ -20,8 +20,8 @@ export function pivotSeries(
   const seriesValues: string[] = []
 
   for (const r of rows) {
-    const cat = String(r[categoryKey] ?? '—')
-    const sv = String(r[seriesKey] ?? '—')
+    const cat = String(r[categoryKey] ?? '-')
+    const sv = String(r[seriesKey] ?? '-')
     if (!byCat.has(cat)) {
       byCat.set(cat, { [categoryKey]: cat })
       order.push(cat)

@@ -5,7 +5,7 @@ import type { FunnelPipeline } from '../../lib/api'
 // bars are plain divs. accent is the sell (gold) or buy (teal) token.
 
 function fmtDays(d: number | null): string {
-  if (d === null) return '—'
+  if (d === null) return '-'
   if (d < 1) return `${Math.round(d * 24)}h`
   return `${d}d`
 }

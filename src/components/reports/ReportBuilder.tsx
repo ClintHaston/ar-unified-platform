@@ -58,7 +58,8 @@ function isRunnable(viz: ReportViz, dims: string[], measures: string[], series: 
 function shapeHint(viz: ReportViz): string {
   if (viz === 'number') return 'Pick one or more measures (no dimensions).'
   if (viz === 'bar') return 'Pick exactly one dimension and at least one measure.'
-  if (viz === 'donut') return 'Pick exactly one dimension and exactly one measure.'
+  if (viz === 'donut' || viz === 'pie') return 'Pick exactly one dimension and exactly one measure.'
+  if (viz === 'scatter') return 'Pick one dimension and exactly two measures. The first is the x axis, the second is the y axis, and each point is one group.'
   if (viz === 'stacked_bar' || viz === 'grouped_bar') return 'Pick one dimension, one breakdown, and one measure.'
   if (viz === 'line') return 'Pick one dimension and at least one measure. A breakdown takes one measure.'
   if (viz === 'table') return 'Pick at least one dimension and one measure.'
@@ -234,7 +235,7 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
             {usesSeries && (
               <>
                 <label className="rb-lbl">
-                  Breakdown (series){seriesMode(viz) === 'optional' ? ' — optional' : ''}
+                  Breakdown (series){seriesMode(viz) === 'optional' ? ' (optional)' : ''}
                 </label>
                 <select className="plat-input" value={series} onChange={(e) => setSeries(e.target.value)}>
                   <option value="">{seriesMode(viz) === 'required' ? 'Choose a breakdown…' : 'No breakdown'}</option>
@@ -290,7 +291,7 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
             {saved.map((r) => (
               <div key={r.id} className="rb-saved-row">
                 <button className="rb-saved-open" onClick={() => openSaved(r)}>{r.name}</button>
-                <span className="note">{r.owner_name ?? '—'}</span>
+                <span className="note">{r.owner_name ?? '-'}</span>
                 <button className="plat-btn ghost" onClick={() => remove(r)}>Delete</button>
               </div>
             ))}

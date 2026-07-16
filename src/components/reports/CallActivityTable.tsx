@@ -27,12 +27,12 @@ export function CallActivityTable({ report }: { report: CallActivityReport }) {
             rows.map((r, i) => (
               <tr key={`${r.rep_id}-${r.period}-${i}`}>
                 <td><b>{r.rep_name}</b></td>
-                <td>{r.period ?? '—'}</td>
+                <td>{r.period ?? '-'}</td>
                 <td className="num"><b>{r.total}</b></td>
                 {outcomes.map((o) => (
-                  <td key={o} className="num">{r.by_outcome[o] || '—'}</td>
+                  <td key={o} className="num">{r.by_outcome[o] || '-'}</td>
                 ))}
-                <td className="num">{r.no_outcome || '—'}</td>
+                <td className="num">{r.no_outcome || '-'}</td>
               </tr>
             ))
           )}

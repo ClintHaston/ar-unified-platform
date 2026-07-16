@@ -222,7 +222,7 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
               </button>
               <button className="dash-list-name" onClick={() => navigate(`/dashboards/${d.id}`)}>{d.name}</button>
               <span className="note">{d.panel_count} panel{d.panel_count === 1 ? '' : 's'}</span>
-              <span className="note">{d.owner_name ?? '—'}</span>
+              <span className="note">{d.owner_name ?? '-'}</span>
               <button className="plat-btn ghost" onClick={() => editDashboard(d)}>Edit</button>
               <button className="plat-btn ghost" onClick={() => remove(d)}>Delete</button>
             </div>

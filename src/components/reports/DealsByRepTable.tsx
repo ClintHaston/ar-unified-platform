@@ -27,10 +27,10 @@ export function DealsByRepTable({ report }: { report: DealsByRepReport }) {
             rows.map((r, i) => (
               <tr key={`${r.rep_id}-${r.period}-${i}`}>
                 <td><b>{r.rep_name}</b></td>
-                <td>{r.period ?? '—'}</td>
+                <td>{r.period ?? '-'}</td>
                 <td className="num">{r.won_count}</td>
                 <td className="num">{r.lost_count}</td>
-                <td className="num">{r.won_value_cents > 0 ? money(r.won_value_cents) : '—'}</td>
+                <td className="num">{r.won_value_cents > 0 ? money(r.won_value_cents) : '-'}</td>
               </tr>
             ))
           )}
@@ -41,7 +41,7 @@ export function DealsByRepTable({ report }: { report: DealsByRepReport }) {
               <td>Total</td><td></td>
               <td className="num">{totals.won_count}</td>
               <td className="num">{totals.lost_count}</td>
-              <td className="num">{totals.won_value_cents > 0 ? money(totals.won_value_cents) : '—'}</td>
+              <td className="num">{totals.won_value_cents > 0 ? money(totals.won_value_cents) : '-'}</td>
             </tr>
           </tfoot>
         )}
