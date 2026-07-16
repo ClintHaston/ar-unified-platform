@@ -109,7 +109,9 @@ export function Inventory() {
       if (categoryId === NONE ? u.category_id !== null : categoryId && u.category_id !== categoryId) return false
       if (makeId === NONE ? u.make_id !== null : makeId && u.make_id !== makeId) return false
       if (needle) {
-        const hay = [u.title, u.serial, u.location, u.category_name, u.make_name, u.model_name]
+        // legacy_id is the TAB listing id, which is the item number a rep
+        // reads off the site, so it has to be searchable here too.
+        const hay = [u.title, u.serial, u.legacy_id, u.location, u.category_name, u.make_name, u.model_name]
           .filter(Boolean).join(' ').toLowerCase()
         if (!hay.includes(needle)) return false
       }
