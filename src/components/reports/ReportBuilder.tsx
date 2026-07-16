@@ -24,6 +24,7 @@ const VIZ_LABEL: Record<ReportViz, string> = {
   table: 'Table', bar: 'Bar', number: 'Metric', funnel: 'Funnel',
   stacked_bar: 'Stacked bar', grouped_bar: 'Grouped bar', line: 'Line',
   donut: 'Donut', pie: 'Pie', scatter: 'Scatter',
+  scatter_records: 'Scatter (per record)',
 }
 
 // Series (breakdown) modes — mirror the server: stacked/grouped require a
@@ -45,6 +46,10 @@ function isRunnable(viz: ReportViz, dims: string[], measures: string[], series: 
   // scatter plots one point per group: x = first measure, y = second. Exactly
   // two, mirroring the server — a third has nowhere to go, one leaves an axis bare.
   if (viz === 'scatter') return dims.length === 1 && measures.length === 2
+  // Per-record scatter plots one point per RECORD, so it groups by nothing: no
+  // dimension, and two measures that have a per-record value (the server rejects
+  // a total like Count, which only exists for a group).
+  if (viz === 'scatter_records') return dims.length === 0 && measures.length === 2
   if (viz === 'stacked_bar' || viz === 'grouped_bar') {
     return dims.length === 1 && measures.length === 1 && !!series && !dims.includes(series)
   }
@@ -60,6 +65,7 @@ function shapeHint(viz: ReportViz): string {
   if (viz === 'bar') return 'Pick exactly one dimension and at least one measure.'
   if (viz === 'donut' || viz === 'pie') return 'Pick exactly one dimension and exactly one measure.'
   if (viz === 'scatter') return 'Pick one dimension and exactly two measures. The first is the x axis, the second is the y axis, and each point is one group.'
+  if (viz === 'scatter_records') return 'Pick exactly two measures and no dimension. Each point is one record. Totals like Count cannot be plotted per record.'
   if (viz === 'stacked_bar' || viz === 'grouped_bar') return 'Pick one dimension, one breakdown, and one measure.'
   if (viz === 'line') return 'Pick one dimension and at least one measure. A breakdown takes one measure.'
   if (viz === 'table') return 'Pick at least one dimension and one measure.'
@@ -110,6 +116,9 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
   }
 
   const usesSeries = seriesMode(viz) !== 'none'
+  // A funnel groups by its own stages; a per-record scatter groups by nothing.
+  // Neither takes a dimension, so neither offers one.
+  const usesDims = viz !== 'funnel' && viz !== 'scatter_records'
 
   const definition: ReportDefinition | null = useMemo(() => {
     if (!source) return null
@@ -118,7 +127,7 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
       .map(([field, value]) => ({ field, value }))
     return {
       source: source.key,
-      dimensions: viz === 'funnel' ? [] : dims,
+      dimensions: usesDims ? dims : [],
       measures: viz === 'funnel' ? [] : measures,
       series: usesSeries && series ? series : undefined,
       filters: clauses,
@@ -126,9 +135,9 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
       owner_id: source.has_owner && ownerId ? ownerId : undefined,
       viz,
     }
-  }, [source, dims, measures, series, usesSeries, filters, viz, start, end, ownerId])
+  }, [source, dims, measures, series, usesSeries, usesDims, filters, viz, start, end, ownerId])
 
-  const ready = !!source && isRunnable(viz, viz === 'funnel' ? [] : dims, viz === 'funnel' ? [] : measures, series)
+  const ready = !!source && isRunnable(viz, usesDims ? dims : [], viz === 'funnel' ? [] : measures, series)
 
   // live preview, debounced
   useEffect(() => {
@@ -217,13 +226,22 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
           </div>
         ) : (
           <>
-            <label className="rb-lbl">Dimensions (group by)</label>
-            <div className="rb-chips">
-              {source.dimensions.map((d) => (
-                <button key={d.key} className={`rb-chip${dims.includes(d.key) ? ' on' : ''}`}
-                        onClick={() => toggle(setDims, d.key)}>{d.label}</button>
-              ))}
-            </div>
+            {usesDims ? (
+              <>
+                <label className="rb-lbl">Dimensions (group by)</label>
+                <div className="rb-chips">
+                  {source.dimensions.map((d) => (
+                    <button key={d.key} className={`rb-chip${dims.includes(d.key) ? ' on' : ''}`}
+                            onClick={() => toggle(setDims, d.key)}>{d.label}</button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="note" style={{ marginTop: 10 }}>
+                Each point is one record, so there is nothing to group by. Pick the two
+                measures to plot.
+              </div>
+            )}
             <label className="rb-lbl">Measures</label>
             <div className="rb-chips">
               {source.measures.map((m) => (
@@ -282,7 +300,9 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
         ) : !result ? (
           <div className="admin-loading">{previewing ? 'Running…' : 'Preview'}</div>
         ) : (
-          <ResultView result={result} accent={accent} />
+          // `definition` is what produced this preview, so a drill re-runs the
+          // same population and the popup's count matches the datapoint.
+          <ResultView result={result} accent={accent} definition={definition ?? undefined} />
         )}
 
         {saved.length > 0 && (

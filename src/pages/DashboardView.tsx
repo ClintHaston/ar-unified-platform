@@ -200,7 +200,10 @@ export function DashboardView() {
             {p.error ? (
               <div className="panel"><div className="note">{p.error}</div></div>
             ) : p.result ? (
-              <ResultView result={p.result} accent={panelAccent(p)} />
+              // The panel's EFFECTIVE definition (saved report + this
+              // dashboard's date/owner overrides), so a drill returns the
+              // population the panel actually rendered.
+              <ResultView result={p.result} accent={panelAccent(p)} definition={p.definition} />
             ) : (
               <div className="admin-loading">…</div>
             )}

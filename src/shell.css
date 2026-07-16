@@ -447,11 +447,44 @@
 .ws-star[aria-pressed="true"], .ws-star:hover { color: var(--p-gold); }
 .ws-star svg { color: inherit; }
 
+/* ── Phase 3 drill-down: the records behind a datapoint ── */
+.drill-scrim {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(26, 43, 71, 0.32);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 8vh 16px 16px;
+  animation: wsFade var(--ws-in) ease both;
+}
+.drill-modal {
+  width: 880px; max-width: 96vw; max-height: 78vh;
+  display: flex; flex-direction: column; margin-top: 0;
+  animation: wsPalette var(--ws-in) var(--ws-ease) both;
+}
+.drill-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px;
+}
+/* The table scrolls inside the modal so the head and pager stay put. */
+.drill-tablewrap { overflow: auto; flex: 1; min-height: 0; margin: 0 -14px; }
+.drill-tablewrap .plat-table { margin: 0; }
+.drill-tablewrap thead th { position: sticky; top: 0; background: var(--p-white); z-index: 1; }
+.drill-open { color: var(--p-gold); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.drill-open:hover { text-decoration: underline; }
+.drill-pager {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding-top: 10px; border-top: 1px solid var(--p-row); margin-top: 10px;
+}
+/* A table row that opens its records reads as clickable. */
+.plat-table tr.drillable { cursor: pointer; }
+.plat-table tr.drillable:hover td { background: var(--p-row); }
+
 /* ── Reduced motion: collapse everything to instant ── */
 @media (prefers-reduced-motion: reduce) {
   .plat-grid,
   .ws-navitem, .ws-flyout, .ws-menu, .ws-topbtn, .ws-overlay, .ws-palette,
-  .ws-toast, .ws-rail-item, .ws-brand .ws-collapse, .ws-rail-toggle, .rep-fbar {
+  .ws-toast, .ws-rail-item, .ws-brand .ws-collapse, .ws-rail-toggle, .rep-fbar,
+  .drill-scrim, .drill-modal {
     transition: none !important;
     animation: none !important;
   }

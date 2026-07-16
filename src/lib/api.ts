@@ -799,6 +799,10 @@ export interface CallActivityReport {
 export type ReportViz =
   | 'table' | 'bar' | 'number' | 'funnel'
   | 'stacked_bar' | 'grouped_bar' | 'line' | 'donut' | 'pie' | 'scatter'
+  // Per-record scatter: one point per underlying record rather than per group.
+  // It returns the same {dimension, measure, measure} shape as 'scatter', so the
+  // same chart renders it.
+  | 'scatter_records'
 export type MeasureType = 'int' | 'cents' | 'number'
 
 export interface RegistryField {
@@ -812,6 +816,9 @@ export interface RegistrySource {
   key: string
   label: string
   has_owner: boolean
+  // Whether a datapoint on this source can open its underlying records. The
+  // server never exposes WHICH columns it would return — only that it may be asked.
+  drillable: boolean
   viz: ReportViz[]
   dimensions: RegistryField[]
   measures: RegistryField[]
@@ -850,9 +857,37 @@ export interface RunGroupedResult {
   viz: Exclude<ReportViz, 'funnel'>
   columns: RunColumn[]
   rows: Array<Record<string, string | number | null>>
+  // Per-record scatter only: where a point deep-links to, and whether the point
+  // cap truncated the plot. Absent on every grouped viz.
+  route?: string | null
+  capped?: boolean
 }
 
 export type RunResult = RunGroupedResult | (FunnelReport & { viz: 'funnel' })
+
+// ── Phase 3 drill-down: the records behind one datapoint ──
+// `at` is the clicked datapoint: {dimension key -> the value that was clicked}.
+// A null value means the null bucket, and the server turns that into IS NULL.
+export type DrillAt = Record<string, string | number | null>
+
+export interface DrillColumn {
+  key: string
+  label: string
+  type: string
+}
+
+export interface DrillResult {
+  source: string
+  label: string
+  // null where the source has no detail page (activities, offers): rows render
+  // without a link rather than with a dead one.
+  route: string | null
+  columns: DrillColumn[]
+  rows: Array<Record<string, string | number | null>>
+  total: number
+  limit: number
+  offset: number
+}
 
 export interface SavedReport {
   id: string
@@ -909,6 +944,10 @@ export interface DashboardRunPanel {
   size: PanelSize
   name: string | null
   result?: RunResult
+  // The EFFECTIVE definition this panel ran (saved report + the dashboard's
+  // date/owner overrides). Drilling must re-run the population the panel showed,
+  // so it uses this rather than the stored definition. Absent on an errored panel.
+  definition?: ReportDefinition
   error?: string
 }
 
@@ -1744,6 +1783,10 @@ export const api = {
   reportRegistry: () => request<{ sources: RegistrySource[] }>('/platform/reports/registry'),
   runReport: (definition: ReportDefinition) =>
     request<RunResult>('/platform/reports/run', { method: 'POST', body: JSON.stringify(definition) }),
+  drillReport: (definition: ReportDefinition, at: DrillAt, limit: number, offset: number) =>
+    request<DrillResult>('/platform/reports/drill', {
+      method: 'POST', body: JSON.stringify({ definition, at, limit, offset }),
+    }),
   savedReports: () => request<{ reports: SavedReport[] }>('/platform/reports/saved'),
   createSavedReport: (name: string, definition: ReportDefinition) =>
     request<SavedReport>('/platform/reports/saved', {

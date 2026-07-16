@@ -2,7 +2,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import type { RunColumn } from '../../../lib/api'
+import type { DrillAt, RunColumn } from '../../../lib/api'
 import { fmt } from '../reportFormat'
 import { AXIS_INK, GRID_INK, LABEL_INK, seriesColors, useReducedMotion } from './palette'
 import { pivotSeries } from './pivot'
@@ -11,6 +11,12 @@ import { pivotSeries } from './pivot'
 // on the gold (sell) / teal (buy) accent, honours reduced motion, and is fully
 // responsive. Bar-family charts render horizontally so long rep lists stay
 // legible (the pattern HubSpot/Salesforce use for "by rep" panels).
+//
+// DRILL-DOWN (Phase 3): a chart emits the clicked datapoint's RAW dimension
+// values via onPoint and knows nothing else about drilling. Raw matters: a chart
+// displays '-' for a null category, and drilling the string '-' would match
+// nothing — so what is emitted is the value the engine grouped on, not the text
+// on screen. ResultView decides what to do with it.
 
 type Row = Record<string, string | number | null>
 
@@ -18,6 +24,8 @@ interface ChartProps {
   columns: RunColumn[]
   rows: Row[]
   accent: string
+  // Absent = this chart is not drillable, and no click affordance is rendered.
+  onPoint?: (at: DrillAt, label: string) => void
 }
 
 const TOOLTIP_STYLE = {
@@ -35,14 +43,32 @@ function barHeight(catCount: number, barsPerCat: number): number {
   return Math.min(820, Math.max(220, catCount * (barsPerCat * 18 + 14) + 64))
 }
 
+// recharts hands a clicked element either the datum or a wrapper carrying it.
+function rowOf(entry: unknown): Row {
+  const e = entry as { payload?: Row } | Row | null
+  if (e && typeof e === 'object' && 'payload' in e && e.payload) return e.payload as Row
+  return (e ?? {}) as Row
+}
+
+function shown(v: string | number | null): string {
+  return v === null || v === undefined || v === '' ? '(none)' : String(v)
+}
+
 // ── Simple bar (one category dimension, one or more measures) ──────────────
-export function SimpleBarChart({ columns, rows, accent }: ChartProps) {
+export function SimpleBarChart({ columns, rows, accent, onPoint }: ChartProps) {
   const reduced = useReducedMotion()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measures = columns.filter((c) => c.role === 'measure')
   const colors = seriesColors(accent, measures.length)
   const typeByKey = Object.fromEntries(measures.map((m) => [m.key, m.type]))
   const height = barHeight(rows.length, measures.length)
+
+  const click = onPoint
+    ? (entry: unknown) => {
+        const r = rowOf(entry)
+        onPoint({ [dim.key]: r[dim.key] ?? null }, `${dim.label}: ${shown(r[dim.key])}`)
+      }
+    : undefined
 
   return (
     <div className="panel">
@@ -55,7 +81,8 @@ export function SimpleBarChart({ columns, rows, accent }: ChartProps) {
           {measures.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
           {measures.map((m, i) => (
             <Bar key={m.key} dataKey={m.key} name={m.label} fill={colors[i]} radius={[0, 3, 3, 0]}
-                 isAnimationActive={!reduced} />
+                 isAnimationActive={!reduced} onClick={click}
+                 cursor={onPoint ? 'pointer' : undefined} />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -64,14 +91,27 @@ export function SimpleBarChart({ columns, rows, accent }: ChartProps) {
 }
 
 // ── Stacked / grouped bar (category dimension × series × one measure) ──────
-function BreakdownBar({ columns, rows, accent, stacked }: ChartProps & { stacked: boolean }) {
+function BreakdownBar({ columns, rows, accent, stacked, onPoint }: ChartProps & { stacked: boolean }) {
   const reduced = useReducedMotion()
   const dim = columns.find((c) => c.role === 'dimension')!
   const series = columns.find((c) => c.role === 'series')!
   const measure = columns.find((c) => c.role === 'measure')!
-  const { data, seriesValues } = pivotSeries(rows, dim.key, series.key, measure.key)
+  const { data, seriesValues, rawCategory, rawSeries } = pivotSeries(rows, dim.key, series.key, measure.key)
   const colors = seriesColors(accent, seriesValues.length)
   const height = barHeight(data.length, stacked ? 1.4 : seriesValues.length)
+
+  // A segment identifies BOTH its category and its series value, so the drill
+  // carries both. The raw values come from the pivot's maps, not the row keys,
+  // which are display strings.
+  const click = (sv: string) => (onPoint
+    ? (entry: unknown) => {
+        const cat = String(rowOf(entry)[dim.key] ?? '-')
+        onPoint(
+          { [dim.key]: rawCategory[cat] ?? null, [series.key]: rawSeries[sv] ?? null },
+          `${dim.label}: ${shown(rawCategory[cat])} · ${series.label}: ${shown(rawSeries[sv])}`,
+        )
+      }
+    : undefined)
 
   return (
     <div className="panel">
@@ -84,7 +124,8 @@ function BreakdownBar({ columns, rows, accent, stacked }: ChartProps & { stacked
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {seriesValues.map((sv, i) => (
             <Bar key={sv} dataKey={sv} name={sv} fill={colors[i]} stackId={stacked ? 's' : undefined}
-                 radius={stacked ? undefined : [0, 3, 3, 0]} isAnimationActive={!reduced} />
+                 radius={stacked ? undefined : [0, 3, 3, 0]} isAnimationActive={!reduced}
+                 onClick={click(sv)} cursor={onPoint ? 'pointer' : undefined} />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -101,7 +142,7 @@ export function GroupedBarChart(props: ChartProps) {
 }
 
 // ── Line (category on x, one line per measure, or per series value) ────────
-export function LineChartViz({ columns, rows, accent }: ChartProps) {
+export function LineChartViz({ columns, rows, accent, onPoint }: ChartProps) {
   const reduced = useReducedMotion()
   const dim = columns.find((c) => c.role === 'dimension')!
   const series = columns.find((c) => c.role === 'series')
@@ -123,10 +164,26 @@ export function LineChartViz({ columns, rows, accent }: ChartProps) {
   }
   const nameByKey = series ? {} : Object.fromEntries(measures.map((m) => [m.key, m.label]))
 
+  // A line is drilled at the chart level, which reports the category but not
+  // which series line was hit. So a BROKEN-DOWN line is deliberately not
+  // drillable: drilling the whole category would return more records than the
+  // clicked point represents, and the count would not reconcile. Every other
+  // breakdown chart (stacked/grouped bar) identifies its segment and does drill.
+  const canDrill = !!onPoint && !series
+  const click = canDrill
+    ? (state: unknown) => {
+        const s = state as { activePayload?: Array<{ payload?: Row }> } | null
+        const r = s?.activePayload?.[0]?.payload
+        if (!r) return
+        onPoint!({ [dim.key]: r[dim.key] ?? null }, `${dim.label}: ${shown(r[dim.key])}`)
+      }
+    : undefined
+
   return (
     <div className="panel">
       <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={data} margin={{ top: 10, right: 24, bottom: 6, left: 6 }}>
+        <LineChart data={data} margin={{ top: 10, right: 24, bottom: 6, left: 6 }}
+                   onClick={click} style={canDrill ? { cursor: 'pointer' } : undefined}>
           <CartesianGrid stroke={GRID_INK} />
           <XAxis dataKey={dim.key} tick={AXIS_TICK} tickFormatter={truncate} />
           <YAxis tick={AXIS_TICK} tickFormatter={(v) => fmt(v, measureType)} width={64} />
@@ -145,19 +202,33 @@ export function LineChartViz({ columns, rows, accent }: ChartProps) {
 // ── Pie family (one dimension, one measure) ────────────────────────────────
 // A pie IS a donut without the hole, so both share one renderer and differ by a
 // single radius. Same wrapper pattern as BreakdownBar -> stacked/grouped above.
-function PieFamily({ columns, rows, accent, innerRadius }: ChartProps & { innerRadius: number }) {
+function PieFamily({ columns, rows, accent, innerRadius, onPoint }: ChartProps & { innerRadius: number }) {
   const reduced = useReducedMotion()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measure = columns.find((c) => c.role === 'measure')!
-  const data = rows.map((r) => ({ name: String(r[dim.key] ?? '-'), value: Number(r[measure.key] ?? 0) }))
+  // `raw` rides along beside the display name so a slice can drill the value the
+  // engine grouped on rather than the '-' shown for a null.
+  const data = rows.map((r) => ({
+    name: String(r[dim.key] ?? '-'),
+    value: Number(r[measure.key] ?? 0),
+    raw: r[dim.key] ?? null,
+  }))
   const colors = seriesColors(accent, data.length)
+
+  const click = onPoint
+    ? (entry: unknown) => {
+        const d = rowOf(entry) as unknown as { raw?: string | number | null }
+        onPoint({ [dim.key]: d.raw ?? null }, `${dim.label}: ${shown(d.raw ?? null)}`)
+      }
+    : undefined
 
   return (
     <div className="panel">
       <ResponsiveContainer width="100%" height={320}>
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius={innerRadius} outerRadius={110}
-               paddingAngle={1} isAnimationActive={!reduced}>
+               paddingAngle={1} isAnimationActive={!reduced} onClick={click}
+               cursor={onPoint ? 'pointer' : undefined}>
             {data.map((_, i) => <Cell key={i} fill={colors[i]} />)}
           </Pie>
           <Tooltip {...TOOLTIP_STYLE} formatter={(value, name) => [fmt(value as number, measure.type), name]} />
@@ -177,9 +248,12 @@ export function PieChartViz(props: ChartProps) {
 }
 
 // ── Scatter (one dimension, exactly two measures) ──────────────────────────
-// One point PER GROUP: x = first measure, y = second, the dimension names the
-// point. Per-record scatter would need ungrouped rows, which the report engine
-// deliberately does not return.
+// Two grains, one renderer:
+//   * per-GROUP  (viz 'scatter')         — one point per category
+//   * per-RECORD (viz 'scatter_records') — one point per record, the label
+//     column standing in as the dimension
+// The server returns the same {dimension, measure, measure} shape either way,
+// which is exactly why per-record scatter needed no new chart.
 function ScatterTip({ active, payload, dim, mx, my }: {
   active?: boolean
   payload?: Array<{ payload: Row }>
@@ -198,12 +272,28 @@ function ScatterTip({ active, payload, dim, mx, my }: {
   )
 }
 
-export function ScatterChartViz({ columns, rows, accent }: ChartProps) {
+export function ScatterChartViz({ columns, rows, accent, onPoint, onRecord }: ChartProps & {
+  // Per-record mode: a point IS a record, so it opens the record itself rather
+  // than a popup listing one row.
+  onRecord?: (id: string, label: string) => void
+}) {
   const reduced = useReducedMotion()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measures = columns.filter((c) => c.role === 'measure')
   const [mx, my] = measures
   const colors = seriesColors(accent, 1)
+  const interactive = !!onPoint || !!onRecord
+
+  const click = interactive
+    ? (entry: unknown) => {
+        const r = rowOf(entry)
+        if (onRecord) {
+          if (r._id) onRecord(String(r._id), shown(r[dim.key]))
+          return
+        }
+        onPoint!({ [dim.key]: r[dim.key] ?? null }, `${dim.label}: ${shown(r[dim.key])}`)
+      }
+    : undefined
 
   return (
     <div className="panel">
@@ -222,7 +312,8 @@ export function ScatterChartViz({ columns, rows, accent }: ChartProps) {
                           fill: AXIS_INK, fontSize: 11, style: { textAnchor: 'middle' } }} />
           <Tooltip cursor={{ strokeDasharray: '3 3' }}
                    content={<ScatterTip dim={dim} mx={mx} my={my} />} />
-          <Scatter data={rows} fill={colors[0]} isAnimationActive={!reduced} />
+          <Scatter data={rows} fill={colors[0]} isAnimationActive={!reduced}
+                   onClick={click} cursor={interactive ? 'pointer' : undefined} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
