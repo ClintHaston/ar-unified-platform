@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, type TaskItem } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
+import { SortableTh, useClientSort, type ClientSortColumn } from '../components/SortableTh'
 import { useToast } from '../components/shell/ToastContext'
 
 // "My Tasks" — the real list behind GET /platform/tasks (api.myTasks), plus a
@@ -20,6 +21,13 @@ function dueLabel(dueAt: string | null): { text: string; cls: string } {
 
 interface OptimisticTask extends TaskItem { _pending?: boolean }
 
+const TASK_SORT_COLS: ClientSortColumn<OptimisticTask>[] = [
+  { key: 'task', value: (t) => t.title },
+  { key: 'linked', value: (t) => t.deal_name ?? t.unit_title },
+  // No due date sorts last either way, matching the null rule everywhere else.
+  { key: 'due', value: (t) => t.due_at },
+]
+
 export function Tasks() {
   const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -33,6 +41,7 @@ export function Tasks() {
   const [assignee, setAssignee] = useState('')  // '' = self
   const [saving, setSaving] = useState(false)
   const [completing, setCompleting] = useState<string | null>(null)
+  const taskSort = useClientSort(tasks, TASK_SORT_COLS)
 
   const load = useCallback(() => {
     api.myTasks()
@@ -122,9 +131,16 @@ export function Tasks() {
           <div className="note">No open tasks. Nicely done.</div>
         ) : (
           <table className="plat-table">
-            <thead><tr><th>Task</th><th>Linked to</th><th>Due</th><th></th></tr></thead>
+            <thead>
+              <tr>
+                <SortableTh colKey="task" sort={taskSort.sort} dir={taskSort.dir} toggle={taskSort.toggle}>Task</SortableTh>
+                <SortableTh colKey="linked" sort={taskSort.sort} dir={taskSort.dir} toggle={taskSort.toggle}>Linked to</SortableTh>
+                <SortableTh colKey="due" sort={taskSort.sort} dir={taskSort.dir} toggle={taskSort.toggle}>Due</SortableTh>
+                <th></th>
+              </tr>
+            </thead>
             <tbody>
-              {tasks.map((t) => {
+              {taskSort.sorted.map((t) => {
                 const d = dueLabel(t.due_at)
                 return (
                   <tr key={t.id} className={t._pending ? 'ws-pending' : undefined}>

@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { api, type ContactListResponse, type ContactSort, type ContactType, type OwnerOption, type SegmentListItem, type SortDir } from '../lib/api'
+import {
+  api, SALES_LEAD_STATUSES, type ContactListResponse, type ContactRow,
+  type ContactSort, type ContactType, type OwnerOption, type SegmentListItem,
+  type SortDir,
+} from '../lib/api'
 
 // Contacts per prototype_4 (build step 3c-5), rebuilt for HubSpot list-view
 // parity. Unlike Inventory's 798 units, the 20,087 backfilled contacts never
@@ -42,24 +46,42 @@ export function fmtDate(iso: string | null): string {
 }
 
 // Sortable column definitions in render order. `sort` present ⇒ header is a
-// sort button. Newest-first defaults for the date columns read better.
+// sort button; `filter` present ⇒ the header carries a funnel that opens the
+// per-column filter row. Newest-first defaults for the date columns read better.
+type FilterKey = 'type' | 'lead_status' | 'owner'
 interface Column {
   key: string
   label: string
   sort?: ContactSort
   descFirst?: boolean
+  filter?: FilterKey
 }
 const COLUMNS: Column[] = [
   { key: 'name', label: 'Name', sort: 'name' },
   { key: 'email', label: 'Email', sort: 'email' },
   { key: 'phone', label: 'Phone' },
-  { key: 'type', label: 'Type', sort: 'type' },
-  { key: 'lead_status', label: 'Lead Status', sort: 'lead_status' },
+  { key: 'type', label: 'Type', sort: 'type', filter: 'type' },
+  { key: 'lead_status', label: 'Lead Status', sort: 'lead_status', filter: 'lead_status' },
   { key: 'company', label: 'Primary Company', sort: 'company' },
-  { key: 'owner', label: 'Contact Owner', sort: 'owner' },
+  { key: 'owner', label: 'Contact Owner', sort: 'owner', filter: 'owner' },
   { key: 'last_activity', label: 'Last Activity', sort: 'last_activity', descFirst: true },
   { key: 'created', label: 'Create Date', sort: 'created', descFirst: true },
 ]
+
+// Which fields the list edits in place. Owner is deliberately absent: owner
+// reassignment stays on its own admin-only, server-enforced path (Amdt 18/34).
+type EditField = 'name' | 'email' | 'phone'
+
+function FunnelGlyph({ on }: { on: boolean }) {
+  return (
+    <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"
+         style={{ verticalAlign: '-1px' }}>
+      <path d="M1 1h10L7.5 6v4L4.5 11.5V6L1 1z"
+            fill={on ? 'var(--p-gold)' : 'none'}
+            stroke={on ? 'var(--p-gold)' : 'currentColor'} strokeWidth="1.2" />
+    </svg>
+  )
+}
 
 export function Contacts() {
   const navigate = useNavigate()
@@ -71,6 +93,9 @@ export function Contacts() {
   const [debouncedQ, setDebouncedQ] = useState(q)
   const [contactType, setContactType] = useState('')
   const [ownerId, setOwnerId] = useState('')
+  const [leadStatus, setLeadStatus] = useState('')
+  // The per-column filter row, opened by the funnel in a column header.
+  const [filterRowOpen, setFilterRowOpen] = useState(false)
   const companyId = searchParams.get('company_id') ?? ''
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
@@ -113,14 +138,14 @@ export function Contacts() {
     if (paramQ !== null) setQ(paramQ)
   }, [paramQ])
 
-  useEffect(() => { setPage(1) }, [debouncedQ, contactType, ownerId, companyId, sort, dir, pageSize])
+  useEffect(() => { setPage(1) }, [debouncedQ, contactType, ownerId, leadStatus, companyId, sort, dir, pageSize])
   // Rows change ⇒ drop the selection (per-page semantics).
-  useEffect(() => { setSelected(new Set()); setBulkOwner('') }, [debouncedQ, contactType, ownerId, companyId, sort, dir, page, pageSize])
+  useEffect(() => { setSelected(new Set()); setBulkOwner('') }, [debouncedQ, contactType, ownerId, leadStatus, companyId, sort, dir, page, pageSize])
 
   const listParams = useMemo(() => ({
     q: debouncedQ, contact_type: contactType, owner_id: ownerId,
-    company_id: companyId, sort, dir,
-  }), [debouncedQ, contactType, ownerId, companyId, sort, dir])
+    lead_status: leadStatus, company_id: companyId, sort, dir,
+  }), [debouncedQ, contactType, ownerId, leadStatus, companyId, sort, dir])
 
   useEffect(() => {
     const seq = ++requestSeq.current
@@ -173,19 +198,83 @@ export function Contacts() {
     })
   }
 
+  // ── Inline editing (name / email / phone via click-to-edit; type and lead
+  // status are always-on selects). Every save goes through the same member
+  // PATCH the detail form uses, which now writes an audit row server-side.
+  const [editing, setEditing] = useState<{ id: string; field: EditField } | null>(null)
+  const [draft, setDraft] = useState({ first: '', last: '', value: '' })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  function patchRowLocal(contactId: string, patch: Partial<ContactRow>) {
+    setData((prev) => prev === null ? prev : {
+      ...prev,
+      contacts: prev.contacts.map((c) => (c.id === contactId ? { ...c, ...patch } : c)),
+    })
+  }
+
   async function setRowType(contactId: string, type: ContactType) {
     setSavingTypeFor(contactId)
     try {
       await api.updateContact(contactId, { contact_type: type })
-      setData((prev) => prev === null ? prev : {
-        ...prev,
-        contacts: prev.contacts.map((c) => c.id === contactId ? { ...c, contact_type: type } : c),
-      })
+      patchRowLocal(contactId, { contact_type: type })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update type')
     } finally {
       setSavingTypeFor(null)
     }
+  }
+
+  async function setRowLeadStatus(contactId: string, value: string) {
+    setSavingTypeFor(contactId)
+    try {
+      // '' clears it (the server maps blank -> NULL).
+      await api.updateContact(contactId, { sales_lead_status: (value || null) as ContactRow['sales_lead_status'] })
+      patchRowLocal(contactId, { sales_lead_status: (value || null) as ContactRow['sales_lead_status'] })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update lead status')
+    } finally {
+      setSavingTypeFor(null)
+    }
+  }
+
+  function startEdit(c: ContactRow, field: EditField) {
+    setEditing({ id: c.id, field })
+    setDraft({
+      first: c.first_name ?? '',
+      last: c.last_name ?? '',
+      value: field === 'email' ? (c.email ?? '') : field === 'phone' ? (c.phone ?? '') : '',
+    })
+  }
+
+  async function saveEdit() {
+    if (!editing || savingEdit) return
+    const { id, field } = editing
+    setSavingEdit(true)
+    try {
+      if (field === 'name') {
+        const first = draft.first.trim()
+        const last = draft.last.trim()
+        await api.updateContact(id, { first_name: first, last_name: last })
+        patchRowLocal(id, {
+          first_name: first || null, last_name: last || null,
+          name: [first, last].filter(Boolean).join(' ') || null,
+        })
+      } else {
+        const v = draft.value.trim()
+        await api.updateContact(id, field === 'email' ? { email: v } : { phone: v })
+        patchRowLocal(id, { [field]: v || null })
+      }
+      setEditing(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  function editKeys(e: KeyboardEvent) {
+    if (e.key === 'Enter') { e.preventDefault(); void saveEdit() }
+    if (e.key === 'Escape') setEditing(null)
   }
 
   async function applyBulkOwner() {
@@ -417,17 +506,64 @@ export function Contacts() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                {COLUMNS.map((col) => (
-                  <th
-                    key={col.key}
-                    className={col.sort ? 'th-sort' : undefined}
-                    onClick={col.sort ? () => toggleSort(col) : undefined}
-                  >
-                    {col.label}
-                    {col.sort && sort === col.sort && <span className="sort-caret">{dir === 'asc' ? ' ▲' : ' ▼'}</span>}
-                  </th>
-                ))}
+                {COLUMNS.map((col) => {
+                  const filterOn = col.filter === 'type' ? contactType !== ''
+                    : col.filter === 'lead_status' ? leadStatus !== ''
+                    : col.filter === 'owner' ? ownerId !== '' : false
+                  return (
+                    <th
+                      key={col.key}
+                      className={col.sort ? 'th-sort' : undefined}
+                      onClick={col.sort ? () => toggleSort(col) : undefined}
+                    >
+                      {col.label}
+                      {col.sort && sort === col.sort && <span className="sort-caret">{dir === 'asc' ? ' ▲' : ' ▼'}</span>}
+                      {col.filter && (
+                        <button
+                          type="button"
+                          className={`th-funnel${filterOn ? ' on' : ''}`}
+                          title={`Filter by ${col.label}`}
+                          aria-label={`Filter by ${col.label}`}
+                          onClick={(e) => { e.stopPropagation(); setFilterRowOpen((v) => !v) }}
+                        >
+                          <FunnelGlyph on={filterOn} />
+                        </button>
+                      )}
+                    </th>
+                  )
+                })}
               </tr>
+              {filterRowOpen && (
+                <tr className="filter-row">
+                  <td></td>
+                  {COLUMNS.map((col) => (
+                    <td key={col.key}>
+                      {col.filter === 'type' && (
+                        <select className="plat-input" value={contactType} onChange={(e) => setContactType(e.target.value)}>
+                          <option value="">All types</option>
+                          {(Object.keys(TYPE_LABEL) as ContactType[]).map((t) => (
+                            <option key={t} value={t}>{TYPE_LABEL[t]}</option>
+                          ))}
+                        </select>
+                      )}
+                      {col.filter === 'lead_status' && (
+                        <select className="plat-input" value={leadStatus} onChange={(e) => setLeadStatus(e.target.value)}>
+                          <option value="">All statuses</option>
+                          <option value="none">Not set</option>
+                          {SALES_LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      )}
+                      {col.filter === 'owner' && (
+                        <select className="plat-input" value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+                          <option value="">All owners</option>
+                          <option value="none">Unassigned</option>
+                          {owners.map((o) => <option key={o.id} value={o.id}>{ownerLabel(o)}</option>)}
+                        </select>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              )}
             </thead>
             <tbody>
               {data?.contacts.map((c) => (
@@ -440,13 +576,56 @@ export function Contacts() {
                       onChange={() => toggleRow(c.id)}
                     />
                   </td>
-                  <td>
-                    <button className="linklike" onClick={() => navigate(`/contacts/${c.id}`)}>
-                      <b>{c.name ?? c.email ?? '(no name)'}</b>
-                    </button>
+                  <td className="cell-edit">
+                    {editing?.id === c.id && editing.field === 'name' ? (
+                      <span className="inline-edit" onKeyDown={editKeys}>
+                        <input className="plat-input" placeholder="First" autoFocus value={draft.first}
+                               onChange={(e) => setDraft((d) => ({ ...d, first: e.target.value }))} />
+                        <input className="plat-input" placeholder="Last" value={draft.last}
+                               onChange={(e) => setDraft((d) => ({ ...d, last: e.target.value }))} />
+                        <button className="plat-btn" disabled={savingEdit} onClick={() => void saveEdit()}>✓</button>
+                        <button className="plat-btn ghost" onClick={() => setEditing(null)}>✕</button>
+                      </span>
+                    ) : (
+                      <>
+                        <button className="linklike" onClick={() => navigate(`/contacts/${c.id}`)}>
+                          <b>{c.name ?? c.email ?? '(no name)'}</b>
+                        </button>
+                        <button className="edit-pencil" title="Edit name" aria-label={`Edit name of ${c.name ?? 'contact'}`}
+                                onClick={() => startEdit(c, 'name')}>✎</button>
+                      </>
+                    )}
                   </td>
-                  <td>{c.email ? <a href={`mailto:${c.email}`} onClick={(e) => e.stopPropagation()}>{c.email}</a> : '—'}</td>
-                  <td>{c.phone ? <a href={`tel:${c.phone}`} onClick={(e) => e.stopPropagation()}>{c.phone}</a> : '—'}</td>
+                  <td className="cell-edit">
+                    {editing?.id === c.id && editing.field === 'email' ? (
+                      <span className="inline-edit" onKeyDown={editKeys}>
+                        <input className="plat-input" autoFocus value={draft.value} disabled={savingEdit}
+                               onChange={(e) => setDraft((d) => ({ ...d, value: e.target.value }))}
+                               onBlur={() => void saveEdit()} />
+                      </span>
+                    ) : (
+                      <>
+                        {c.email ? <a href={`mailto:${c.email}`} onClick={(e) => e.stopPropagation()}>{c.email}</a> : '—'}
+                        <button className="edit-pencil" title="Edit email" aria-label="Edit email"
+                                onClick={() => startEdit(c, 'email')}>✎</button>
+                      </>
+                    )}
+                  </td>
+                  <td className="cell-edit">
+                    {editing?.id === c.id && editing.field === 'phone' ? (
+                      <span className="inline-edit" onKeyDown={editKeys}>
+                        <input className="plat-input" autoFocus value={draft.value} disabled={savingEdit}
+                               onChange={(e) => setDraft((d) => ({ ...d, value: e.target.value }))}
+                               onBlur={() => void saveEdit()} />
+                      </span>
+                    ) : (
+                      <>
+                        {c.phone ? <a href={`tel:${c.phone}`} onClick={(e) => e.stopPropagation()}>{c.phone}</a> : '—'}
+                        <button className="edit-pencil" title="Edit phone" aria-label="Edit phone"
+                                onClick={() => startEdit(c, 'phone')}>✎</button>
+                      </>
+                    )}
+                  </td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <select
                       className="plat-input type-select"
@@ -459,7 +638,19 @@ export function Contacts() {
                       ))}
                     </select>
                   </td>
-                  <td>{c.sales_lead_status ?? '—'}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    {/* Same always-on select idiom as Type: lead status is the other
+                        work-down column, so it edits in place too. */}
+                    <select
+                      className="plat-input type-select"
+                      value={c.sales_lead_status ?? ''}
+                      disabled={savingTypeFor === c.id}
+                      onChange={(e) => setRowLeadStatus(c.id, e.target.value)}
+                    >
+                      <option value="">Not set</option>
+                      {SALES_LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
                   <td>
                     {c.company_name && c.company_id
                       ? <button className="linklike" onClick={() => navigate(`/companies/${c.company_id}`)}>{c.company_name}</button>

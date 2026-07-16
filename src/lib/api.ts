@@ -277,6 +277,10 @@ export type ContactType = 'buyer' | 'seller' | 'consigner_contact' | 'other'
 export interface ContactRow {
   id: string
   name: string | null
+  // The raw stored name parts, so inline name editing round-trips exact values
+  // instead of guessing a split of the combined display name.
+  first_name: string | null
+  last_name: string | null
   email: string | null
   phone: string | null
   contact_type: ContactType
@@ -317,6 +321,8 @@ export interface ContactListParams {
   contact_type?: string
   owner_id?: string
   company_id?: string
+  // Per-column Lead Status filter: an enum label, or 'none' for not-yet-set.
+  lead_status?: string
   sort?: ContactSort
   dir?: SortDir
   page?: number

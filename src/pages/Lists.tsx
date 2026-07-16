@@ -2,12 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type OwnerOption, type SegmentCriteria, type SegmentListItem, type SegmentObjectType, type SegmentSource, type SegmentType } from '../lib/api'
 import { SegmentCriteriaBuilder } from '../components/SegmentCriteriaBuilder'
+import { SortableTh, useClientSort, type ClientSortColumn } from '../components/SortableTh'
 
 // Lists (Segments) — HubSpot-style saved lists of contacts or companies.
 // Active lists compute membership live from criteria; static lists snapshot a
 // frozen set. gold-sell / teal-buy palette via --p-*.
 
 const EMPTY_CRITERIA: SegmentCriteria = { groups: [] }
+
+const LIST_SORT_COLS: ClientSortColumn<SegmentListItem>[] = [
+  { key: 'name', value: (s) => s.name },
+  { key: 'type', value: (s) => s.type },
+  { key: 'object', value: (s) => s.object_type },
+  { key: 'members', value: (s) => s.count, descFirst: true },
+  { key: 'owner', value: (s) => s.owner_name },
+]
 
 export function Lists() {
   const navigate = useNavigate()
@@ -27,6 +36,7 @@ export function Lists() {
   const [saving, setSaving] = useState(false)
 
   const source = useMemo(() => sources.find((s) => s.object_type === objectType), [sources, objectType])
+  const listSort = useClientSort(segments, LIST_SORT_COLS)
 
   function load() {
     setLoading(true)
@@ -120,10 +130,17 @@ export function Lists() {
         <div style={{ overflowX: 'auto' }}>
           <table className="plat-table">
             <thead>
-              <tr><th>Name</th><th>Type</th><th>Object</th><th>Members</th><th>Owner</th></tr>
+              <tr>
+                {[['name', 'Name'], ['type', 'Type'], ['object', 'Object'],
+                  ['members', 'Members'], ['owner', 'Owner']].map(([k, label]) => (
+                  <SortableTh key={k} colKey={k} sort={listSort.sort} dir={listSort.dir} toggle={listSort.toggle}>
+                    {label}
+                  </SortableTh>
+                ))}
+              </tr>
             </thead>
             <tbody>
-              {segments.map((s) => (
+              {listSort.sorted.map((s) => (
                 <tr key={s.id} className="row-link" onClick={() => navigate(`/lists/${s.id}`)}>
                   <td>
                     <b>{s.name}</b>

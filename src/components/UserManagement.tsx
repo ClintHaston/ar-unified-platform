@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type PlatformUser } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { SortableTh, useClientSort, type ClientSortColumn } from './SortableTh'
 
 // Task B: admin user management (Settings > Team). This is what gives reps
 // logins at cutover. Admin-only (the backend returns 403 for reps; this screen
@@ -55,9 +56,18 @@ function lastActive(iso: string | null): string {
   })
 }
 
+const USER_SORT_COLS: ClientSortColumn<PlatformUser>[] = [
+  { key: 'name', value: (u) => u.name },
+  { key: 'email', value: (u) => u.email },
+  { key: 'role', value: (u) => u.role },
+  { key: 'status', value: (u) => statusLabel(u).text },
+  { key: 'last_active', value: (u) => u.last_active, descFirst: true },
+]
+
 export function UserManagement() {
   const { user: me } = useAuth()
   const [users, setUsers] = useState<PlatformUser[]>([])
+  const userSort = useClientSort(users, USER_SORT_COLS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -174,12 +184,17 @@ export function UserManagement() {
         <table className="plat-table">
           <thead>
             <tr>
-              <th>Name</th><th>Email</th><th>Role</th><th>Status</th>
-              <th>Last Active</th><th>Actions</th>
+              {[['name', 'Name'], ['email', 'Email'], ['role', 'Role'],
+                ['status', 'Status'], ['last_active', 'Last Active']].map(([k, label]) => (
+                <SortableTh key={k} colKey={k} sort={userSort.sort} dir={userSort.dir} toggle={userSort.toggle}>
+                  {label}
+                </SortableTh>
+              ))}
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {userSort.sorted.map((u) => {
               const st = statusLabel(u)
               const isSelf = me?.id === u.id
               const busy = busyId === u.id

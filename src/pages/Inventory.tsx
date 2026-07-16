@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type TaxonomyLists, type UnitCard, type UnitStatus } from '../lib/api'
+import { SortableTh, useClientSort, type ClientSortColumn } from '../components/SortableTh'
 
 // Inventory per prototype_4: card grid with status pills. The 798 backfilled
 // TAB units load once; search and taxonomy filters run client-side. Filters
@@ -67,6 +68,21 @@ export function offerSummary(u: Pick<UnitCard, 'open_offer_count' | 'top_open_of
 
 type InvView = 'card' | 'list'
 
+// Client-side sort columns for the list view (the 798 units are fully loaded,
+// so no server round-trip). Values mirror what the cell RENDERS, so the sort
+// order always matches what the eye reads.
+const UNIT_SORT_COLS: ClientSortColumn<UnitCard>[] = [
+  { key: 'unit', value: (u) => u.title },
+  { key: 'cmm', value: (u) => [u.category_name, u.make_name, u.model_name].filter(Boolean).join(' / ') || null },
+  { key: 'year', value: (u) => u.year, descFirst: true },
+  { key: 'hours', value: (u) => u.hours },
+  { key: 'condition', value: (u) => u.condition },
+  { key: 'status', value: (u) => u.status },
+  { key: 'asking', value: (u) => u.asking_price_cents, descFirst: true },
+  { key: 'flv', value: (u) => u.valuation?.flv_cents ?? null, descFirst: true },
+  { key: 'offers', value: (u) => (u.open_offer_count === 0 ? null : u.top_open_offer_cents ?? u.open_offer_count), descFirst: true },
+]
+
 export function Inventory() {
   const navigate = useNavigate()
   const [units, setUnits] = useState<UnitCard[]>([])
@@ -118,6 +134,8 @@ export function Inventory() {
       return true
     })
   }, [units, q, status, categoryId, makeId, showArchived])
+
+  const unitSort = useClientSort(filtered, UNIT_SORT_COLS)
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -235,12 +253,17 @@ export function Inventory() {
           <table className="plat-table">
             <thead>
               <tr>
-                <th>Unit</th><th>Category / Make / Model</th><th>Year</th><th>Hours</th>
-                <th>Condition</th><th>Status</th><th>Asking</th><th>FLV</th><th>Offers</th>
+                {[['unit', 'Unit'], ['cmm', 'Category / Make / Model'], ['year', 'Year'],
+                  ['hours', 'Hours'], ['condition', 'Condition'], ['status', 'Status'],
+                  ['asking', 'Asking'], ['flv', 'FLV'], ['offers', 'Offers']].map(([k, label]) => (
+                  <SortableTh key={k} colKey={k} sort={unitSort.sort} dir={unitSort.dir} toggle={unitSort.toggle}>
+                    {label}
+                  </SortableTh>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
+              {unitSort.sorted.map((u) => (
                 <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/units/${u.id}`)}>
                   <td>
                     <b>{u.title}</b>

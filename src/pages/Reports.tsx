@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Icon } from '../components/shell/icons'
 import {
@@ -51,11 +51,20 @@ function isoDaysAgo(days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+function isTabKey(v: string | null): v is TabKey {
+  return TABS.some((t) => t.key === v)
+}
+
 export function Reports() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
 
-  const [tab, setTab] = useState<TabKey>('sell')
+  // ?tab= deep-links each report tab, so the sidebar Reports flyout can land
+  // directly on Custom, Dashboards, etc. State stays local after the landing.
+  const [searchParams] = useSearchParams()
+  const paramTab = searchParams.get('tab')
+  const [tab, setTab] = useState<TabKey>(isTabKey(paramTab) ? paramTab : 'sell')
+  useEffect(() => { if (isTabKey(paramTab)) setTab(paramTab) }, [paramTab])
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [ownerId, setOwnerId] = useState('')

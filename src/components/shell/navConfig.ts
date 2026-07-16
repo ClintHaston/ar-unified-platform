@@ -48,7 +48,16 @@ export const NAV: NavItem[] = [
     key: 'reports', label: 'Reports', icon: 'reports', path: '/reports', section: 'primary',
     flyout: {
       head: 'Reports',
+      // Mirrors the Reports page's own tab strip via ?tab= deep-links, so every
+      // option a rep sees ON the page is reachable FROM the sidebar too. All
+      // admin-only because the report data endpoints 403 for reps.
       items: [
+        { label: 'Sell funnel', path: '/reports?tab=sell', icon: 'reports', adminOnly: true },
+        { label: 'Buy funnel', path: '/reports?tab=buy', icon: 'reports', adminOnly: true, buy: true },
+        { label: 'Deals by rep', path: '/reports?tab=deals', icon: 'deal', adminOnly: true },
+        { label: 'Calls', path: '/reports?tab=calls', icon: 'contacts', adminOnly: true },
+        { label: 'Custom builder', path: '/reports?tab=custom', icon: 'reports', sublabel: 'build your own', adminOnly: true },
+        { label: 'Dashboards', path: '/reports?tab=dashboards', icon: 'dashboard', adminOnly: true },
         { label: 'Commission report', path: '/commission', icon: 'reports', adminOnly: true },
       ],
     },

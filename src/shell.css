@@ -447,6 +447,26 @@
 .ws-star[aria-pressed="true"], .ws-star:hover { color: var(--p-gold); }
 .ws-star svg { color: inherit; }
 
+/* ── Phase 4: per-column filter + inline editing on list tables ── */
+.th-funnel {
+  background: none; border: none; cursor: pointer; padding: 1px 3px;
+  margin-left: 4px; color: var(--p-body); line-height: 0; vertical-align: middle;
+}
+.th-funnel:hover, .th-funnel.on { color: var(--p-gold); }
+.filter-row td { padding: 4px 8px; background: var(--p-row); }
+.filter-row .plat-input { margin-bottom: 0; font-size: 12px; padding: 4px 6px; max-width: 170px; }
+/* The pencil only appears when the pointer is over the row, so the table stays
+   quiet until you reach for it. */
+.edit-pencil {
+  background: none; border: none; cursor: pointer; color: var(--p-body);
+  padding: 0 3px; margin-left: 5px; font-size: 12px; opacity: 0;
+}
+tr:hover .edit-pencil, .edit-pencil:focus-visible { opacity: 1; }
+.edit-pencil:hover { color: var(--p-gold); }
+.inline-edit { display: inline-flex; gap: 4px; align-items: center; }
+.inline-edit .plat-input { margin-bottom: 0; font-size: 12px; padding: 4px 6px; width: 120px; }
+.inline-edit .plat-btn { padding: 4px 8px; font-size: 11px; }
+
 /* ── Phase 3 combo + gauge config rows ── */
 .rb-combo-row {
   display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
