@@ -22,6 +22,7 @@ import { SegmentDetail } from './pages/SegmentDetail'
 import { SalesSheet } from './pages/SalesSheet'
 import { IntakeWizard } from './pages/IntakeWizard'
 import { DealIntakeWizard } from './pages/DealIntakeWizard'
+import { DashboardLanding } from './pages/DashboardLanding'
 import { CommissionReport } from './pages/CommissionReport'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
@@ -82,7 +83,11 @@ export default function App() {
             <Route path="/spine" element={<AuthGuard adminOnly><Spine /></AuthGuard>} />
           </Route>
 
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* The landing resolves the user's default dashboard, falling back to
+              the static KPI page (/dashboard) whenever there isn't a usable one.
+              Guarded like /change-password: outside the shell, since it only
+              redirects and never renders a page of its own. */}
+          <Route path="/" element={<AuthGuard><DashboardLanding /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

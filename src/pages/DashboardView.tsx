@@ -5,6 +5,7 @@ import { Icon } from '../components/shell/icons'
 import { api, type DashboardRun, type OwnerOption, type ReportFilters } from '../lib/api'
 import { ResultView } from '../components/reports/ResultView'
 import { companyTz, todayIn } from '../components/reports/companyTz'
+import { useToast } from '../components/shell/ToastContext'
 
 // WS2c dashboard view. Composes a saved dashboard's panels by running each
 // referenced report back through the 2b engine (server-side), with the
@@ -38,6 +39,7 @@ function panelAccent(run: DashboardRun['panels'][number]): string {
 export function DashboardView() {
   const { dashboardId } = useParams<{ dashboardId: string }>()
   const { user } = useAuth()
+  const toast = useToast()
   const isAdmin = user?.role === 'admin'
 
   const [start, setStart] = useState('')
@@ -48,6 +50,18 @@ export function DashboardView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [initialized, setInitialized] = useState(false)
+  const [isDefault, setIsDefault] = useState(false)
+
+  // Is THIS dashboard the user's default? The server resolves the default, so a
+  // stale/deleted one comes back null and this is simply false.
+  useEffect(() => {
+    if (!isAdmin || !dashboardId) { setIsDefault(false); return }
+    let live = true
+    api.defaultDashboard()
+      .then((r) => { if (live) setIsDefault(r.default?.dashboard_id === dashboardId) })
+      .catch(() => { if (live) setIsDefault(false) })
+    return () => { live = false }
+  }, [isAdmin, dashboardId])
 
   // seed the filter bar from the dashboard's stored default filters, once
   useEffect(() => {
@@ -83,6 +97,23 @@ export function DashboardView() {
       else await api.unfavoriteDashboard(dashboardId)
     } catch {
       setRun((cur) => (cur ? { ...cur, favorited: !next } : cur))
+    }
+  }
+
+  // Default is NOT favorite: favorites are many, the default is the single one
+  // you land on. Toggling one must never touch the other.
+  async function toggleDefault() {
+    if (!dashboardId) return
+    const next = !isDefault
+    setIsDefault(next)                    // optimistic
+    try {
+      await api.setDefaultDashboard(next ? dashboardId : null)
+      toast.info(next ? 'Set as your default dashboard' : 'Default dashboard cleared',
+                 next ? 'It loads when you open the app.' : 'You will land on the main dashboard.')
+    } catch (e) {
+      setIsDefault(!next)
+      toast.error('Could not change your default',
+                  e instanceof Error ? e.message : 'Please try again.')
     }
   }
 
@@ -123,6 +154,16 @@ export function DashboardView() {
                   aria-pressed={run?.favorited ? true : false}>
             <Icon name={run?.favorited ? 'star-filled' : 'star'} size={18} />
           </button>
+          {/* Separate control from the star on purpose: a favorite is one of
+              many, a default is the single one you land on. */}
+          <button className="plat-btn ghost" onClick={toggleDefault}
+                  aria-pressed={isDefault}
+                  title={isDefault
+                    ? 'This is the dashboard you land on. Click to stop landing here.'
+                    : 'Land on this dashboard when you open the app'}>
+            {isDefault ? 'Default for me' : 'Set as default'}
+          </button>
+          {isDefault && <span className="pill gold">You land here</span>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
           <span style={{ fontSize: 12, color: 'var(--p-body)' }}>From</span>

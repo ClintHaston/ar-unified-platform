@@ -876,6 +876,14 @@ export interface DashboardFilters {
   owner_id?: string
 }
 
+// The user's landing choice, already resolved by the server: it is either a
+// dashboard that exists right now, or null. A default pointing at a deleted
+// dashboard resolves to null server-side, so this can never be dangling.
+export interface DefaultDashboard {
+  dashboard_id: string
+  name: string
+}
+
 export interface DashboardListItem {
   id: string
   name: string
@@ -1761,6 +1769,16 @@ export const api = {
     request<{ ok: boolean; favorited: boolean }>(`/platform/dashboards/${id}/favorite`, { method: 'POST' }),
   unfavoriteDashboard: (id: string) =>
     request<{ ok: boolean; favorited: boolean }>(`/platform/dashboards/${id}/favorite`, { method: 'DELETE' }),
+
+  // Per-user default dashboard. The server resolves it: a default pointing at a
+  // deleted dashboard comes back as null, never a dangling id, so nothing here
+  // has to cope with one.
+  defaultDashboard: () =>
+    request<{ default: DefaultDashboard | null }>('/platform/dashboards/default'),
+  setDefaultDashboard: (dashboardId: string | null) =>
+    request<{ ok: boolean; default: DefaultDashboard | null }>(
+      '/platform/dashboards/default',
+      { method: 'PUT', body: JSON.stringify({ dashboard_id: dashboardId }) }),
 
   salesSheet: (unitId: string) =>
     request<{ html: string; spec_source: 'published' | 'generated' | 'none' }>(

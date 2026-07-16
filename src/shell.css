@@ -245,6 +245,14 @@
 .ws-menu .ws-menuitem .ws-ic.buy { color: var(--p-buy); }
 .ws-menu .ws-menuitem .ws-ic svg { width: 16px; height: 16px; }
 .ws-menu .ws-menuitem small { display: block; color: var(--p-body); font-size: 11px; margin-top: 1px; }
+/* Marks the one dashboard the user lands on. margin-left:auto pins it right so
+   it reads as a state badge rather than part of the name. */
+.ws-menu .ws-menuitem .ws-menutag {
+  margin-left: auto; flex-shrink: 0;
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px;
+  font-weight: 700; color: var(--p-navy-dark);
+  background: var(--p-gold); border-radius: 999px; padding: 2px 7px;
+}
 .ws-menu .ws-menudiv { height: 1px; background: var(--p-row); margin: 5px 4px; }
 
 /* ── Command palette ── */
