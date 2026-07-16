@@ -166,6 +166,11 @@ export function Pipelines() {
           <button className="plat-btn" onClick={() => (creating ? closeCreate() : openCreate())}>
             {creating ? 'Cancel' : '+ New deal'}
           </button>
+          {/* The full listing path: basics, listing fields, description, photos,
+              publish. "+ New deal" stays for capturing a bare deal quickly. */}
+          <button className="plat-btn ghost" onClick={() => navigate('/deals/intake')}>
+            + Intake a listing
+          </button>
           <button className="plat-btn ghost" onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}>
             {selectMode ? 'Done' : 'Select'}
           </button>
@@ -257,6 +262,14 @@ export function Pipelines() {
                       )}
                       <div className="co">{deal.company_name ?? 'No company'}</div>
                       <div className="eq">{deal.name}</div>
+                      {/* A half-finished intake is a draft, not a worked deal. */}
+                      {deal.in_intake && (
+                        <div style={{ marginTop: 4 }}>
+                          <span className="pill gold" title="Intake is not finished yet">
+                            In intake
+                          </span>
+                        </div>
+                      )}
                       <div className="mt">
                         <span className="vv">{money(deal.value_cents)}</span>
                         <span className="rp" title={deal.owner_name ?? 'Unassigned'}>

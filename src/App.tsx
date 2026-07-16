@@ -21,6 +21,7 @@ import { Lists } from './pages/Lists'
 import { SegmentDetail } from './pages/SegmentDetail'
 import { SalesSheet } from './pages/SalesSheet'
 import { IntakeWizard } from './pages/IntakeWizard'
+import { DealIntakeWizard } from './pages/DealIntakeWizard'
 import { CommissionReport } from './pages/CommissionReport'
 import { Evaluator } from './pages/Evaluator'
 import { Deals } from './pages/Deals'
@@ -54,6 +55,9 @@ export default function App() {
             <Route path="/pipelines" element={<AuthGuard><Pipelines /></AuthGuard>} />
             <Route path="/buyer-opportunities" element={<AuthGuard><BuyerOpportunities /></AuthGuard>} />
             <Route path="/buyer-opportunities/:opportunityId" element={<AuthGuard><BuyerOpportunityDetail /></AuthGuard>} />
+            {/* Static segment outranks /deals/:dealId in react-router v6, and a
+                deal id is always a uuid, so these cannot collide. */}
+            <Route path="/deals/intake" element={<AuthGuard><DealIntakeWizard /></AuthGuard>} />
             <Route path="/deals/:dealId" element={<AuthGuard><DealDetail /></AuthGuard>} />
             <Route path="/inventory" element={<AuthGuard><Inventory /></AuthGuard>} />
             <Route path="/inventory/intake" element={<AuthGuard><IntakeWizard /></AuthGuard>} />

@@ -70,6 +70,7 @@ export interface DealCard {
   outcome: string | null
   owner_name: string | null
   company_name: string | null
+  in_intake: boolean          // a half-finished intake, not a worked deal
 }
 
 export interface DealContactRef {
@@ -166,6 +167,7 @@ export interface DealCreateInput {
   value_cents?: number | null
   commission_pct?: number | null
   expected_close?: string | null
+  in_intake?: boolean         // born a draft; the intake wizard clears it on finish
 }
 
 export interface DealPatchInput {
@@ -1080,6 +1082,68 @@ export interface ListingFieldsResponse {
   derive_result?: { unit_linked: boolean; derived: string[]; still_missing: string[] }
 }
 
+// ── Item 3 deal intake wizard ──
+
+// Everything the Spec Builder step needs to decide what it can do BEFORE the
+// rep waits on a generate call. blockers is rep-facing prose; can_generate is
+// the gate. template_available false = no template for this unit's category,
+// so the rep types the description instead.
+export interface SpecAvailability {
+  unit_linked: boolean
+  unit_id: string | null
+  unit_title: string | null
+  legacy_id: string | null
+  has_legacy_id: boolean
+  equipment_type: string | null
+  canonical_type: string | null
+  make: string | null
+  model: string | null
+  year: number | null
+  template_available: boolean
+  can_generate: boolean
+  blockers: string[]
+  existing_description: string | null
+}
+
+export interface SpecGenerateResponse extends SpecAvailability {
+  ok: boolean
+  description: string | null
+}
+
+export interface SpecSaveResponse {
+  ok: boolean
+  spec_id: number
+  created: boolean
+  platform_deal_id: string
+  tab_listing_id: string | null
+  both_keys: boolean
+  description: string
+}
+
+export type DealPlanAction =
+  | 'already_published' | 'would_notify_missing' | 'ready_awaiting_flag' | 'would_publish'
+
+export interface DealDryRun {
+  deal_id: string
+  plan: {
+    action: DealPlanAction
+    deal_id?: string
+    deal_name?: string
+    missing?: string[]
+    tab_payload?: Record<string, unknown> | null
+    published_with_spec?: boolean
+    [k: string]: unknown
+  }
+}
+
+export interface IntakeState {
+  deal_id: string
+  deal_name: string
+  in_intake: boolean
+  step: number
+  unit_id: string | null
+}
+
 // ── 4e Buyer Opportunity layer (buy-side interest tracker) ──
 export type InterestStatus = 'info_sent' | 'negotiating' | 'cooling' | 'offer_made'
 
@@ -1728,6 +1792,42 @@ export const api = {
   cancelTabPublish: (dealId: string) =>
     request<{ ok: boolean; resubmit_to_tab: boolean }>(
       `/platform/deals/${dealId}/tab-publish-request`, { method: 'DELETE' }),
+
+  // ── Item 3 deal intake wizard ──
+  intakeState: (dealId: string) =>
+    request<IntakeState>(`/platform/deals/${dealId}/intake`),
+
+  specAvailability: (dealId: string) =>
+    request<SpecAvailability>(`/platform/deals/${dealId}/intake/spec-availability`),
+
+  // Generates but does NOT save — the rep reviews and edits, then saves.
+  generateSpecDescription: (dealId: string) =>
+    request<SpecGenerateResponse>(
+      `/platform/deals/${dealId}/intake/spec-description`, { method: 'POST' }),
+
+  // Writes description_generated under BOTH els join keys (platform_deal_id
+  // and tab_listing_id) so neither consumer goes blind.
+  saveSpecDescription: (dealId: string, description: string) =>
+    request<SpecSaveResponse>(
+      `/platform/deals/${dealId}/intake/spec-description`,
+      { method: 'PUT', body: JSON.stringify({ description }) }),
+
+  // Per-deal, member-safe. The admin /tab-publish/dry-run plans every deal.
+  dealDryRun: (dealId: string) =>
+    request<DealDryRun>(`/platform/deals/${dealId}/intake/dry-run`),
+
+  recordIntakeStep: (dealId: string, step: number) =>
+    request<{ ok: boolean; in_intake: boolean; step?: number }>(
+      `/platform/deals/${dealId}/intake/step`,
+      { method: 'POST', body: JSON.stringify({ step }) }),
+
+  completeIntake: (dealId: string) =>
+    request<{ ok: boolean; in_intake: boolean }>(
+      `/platform/deals/${dealId}/intake/complete`, { method: 'POST' }),
+
+  abandonIntake: (dealId: string) =>
+    request<{ ok: boolean; abandoned: boolean }>(
+      `/platform/deals/${dealId}/intake/abandon`, { method: 'POST' }),
 
   // ── 4b HubSpot outbox + inbound door (admin) ──
   outbox: (status?: OutboxStatus) =>
