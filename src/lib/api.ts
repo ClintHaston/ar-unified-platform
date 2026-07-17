@@ -1160,6 +1160,28 @@ export interface ListingFieldsResponse {
   derive_result?: { unit_linked: boolean; derived: string[]; still_missing: string[] }
 }
 
+// Option lists for the listing-fields form: TAB-taxonomy cascades (the same
+// maps Sales Command uses) + the closed publish sets whose values are exactly
+// what validate_deal's membership check accepts.
+export interface OptionPair { value: string; label: string }
+export interface TaxOption { id: string; name: string }
+
+export interface ListingOptions {
+  categories: OptionPair[]
+  category_to_subcategories: Record<string, string[]>
+  subcategories_all: string[]
+  industries: TaxOption[]
+  industry_to_equipment_types: Record<string, string[]>
+  equipment_types: TaxOption[]
+  makes: string[]
+  make_to_models: Record<string, string[]>
+  models_all: string[]
+  conditions: OptionPair[]
+  listing_types: OptionPair[]
+  inspection_contacts: OptionPair[]
+  years: string[]
+}
+
 // ── Item 3 deal intake wizard ──
 
 // Everything the Spec Builder step needs to decide what it can do BEFORE the
@@ -1856,6 +1878,9 @@ export const api = {
       `/platform/units/${unitId}/sales-sheet`),
 
   // ── 4d TAB listing-fields capture (deal detail) ──
+  listingOptions: () =>
+    request<ListingOptions>('/platform/listing-options'),
+
   listingFields: (dealId: string) =>
     request<ListingFieldsResponse>(`/platform/deals/${dealId}/listing-fields`),
 

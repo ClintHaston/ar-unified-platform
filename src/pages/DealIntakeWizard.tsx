@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type ContactHit, type DealDryRun, type ListingFieldsResponse,
-         type Pipeline, type SpecAvailability } from '../lib/api'
+         type OwnerOption, type Pipeline, type SpecAvailability } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { TabListingPanel } from '../components/TabListingPanel'
 import { DocumentsPanel } from '../components/DocumentsPanel'
@@ -52,6 +52,17 @@ export function DealIntakeWizard() {
   const [value, setValue] = useState('')
   const [commission, setCommission] = useState('')
   const [expectedClose, setExpectedClose] = useState('')
+  // owner: admin may intake on another rep's behalf; server enforces the
+  // admin gate, reps always own their own intake ('' = me)
+  const [ownerId, setOwnerId] = useState('')
+  const [owners, setOwners] = useState<OwnerOption[]>([])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    api.contactOwners()
+      .then((res) => setOwners(res.owners.filter((o) => o.is_active)))
+      .catch(() => setOwners([]))
+  }, [isAdmin])
 
   // step 3 — spec description
   const [avail, setAvail] = useState<SpecAvailability | null>(null)
@@ -161,6 +172,7 @@ export function DealIntakeWizard() {
         stage_id: stageId,
         name: name.trim(),
         contact_id: contact?.id ?? null,
+        owner_id: ownerId || null,
         value_cents: cents !== null && !Number.isNaN(cents) ? cents : null,
         commission_pct: pct !== null && !Number.isNaN(pct) ? pct : null,
         expected_close: expectedClose || null,
@@ -349,6 +361,18 @@ export function DealIntakeWizard() {
                 <input className="plat-input" type="date" value={expectedClose}
                        onChange={(e) => setExpectedClose(e.target.value)} />
               </label>
+              {isAdmin && (
+                <label style={{ flex: '1 1 180px', fontSize: 12, color: 'var(--p-body)' }}>
+                  Owner
+                  <select className="plat-input" value={ownerId}
+                          onChange={(e) => setOwnerId(e.target.value)}>
+                    <option value="">Me ({user?.name})</option>
+                    {owners.filter((o) => o.id !== user?.id).map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
             <div className="note" style={{ marginTop: 6 }}>
               Creating the deal starts the intake. It lands at {PUBLISH_STAGE_NAME} and stays
