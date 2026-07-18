@@ -1232,6 +1232,8 @@ export interface DealDryRun {
     missing?: string[]
     tab_payload?: Record<string, unknown> | null
     published_with_spec?: boolean
+    // Amendment 51 auto-advance, surfaced per-deal so the rep sees it coming
+    would_move_to_active?: boolean
     [k: string]: unknown
   }
 }

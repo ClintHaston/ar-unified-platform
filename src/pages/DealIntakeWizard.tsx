@@ -497,6 +497,12 @@ export function DealIntakeWizard() {
                   Dry run says: <b>{dryRun.plan.action}</b>
                   {dryRun.plan.published_with_spec ? ' (using the description you approved)' : ''}
                 </div>
+                {dryRun.plan.would_move_to_active && (
+                  <div className="note" style={{ color: '#2E6F40' }}>
+                    On a successful publish this deal moves to Active automatically
+                    and the owner gets the Listing Active notification.
+                  </div>
+                )}
                 {dryRun.plan.tab_payload ? (
                   <pre style={{ background: 'var(--p-row)', border: '1px solid var(--p-steel)',
                                 borderRadius: 6, padding: 10, fontSize: 11, maxHeight: 300,
