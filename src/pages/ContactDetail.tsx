@@ -538,7 +538,7 @@ export function ContactDetail() {
             ) : offers.map((o) => (
               <div className="hist-item" key={o.id}>
                 <div>
-                  <Link to={`/units/${o.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                  <Link to={`/units/${o.unit_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
                     {o.unit_legacy_id ? `#${o.unit_legacy_id} ` : ''}{o.unit_title}
                   </Link>
                   <span className={`pill ${o.status === 'accepted' ? 'green' : o.status === 'open' ? 'gold' : 'grey'}`} style={{ marginLeft: 8 }}>
@@ -551,9 +551,9 @@ export function ContactDetail() {
                   {o.responded_at ? ` · responded ${new Date(o.responded_at).toLocaleDateString()}` : ''}
                   {' · '}
                   {o.listed_on_website && o.website_url
-                    ? <a href={o.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
+                    ? <a href={o.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold-text)' }}>live listing ↗</a>
                     : <span style={{ color: 'var(--p-body)' }}>not listed</span>}
-                  {o.deal_id && o.deal_name ? <> · <Link to={`/deals/${o.deal_id}`} style={{ color: 'var(--p-gold)' }}>{o.deal_name}</Link></> : ''}
+                  {o.deal_id && o.deal_name ? <> · <Link to={`/deals/${o.deal_id}`} style={{ color: 'var(--p-gold-text)' }}>{o.deal_name}</Link></> : ''}
                 </div>
               </div>
             ))}
@@ -575,13 +575,13 @@ export function ContactDetail() {
                 <div className="note">No consigned units linked yet.</div>
               ) : consignment.units.map((u) => (
                 <div className="hist-item" key={u.unit_id}>
-                  <Link to={`/units/${u.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                  <Link to={`/units/${u.unit_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
                     {u.legacy_id ? `#${u.legacy_id} ` : ''}{u.title}
                   </Link>
                   <span className="pill grey" style={{ marginLeft: 8 }}>{u.status.replace('_', ' ')}</span>
                   <div className="when">
                     {u.listed_on_website && u.website_url
-                      ? <a href={u.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
+                      ? <a href={u.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold-text)' }}>live listing ↗</a>
                       : <span style={{ color: 'var(--p-body)' }}>not listed on the website yet</span>}
                   </div>
                 </div>

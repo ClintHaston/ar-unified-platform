@@ -18,7 +18,7 @@ function dueLabel(dueAt: string | null): { text: string; color: string } {
     (due.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) / 86_400_000
   )
   if (dayDiff < 0) return { text: `Overdue (${new Date(dueAt).toLocaleDateString()})`, color: '#B4432B' }
-  if (dayDiff === 0) return { text: 'Due today', color: 'var(--p-gold)' }
+  if (dayDiff === 0) return { text: 'Due today', color: 'var(--p-gold-text)' }
   return { text: new Date(dueAt).toLocaleDateString(), color: 'var(--p-body)' }
 }
 
@@ -166,7 +166,7 @@ export function Dashboard() {
                     <td>{t.title}</td>
                     <td>
                       {t.deal_id ? (
-                        <Link to={`/deals/${t.deal_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                        <Link to={`/deals/${t.deal_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
                           {t.deal_name ?? 'Deal'}
                         </Link>
                       ) : t.unit_title ? (

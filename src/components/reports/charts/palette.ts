@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react'
 
-// Brand-anchored categorical palette. Gold (sell) and teal (buy) lead so the
-// existing palette identity is preserved; the rest are the platform's own navy
-// and steel tones plus two complementary shades for wider breakdowns.
-export const GOLD = '#C8922A' // --p-gold  (sell)
+// Brand-anchored categorical palette (ARS site retheme 2026-08-02). Yellow
+// (sell) and teal (buy) lead so the palette identity is preserved; the rest
+// are the site's ink and muted tones plus complementary shades for wider
+// breakdowns. Chart yellow uses the deep tone so bars stay visible on white.
+export const GOLD = '#E0BC00' // --p-gold-deep (sell — chart-visible yellow)
 export const TEAL = '#2C7A7B' // --p-buy   (buy)
 
 export const SERIES_PALETTE = [
   GOLD,
   TEAL,
-  '#2C3E50', // navy-mid
-  '#A8BDD4', // muted blue
-  '#8A6D3B', // deep tan
+  '#232B3A', // ink-mid
+  '#7B8390', // site muted
+  '#B08D00', // deep brand yellow
   '#4A6B6C', // slate teal
   '#6B7A8F', // steel blue
-  '#D4A94E', // light gold
+  '#F3CE00', // bright brand yellow
 ]
 
 // Chart chrome (concrete hex — SVG tick/grid fills are attribute-applied).
-export const AXIS_INK = '#555555' // --p-body
-export const LABEL_INK = '#1A2B47' // --p-navy-dark
-export const GRID_INK = '#E6EAF0'
+export const AXIS_INK = '#39414F' // --p-body
+export const LABEL_INK = '#1A212E' // --p-navy-dark (site ink)
+export const GRID_INK = '#E6E8EC'
 
 // Gauge band tones. THIS map is the only place a gauge colour exists: the
 // server validates `tone` against the same fixed enum and never accepts a
@@ -28,9 +29,9 @@ export const GRID_INK = '#E6EAF0'
 // neutral rather than undefined — a chart must never render a blank band.
 export const GAUGE_TONE_HEX: Record<string, string> = {
   good: '#2C7A7B',    // teal
-  warn: '#D4A94E',    // light gold
+  warn: '#F3CE00',    // brand yellow
   bad: '#B4432B',     // the error red already used in report copy
-  neutral: '#A8BDD4', // muted blue
+  neutral: '#7B8390', // site muted
   accent: GOLD,
 }
 

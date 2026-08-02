@@ -374,7 +374,7 @@ export function DealDetail() {
               <div className="fieldrow">
                 <span>Inventory (CRM)</span>
                 <span>
-                  <Link to={`/units/${unit_link.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                  <Link to={`/units/${unit_link.unit_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
                     {unit_link.unit_title}
                   </Link>
                 </span>
@@ -384,7 +384,7 @@ export function DealDetail() {
                 <span>
                   {unit_link.listed_on_website && unit_link.website_url ? (
                     <a href={unit_link.website_url} target="_blank" rel="noopener noreferrer"
-                       style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                       style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
                       View live listing ↗
                     </a>
                   ) : (

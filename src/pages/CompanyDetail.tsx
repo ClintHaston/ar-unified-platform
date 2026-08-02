@@ -256,7 +256,7 @@ export function CompanyDetail() {
             ) : offers.map((o) => (
               <div className="hist-item" key={o.id}>
                 <div>
-                  <Link to={`/units/${o.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                  <Link to={`/units/${o.unit_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
                     {o.unit_legacy_id ? `#${o.unit_legacy_id} ` : ''}{o.unit_title}
                   </Link>
                   <span className={`pill ${o.status === 'accepted' ? 'green' : o.status === 'open' ? 'gold' : 'grey'}`} style={{ marginLeft: 8 }}>
@@ -266,7 +266,7 @@ export function CompanyDetail() {
                 <div className="when">
                   {money(o.amount_cents)}
                   {o.buyer_name ? ` · ${o.buyer_name}` : ''}
-                  {o.deal_id && o.deal_name ? <> · <Link to={`/deals/${o.deal_id}`} style={{ color: 'var(--p-gold)' }}>{o.deal_name}</Link></> : ''}
+                  {o.deal_id && o.deal_name ? <> · <Link to={`/deals/${o.deal_id}`} style={{ color: 'var(--p-gold-text)' }}>{o.deal_name}</Link></> : ''}
                 </div>
               </div>
             ))}
@@ -288,7 +288,7 @@ export function CompanyDetail() {
                 <div className="note">No consigned units linked yet.</div>
               ) : consignment.units.map((u) => (
                 <div className="hist-item" key={u.unit_id}>
-                  <Link to={`/units/${u.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+                  <Link to={`/units/${u.unit_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
                     {u.legacy_id ? `#${u.legacy_id} ` : ''}{u.title}
                   </Link>
                   <span className="pill grey" style={{ marginLeft: 8 }}>{u.status.replace('_', ' ')}</span>

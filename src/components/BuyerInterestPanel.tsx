@@ -55,7 +55,7 @@ export function BuyerInterestPanel({ unitId }: BuyerInterestPanelProps) {
       <div className="note" style={{ marginTop: 0 }}>
         Open buy opps working this unit, across all reps. Read-only.
         {websiteUrl ? (
-          <> · <a href={websiteUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>View live listing ↗</a></>
+          <> · <a href={websiteUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>View live listing ↗</a></>
         ) : (
           <> · <span>Not listed on the website yet</span></>
         )}
@@ -82,7 +82,7 @@ export function BuyerInterestPanel({ unitId }: BuyerInterestPanelProps) {
                 {row.is_mine ? ' (you)' : ''} · stage {row.stage_name}
                 {row.target_price_cents !== null ? ` · target ${money(row.target_price_cents)}` : ''}
                 {' · '}
-                <Link to={`/buyer-opportunities/${row.opportunity_id}`} style={{ color: 'var(--p-gold)' }}>open →</Link>
+                <Link to={`/buyer-opportunities/${row.opportunity_id}`} style={{ color: 'var(--p-gold-text)' }}>open →</Link>
               </div>
               {(row.note || row.opp_notes) && (
                 <div className="when" style={{ marginTop: 2 }}>{row.note || row.opp_notes}</div>

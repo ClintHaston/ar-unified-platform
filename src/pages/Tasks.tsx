@@ -146,7 +146,7 @@ export function Tasks() {
                   <tr key={t.id} className={t._pending ? 'ws-pending' : undefined}>
                     <td>{t.title}</td>
                     <td>
-                      {t.deal_id ? <Link to={`/deals/${t.deal_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>{t.deal_name ?? 'Deal'}</Link>
+                      {t.deal_id ? <Link to={`/deals/${t.deal_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>{t.deal_name ?? 'Deal'}</Link>
                         : t.unit_title ? <span>{t.unit_title}</span> : <span style={{ color: 'var(--p-body)' }}>—</span>}
                     </td>
                     <td style={{ color: d.cls === 'over' ? '#B4432B' : d.cls === 'due' ? 'var(--p-gold)' : 'var(--p-body)', fontWeight: d.cls ? 'bold' : undefined }}>{d.text}</td>

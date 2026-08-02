@@ -134,7 +134,7 @@ export function BuyerOpportunityDetail() {
               )}
             </h3>
             <div className="fieldrow"><span>Buyer</span>
-              <b><Link to={`/contacts/${o.buyer_contact_id}`} style={{ color: 'var(--p-gold)' }}>{o.buyer_name ?? 'Unnamed'}</Link></b>
+              <b><Link to={`/contacts/${o.buyer_contact_id}`} style={{ color: 'var(--p-gold-text)' }}>{o.buyer_name ?? 'Unnamed'}</Link></b>
             </div>
             {o.company_name && <div className="fieldrow"><span>Company</span><b>{o.company_name}</b></div>}
             {o.buyer_email && <div className="fieldrow"><span>Email</span><b>{o.buyer_email}</b></div>}
@@ -317,7 +317,7 @@ function UnitLinkRow({ oppId, link, canEdit, busy, onChange, setError }: UnitLin
     <div style={{ borderTop: '1px solid var(--p-row)', padding: '10px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div>
-          <Link to={`/units/${link.unit_id}`} style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>
+          <Link to={`/units/${link.unit_id}`} style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>
             {link.legacy_id ? `#${link.legacy_id} · ` : ''}{link.unit_title}
           </Link>
           <span className={`pill ${link.unit_status === 'available' ? 'av' : link.unit_status === 'reserved' ? 'res' : link.unit_status === 'sold' ? 'sold' : 'grey'}`} style={{ marginLeft: 8 }}>
@@ -327,7 +327,7 @@ function UnitLinkRow({ oppId, link, canEdit, busy, onChange, setError }: UnitLin
             Asking {money(link.asking_price_cents)} · Target {money(link.target_price_cents)}
             {' · '}
             {link.listed_on_website && link.website_url ? (
-              <a href={link.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)' }}>live listing ↗</a>
+              <a href={link.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold-text)' }}>live listing ↗</a>
             ) : (
               <span style={{ color: 'var(--p-body)' }}>not listed on the website yet</span>
             )}
@@ -380,7 +380,7 @@ function UnitLinkRow({ oppId, link, canEdit, busy, onChange, setError }: UnitLin
               <span className="note">Loading offers…</span>
             ) : offers.length === 0 ? (
               <span className="note">
-                No offers on this unit yet. <Link to={`/units/${link.unit_id}`} style={{ color: 'var(--p-gold)' }}>Log one on the unit →</Link>
+                No offers on this unit yet. <Link to={`/units/${link.unit_id}`} style={{ color: 'var(--p-gold-text)' }}>Log one on the unit →</Link>
               </span>
             ) : (
               <div style={{ border: '1px solid var(--p-steel)', borderRadius: 6, padding: 6 }}>

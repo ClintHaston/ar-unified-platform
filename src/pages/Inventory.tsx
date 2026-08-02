@@ -225,7 +225,7 @@ export function Inventory() {
                 {offerSummary(u) && (
                   <div className="r">
                     <span>Offers</span>
-                    <span style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>{offerSummary(u)}</span>
+                    <span style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>{offerSummary(u)}</span>
                   </div>
                 )}
                 {u.valuation && (

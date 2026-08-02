@@ -279,7 +279,7 @@ export function UnitDetail() {
               <span>Website listing</span>
               <span>
                 {unit.listed_on_website && unit.website_url
-                  ? <a href={unit.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold)', fontWeight: 'bold' }}>View live listing ↗</a>
+                  ? <a href={unit.website_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--p-gold-text)', fontWeight: 'bold' }}>View live listing ↗</a>
                   : <span style={{ color: 'var(--p-body)' }}>Not listed on the website yet</span>}
               </span>
             </div>
