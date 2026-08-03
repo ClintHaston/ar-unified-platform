@@ -927,14 +927,17 @@ export interface SavedReport {
 }
 
 // ── WS2c saveable dashboards ──
-export type PanelSize = 'full' | 'half'
+// 'third' (My Day v3) is the mosaic size — three small widgets across one row.
+// 'full' remains the default for a panel that names no size, so nothing
+// stored before this build moves.
+export type PanelSize = 'full' | 'half' | 'third'
 
-// Rep-dashboards build (2026-08-02): panels come in four kinds. 'report' is
-// the original saved-report reference and the default when `kind` is absent,
-// so every stored layout keeps rendering. 'kpis', 'activity_feed' and 'tasks'
-// ("Up next", quick-log build) are computed server-side per viewer and carry
-// their payload in `result`.
-export type PanelKind = 'report' | 'kpis' | 'activity_feed' | 'tasks'
+// Rep-dashboards build (2026-08-02): panels come in kinds. 'report' is the
+// original saved-report reference and the default when `kind` is absent, so
+// every stored layout keeps rendering. 'kpis', 'activity_feed', 'tasks'
+// ("Up next", quick-log build) and 'goal' (the gauge, My Day v3) are computed
+// server-side per viewer and carry their payload in `result`.
+export type PanelKind = 'report' | 'kpis' | 'activity_feed' | 'tasks' | 'goal'
 
 export interface DashboardPanel {
   kind?: PanelKind
@@ -943,6 +946,15 @@ export interface DashboardPanel {
   window?: number
   limit?: number
 }
+
+// The three sizes, in the order the size control offers them. Widest first
+// reads as "how much room does this deserve", which is the question being
+// answered.
+export const PANEL_SIZES: Array<{ key: PanelSize; label: string }> = [
+  { key: 'full', label: 'Full' },
+  { key: 'half', label: 'Half' },
+  { key: 'third', label: 'Third' },
+]
 
 export interface MyKpis {
   scope: string | null
@@ -1028,6 +1040,31 @@ export interface UpNextResult {
   items: UpNextTask[]
 }
 
+// ── The goal gauge (My Day v3, 2026-08-03) ──
+// Progress against the scoped user's own targets. The periods are CALENDAR
+// ones — since the 1st, since Monday — not the KPI row's rolling window, and
+// the server reports the boundaries it actually counted to so the widget never
+// re-derives a month start in the BROWSER's timezone and drifts from the
+// number beside it.
+//
+// A null target means NO TARGET SET, never zero. The widget renders an
+// invitation for that state; showing a 0% bar would tell a rep their quota is
+// nothing, which is a different and untrue statement.
+export interface GoalResult {
+  scope: string | null
+  won_value_cents_mtd: number
+  won_target_cents: number | null
+  calls_this_week: number
+  call_target: number | null
+  month_start: string | null
+  week_start: string | null
+}
+
+export interface UserTargets {
+  monthly_won_value_target_cents: number | null
+  weekly_call_target: number | null
+}
+
 export interface DashboardFilters {
   date?: { start?: string; end?: string }
   owner_id?: string
@@ -1055,12 +1092,24 @@ export interface DashboardListItem {
   updated_at: string
 }
 
+// The dashboard's STORED shape. Editing reads from here rather than from the
+// run response on purpose: run panels report only kind/size/report id, so
+// rebuilding a layout from them would drop each computed panel's stored config
+// (a 90-day KPI window would silently re-clamp to the 30-day default on the
+// next save).
 export interface DashboardMeta {
   id: string
   name: string
   layout: DashboardPanel[]
   default_filters: DashboardFilters
   favorited: boolean
+  // Server-decided, never inferred client-side: the UI hides editing controls
+  // on a dashboard the caller cannot edit, and the server refuses the PATCH
+  // regardless. Optional so a cached older payload degrades to read-only.
+  can_edit?: boolean
+  owner_id?: string
+  visibility?: 'private' | 'team'
+  system_key?: string | null
 }
 
 export interface DashboardRunPanel {
@@ -1068,9 +1117,9 @@ export interface DashboardRunPanel {
   saved_report_id?: string
   size: PanelSize
   name?: string | null
-  // 'report' panels carry a RunResult; 'kpis' and 'activity_feed' panels carry
-  // their computed payloads in the same slot. The renderer switches on `kind`.
-  result?: RunResult | MyKpis | ActivityFeedResult | UpNextResult
+  // 'report' panels carry a RunResult; the computed kinds carry their own
+  // payloads in the same slot. The renderer switches on `kind`.
+  result?: RunResult | MyKpis | ActivityFeedResult | UpNextResult | GoalResult
   // The EFFECTIVE definition this panel ran (saved report + the dashboard's
   // date/owner overrides). Drilling must re-run the population the panel showed,
   // so it uses this rather than the stored definition. Absent on an errored panel.
@@ -1844,6 +1893,28 @@ export const api = {
 
   myUpNext: (limit?: number) =>
     request<UpNextResult>(`/platform/my/tasks${limit ? `?limit=${limit}` : ''}`),
+
+  // ── Goal gauge (My Day v3) ──
+  // Reading is rep-facing and scoped by the server; WRITING a target is admin
+  // work and lives under /platform/users, which is why the two sit apart here
+  // rather than beside each other.
+  myGoal: (ownerId?: string) =>
+    request<GoalResult>(`/platform/my/goal${ownerId ? `?owner_id=${ownerId}` : ''}`),
+
+  myTargets: (ownerId?: string) =>
+    request<UserTargets & { user_id: string }>(
+      `/platform/my/targets${ownerId ? `?owner_id=${ownerId}` : ''}`),
+
+  userTargets: (userId: string) =>
+    request<UserTargets & { user_id: string; name: string }>(
+      `/platform/users/${userId}/targets`),
+
+  // PUT replaces the whole target row: an omitted field CLEARS that target
+  // rather than leaving it alone. Callers send both.
+  setUserTargets: (userId: string, targets: UserTargets) =>
+    request<UserTargets & { ok: boolean; user_id: string; name: string }>(
+      `/platform/users/${userId}/targets`,
+      { method: 'PUT', body: JSON.stringify(targets) }),
 
   // ── 3c-6 notifications + password reset ──
   notifications: () => request<NotificationsResponse>('/platform/notifications'),

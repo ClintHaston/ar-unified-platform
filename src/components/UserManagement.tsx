@@ -3,6 +3,7 @@ import { api, type PlatformUser } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { SortableTh, useClientSort, type ClientSortColumn } from './SortableTh'
 import { Mailto } from './quicklog/Contactable'
+import { TargetsModal } from './reports/TargetsForm'
 
 // Task B: admin user management (Settings > Team). This is what gives reps
 // logins at cutover. Admin-only (the backend returns 403 for reps; this screen
@@ -73,6 +74,10 @@ export function UserManagement() {
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [temp, setTemp] = useState<{ title: string; password: string } | null>(null)
+  // Whose goal targets are being edited (My Day v3). Targets are set FOR a
+  // person BY an admin, so Settings > Team is their discoverable home — the
+  // gauge's own inline editor is the shortcut, not the only door.
+  const [targetsFor, setTargetsFor] = useState<PlatformUser | null>(null)
 
   const [showAdd, setShowAdd] = useState(false)
   const [email, setEmail] = useState('')
@@ -209,6 +214,11 @@ export function UserManagement() {
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button className="plat-btn ghost" disabled={busy} onClick={() => resetPw(u)}>Reset password</button>
+                      <button className="plat-btn ghost" disabled={busy}
+                              onClick={() => setTargetsFor(u)}
+                              title="Monthly won-value and weekly call targets for their goal gauge">
+                        Targets
+                      </button>
                       {isSelf ? (
                         <span className="note" style={{ alignSelf: 'center' }}>Manage your own role elsewhere</span>
                       ) : (
@@ -229,6 +239,11 @@ export function UserManagement() {
           </tbody>
         </table>
       </div>
+
+      {targetsFor && (
+        <TargetsModal userId={targetsFor.id} userName={targetsFor.name}
+                      onClose={() => setTargetsFor(null)} />
+      )}
 
       {error && <div className="note" style={{ color: '#B4432B', marginTop: 8 }}>{error}</div>}
     </div>

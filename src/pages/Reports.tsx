@@ -64,6 +64,13 @@ export function Reports() {
   const paramTab = searchParams.get('tab')
   const [tab, setTab] = useState<TabKey>(isTabKey(paramTab) ? paramTab : 'sell')
   useEffect(() => { if (isTabKey(paramTab)) setTab(paramTab) }, [paramTab])
+
+  // ?from= is the dashboard that sent us here to build a chart (My Day v3).
+  // Only an in-app path is honoured: a `from` pointing anywhere else would turn
+  // this into an open redirect, and the only legitimate value is a route in
+  // this app.
+  const fromParam = searchParams.get('from')
+  const returnTo = fromParam && /^\/[^/\\]/.test(fromParam) ? fromParam : null
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [ownerId, setOwnerId] = useState('')
@@ -170,7 +177,19 @@ export function Reports() {
       {tab !== 'custom' && tab !== 'dashboards' && error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       {tab !== 'custom' && tab !== 'dashboards' && loading && <div className="admin-loading">Loading report…</div>}
 
-      {tab === 'custom' && <ReportBuilder start={start} end={end} ownerId={ownerId} />}
+      {tab === 'custom' && (
+        <>
+          {returnTo && (
+            <div className="note rb-from">
+              Building a chart for a dashboard — saving it will take you back
+              and drop it on the board.{' '}
+              <Link to={returnTo}>Go back without saving</Link>
+            </div>
+          )}
+          <ReportBuilder start={start} end={end} ownerId={ownerId}
+                         returnTo={returnTo ?? undefined} />
+        </>
+      )}
       {tab === 'dashboards' && <DashboardsPanel start={start} end={end} ownerId={ownerId} />}
 
       {!loading && tab === 'sell' && sell && (

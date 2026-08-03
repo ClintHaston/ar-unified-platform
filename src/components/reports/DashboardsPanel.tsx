@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  api, type DashboardFilters, type DashboardListItem, type DashboardPanel,
-  type PanelSize, type SavedReport,
+  api, PANEL_SIZES, type DashboardFilters, type DashboardListItem,
+  type DashboardPanel, type PanelSize, type SavedReport,
 } from '../../lib/api'
 import { useToast } from '../shell/ToastContext'
 import { Icon } from '../shell/icons'
@@ -15,6 +15,13 @@ import { Icon } from '../shell/icons'
 // silently rewrite them — the bar is wherever the admin last dragged it and has
 // nothing to do with the dashboard being edited. Adopting the bar on an edit is
 // an explicit button, never a side effect of pressing Save.
+
+// The computed panel kinds, named for a list row. 'report' is absent on
+// purpose: a report panel is named by its report, not by its kind.
+const COMPUTED_LABEL: Record<string, string | undefined> = {
+  kpis: 'KPI card row', activity_feed: 'Activity feed',
+  tasks: 'Up next', goal: 'Goal gauge',
+}
 
 interface Props {
   start: string
@@ -185,13 +192,18 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
               panels.map((p, i) => (
                 <div key={`${p.saved_report_id ?? p.kind}-${i}`} className="dash-panel-row">
                   <span style={{ flex: 1, fontSize: 13 }}>
-                    {(p.kind ?? 'report') === 'kpis' ? 'KPI card row'
-                      : (p.kind ?? 'report') === 'activity_feed' ? 'Activity feed'
-                      : (p.saved_report_id ? reportName[p.saved_report_id] : undefined) ?? '(unknown report)'}
+                    {COMPUTED_LABEL[p.kind ?? 'report']
+                      ?? (p.saved_report_id ? reportName[p.saved_report_id] : undefined)
+                      ?? '(unknown report)'}
                   </span>
+                  {/* Sizes come from the shared list so this editor and the
+                      in-place one on the dashboard cannot offer different
+                      widths for the same panel model. */}
                   <div className="roletoggle">
-                    <button className={p.size === 'full' ? 'active' : ''} onClick={() => setSize(i, 'full')}>Full</button>
-                    <button className={p.size === 'half' ? 'active' : ''} onClick={() => setSize(i, 'half')}>Half</button>
+                    {PANEL_SIZES.map((s) => (
+                      <button key={s.key} className={p.size === s.key ? 'active' : ''}
+                              onClick={() => setSize(i, s.key)}>{s.label}</button>
+                    ))}
                   </div>
                   <button className="plat-btn ghost" onClick={() => move(i, -1)} disabled={i === 0} title="Move up">↑</button>
                   <button className="plat-btn ghost" onClick={() => move(i, 1)} disabled={i === panels.length - 1} title="Move down">↓</button>

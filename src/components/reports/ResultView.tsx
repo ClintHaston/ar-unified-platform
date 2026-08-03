@@ -68,9 +68,10 @@ export function ResultView({ result, accent, definition }: Props) {
         <div className="panel" style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {measures.map((m) => (
             <div key={m.key}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--p-navy-dark)', fontVariantNumeric: 'tabular-nums' }}>
-                {fmt(rows[0][m.key], m.type)}
-              </div>
+              {/* A class, not inline styles: an inline font-size cannot be
+                  overridden by a stylesheet, and a metric in a third-width
+                  mosaic panel wants to be bigger than one in a full-width row. */}
+              <div className="rv-num">{fmt(rows[0][m.key], m.type)}</div>
               <div className="note">{m.label}</div>
             </div>
           ))}

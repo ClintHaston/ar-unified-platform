@@ -435,15 +435,179 @@
   font-size: 13px; font-weight: 600; color: var(--p-gold-text); padding: 0;
 }
 .rb-saved-open:hover { text-decoration: underline; }
+/* The "you came here from a dashboard" banner — a compose flow that loses its
+   thread is a compose flow nobody finishes. */
+.rb-from { border-left: 4px solid var(--p-gold); }
 @media (prefers-reduced-motion: reduce) { .rb-chip { transition: none; } }
 
-/* ── WS2c dashboards ── */
-.dash-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
-.dash-panel { grid-column: span 2; min-width: 0; }
-.dash-panel.half { grid-column: span 1; }
-@media (max-width: 760px) { .dash-panel, .dash-panel.half { grid-column: span 2; } }
-.dash-panel-head { font-size: 13px; font-weight: 700; color: var(--p-navy-dark); margin-bottom: 6px; }
+/* ── WS2c dashboards · My Day v3 mosaic ──
+   SIX columns, not two: 6 is the smallest number divisible by both 2 and 3, so
+   full / half / third are all whole spans of one grid rather than two grids
+   fighting. Halves and thirds sit on the same row edges, which is what makes a
+   mixed board read as a mosaic instead of a stack. */
+.dash-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.dash-panel { grid-column: span 6; min-width: 0; }
+.dash-panel.full { grid-column: span 6; }
+.dash-panel.half { grid-column: span 3; }
+.dash-panel.third { grid-column: span 2; }
+/* Thirds fold to halves before they fold to full width — three narrow cards
+   are still readable side by side long after a table is not. */
+@media (max-width: 1100px) { .dash-panel.third { grid-column: span 3; } }
+@media (max-width: 760px) {
+  .dash-panel, .dash-panel.full, .dash-panel.half, .dash-panel.third { grid-column: span 6; }
+}
+.dash-panel-head {
+  font-size: 13px; font-weight: 700; color: var(--p-navy-dark); margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px; min-height: 22px;
+}
 .dash-panel .panel { margin-top: 0; }
+
+/* Density pass: a third-width panel is a glance, not a page. Tighter padding
+   and a shorter chart body keep three of them on one screen row instead of
+   three tall cards pretending to be small ones. */
+.rv-num { font-size: 28px; font-weight: 700; color: var(--p-navy-dark);
+          font-variant-numeric: tabular-nums; line-height: 1.1; }
+.dash-panel.third .panel { padding: 12px 12px 10px; }
+.dash-panel.third .rv-num { font-size: 32px; }
+.dash-panel.third h3 { font-size: 13px; }
+.dash-panel.third .note { font-size: 11px; }
+
+/* ── Compose in place ── */
+.dash-edit-hint { margin-top: 10px; }
+.dash-grid.editing .dash-panel { position: relative; }
+.dash-panel.editable > .dash-panel-head { cursor: grab; }
+.dash-panel.editable > .dash-panel-head:active { cursor: grabbing; }
+.dash-grip { color: var(--p-blue-muted); font-size: 13px; letter-spacing: -1px; }
+.dash-panel.editable .panel { outline: 1px dashed var(--p-steel); outline-offset: 2px; }
+.dash-panel.dragging { opacity: 0.45; }
+.dash-panel.drag-over .panel { outline: 2px dashed var(--p-gold); outline-offset: 2px; }
+
+/* The kebab: present but quiet until the panel is hovered or something in it
+   has focus. Always visible on touch, where there is no hover to reveal it. */
+.panel-menu { margin-left: auto; position: relative; }
+.panel-kebab {
+  background: none; border: 1px solid transparent; border-radius: 6px; cursor: pointer;
+  color: var(--p-blue-muted); font-size: 16px; line-height: 1; padding: 2px 7px;
+  opacity: 0; transition: opacity 120ms, border-color 120ms, color 120ms;
+}
+.dash-panel:hover .panel-kebab, .panel-kebab:focus-visible,
+.panel-kebab[aria-expanded="true"] { opacity: 1; }
+.panel-kebab:hover { color: var(--p-navy-dark); border-color: var(--p-steel); }
+@media (hover: none) { .panel-kebab { opacity: 1; } }
+
+.panel-menu-pop {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 200px;
+  background: var(--p-white); border: 1px solid var(--p-border); border-radius: 8px;
+  box-shadow: var(--p-sh-sm); padding: 8px; font-weight: normal;
+}
+.pm-head { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+           color: var(--p-blue-muted); margin-bottom: 5px; }
+.pm-sizes { width: 100%; }
+.pm-sizes button { flex: 1; }
+.pm-sep { height: 1px; background: var(--p-row); margin: 7px 0; }
+.pm-item {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  cursor: pointer; font-size: 13px; color: var(--p-navy-dark); padding: 6px 8px;
+  border-radius: 6px;
+}
+.pm-item:hover:not(:disabled) { background: var(--p-cream); }
+.pm-item:disabled { color: var(--p-blue-muted); cursor: default; }
+.pm-item.danger { color: #B4432B; }
+.pm-item.danger:hover { background: var(--pill-red-bg); }
+
+/* ── Add-widget drawer ── */
+.widget-drawer { max-width: 720px; }
+.wd-sect {
+  display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--p-blue-muted);
+  margin: 14px 0 8px;
+}
+.wd-search { margin-bottom: 0; margin-left: auto; width: auto; max-width: 240px;
+             font-size: 12px; text-transform: none; letter-spacing: normal; }
+.wd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 620px) { .wd-grid { grid-template-columns: 1fr; } }
+.wd-card {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+  background: var(--p-white); border: 1px solid var(--p-border); border-radius: 8px;
+  padding: 10px 12px; transition: border-color 120ms, background 120ms;
+}
+.wd-card:hover { border-color: var(--p-gold-text); background: var(--p-cream); }
+.wd-card-h { display: flex; align-items: center; gap: 8px; font-size: 13px;
+             color: var(--p-navy-dark); }
+.wd-card-b { font-size: 11px; color: var(--p-body); }
+.wd-viz {
+  margin-left: auto; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; background: var(--p-row); color: var(--p-navy-dark);
+  border-radius: 999px; padding: 2px 7px; white-space: nowrap;
+}
+.wd-on {
+  margin-left: auto; font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--p-gold-text);
+}
+.wd-hint { margin-right: auto; margin-top: 0; }
+
+/* ── Goal gauge ── */
+.goal-panel { display: flex; flex-direction: column; gap: 8px; }
+.goal-gauge { position: relative; display: flex; justify-content: center; }
+.goal-svg { width: 100%; max-width: 220px; height: auto; display: block; }
+.goal-track { stroke: var(--p-row); stroke-linecap: round; }
+.goal-arc { stroke: var(--p-gold); stroke-linecap: round;
+            transition: stroke-dashoffset 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+.goal-arc.over { stroke: var(--p-gold-deep); }
+.goal-center {
+  position: absolute; left: 0; right: 0; bottom: 0; text-align: center;
+  pointer-events: none;
+}
+.goal-pct { font-size: 34px; line-height: 1; color: var(--p-navy-dark); }
+.goal-of { font-size: 11px; color: var(--p-body); margin-top: 2px; }
+.goal-cap { text-align: center; font-size: 11px; color: var(--p-blue-muted); }
+.goal-panel.won .goal-cap { color: var(--p-gold-text); font-weight: 700; }
+
+.goal-calls { border-top: 1px solid var(--p-row); padding-top: 8px; }
+.goal-calls-head { display: flex; justify-content: space-between; font-size: 11px;
+                   color: var(--p-body); margin-bottom: 4px; }
+.goal-calls-n { font-family: var(--mono); color: var(--p-navy-dark); }
+.goal-calls-none { font-size: 11px; color: var(--p-blue-muted); }
+.goal-bar { height: 6px; background: var(--p-row); border-radius: 999px; overflow: hidden; }
+.goal-bar-fill { height: 100%; background: var(--p-buy); border-radius: 999px;
+                 transition: width 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+.goal-bar-fill.over { background: var(--p-gold); }
+
+.goal-foot { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+             border-top: 1px solid var(--p-row); padding-top: 8px; }
+.goal-empty { text-align: center; padding: 10px 4px; display: flex;
+              flex-direction: column; gap: 8px; align-items: center; }
+.goal-empty-t { font-size: 22px; color: var(--p-navy-dark); }
+.goal-empty-s { font-size: 11px; color: var(--p-body); max-width: 320px; }
+.goal-edit { display: flex; flex-direction: column; gap: 8px; }
+.goal-edit-row { display: flex; flex-direction: column; gap: 3px; font-size: 11px;
+                 color: var(--p-body); }
+.goal-edit-row .plat-input { margin-bottom: 0; }
+.goal-edit-act { display: flex; gap: 8px; }
+
+/* Over target celebrates: the gold sweep the winning funnel stage uses, so a
+   cleared quota reads in the same visual language as a won deal. */
+.goal-panel.won { border-color: var(--p-gold-deep); background:
+  linear-gradient(180deg, var(--p-cream) 0%, var(--p-white) 55%); }
+.goal-panel.won .goal-gauge::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.6) 50%, transparent 70%);
+  transform: translateX(-120%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .goal-panel.won .goal-gauge::after {
+    animation: goal-shine 2.8s cubic-bezier(0.4, 0, 0.2, 1) 0.7s infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-arc, .goal-bar-fill { transition: none; }
+  .panel-kebab, .wd-card { transition: none; }
+}
+@keyframes goal-shine {
+  0% { transform: translateX(-120%); }
+  45% { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
 
 .dash-build-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 18px; }
 @media (max-width: 760px) { .dash-build-grid { grid-template-columns: 1fr; } }

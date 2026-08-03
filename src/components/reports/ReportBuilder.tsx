@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   api, GAUGE_TONES, type ComboAs, type ComboAxis, type ComboConfig,
   type GaugeConfig, type GaugeTone, type RegistrySource, type ReportDefinition,
@@ -16,6 +17,12 @@ interface Props {
   start: string
   end: string
   ownerId: string
+  /** Where "Build a new chart" came from (My Day v3). Set, a freshly SAVED
+   *  report hands itself straight back to that dashboard instead of leaving
+   *  the rep on a builder page wondering how to get their chart onto the board
+   *  they were composing. Only on create: an EDIT of an existing report was
+   *  not part of a compose flow and must not teleport anyone. */
+  returnTo?: string
 }
 
 // 'number' is labelled "Metric" because that is what it is: one big figure per
@@ -93,8 +100,9 @@ function shapeHint(viz: ReportViz): string {
   return ''
 }
 
-export function ReportBuilder({ start, end, ownerId }: Props) {
+export function ReportBuilder({ start, end, ownerId, returnTo }: Props) {
   const toast = useToast()
+  const navigate = useNavigate()
   const [sources, setSources] = useState<RegistrySource[]>([])
   const [sourceKey, setSourceKey] = useState('')
   const [dims, setDims] = useState<string[]>([])
@@ -197,6 +205,13 @@ export function ReportBuilder({ start, end, ownerId }: Props) {
         const created = await api.createSavedReport(name.trim(), definition)
         setEditingId(created.id)
         toast.info('Report saved', name.trim())
+        if (returnTo) {
+          // Hand the new report back to the board that sent us here. `?add=`
+          // carries the id so it lands as a panel rather than making the rep
+          // find it again in the widget drawer.
+          navigate(`${returnTo}?add=${encodeURIComponent(created.id)}`)
+          return
+        }
       }
       loadSaved()
     } catch (e) {

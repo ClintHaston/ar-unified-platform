@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Icon } from '../components/shell/icons'
-import { api, type DashboardRun, type OwnerOption, type ReportFilters,
-         type MyKpis, type ActivityFeedResult, type RunResult,
-         type UpNextResult } from '../lib/api'
+import { api, type DashboardRun, type DashboardPanel, type OwnerOption,
+         type ReportFilters, type MyKpis, type ActivityFeedResult,
+         type RunResult, type UpNextResult, type GoalResult,
+         type PanelSize } from '../lib/api'
 import { ResultView } from '../components/reports/ResultView'
 import { KpiRow, ActivityFeed } from '../components/reports/MyDayPanels'
 import { UpNextPanel } from '../components/reports/UpNextPanel'
+import { GoalGauge } from '../components/reports/GoalGauge'
+import { PanelMenu } from '../components/reports/PanelMenu'
+import { AddWidgetDrawer } from '../components/reports/AddWidgetDrawer'
 import { companyTz, todayIn } from '../components/reports/companyTz'
 import { useToast } from '../components/shell/ToastContext'
 import { useQuickLog } from '../components/quicklog/QuickLogContext'
@@ -17,6 +21,22 @@ import { useQuickLog } from '../components/quicklog/QuickLogContext'
 // dashboard-level date/owner filters overlaid. A panel whose report was
 // deleted degrades to a friendly card, never a crash. Open to every member
 // since the rep-dashboards build: the server scopes panels to the viewer.
+//
+// MY DAY v3 — COMPOSE IN PLACE. A dashboard is now a widget mosaic its owner
+// rearranges here rather than in a separate builder screen. Three decisions
+// worth keeping:
+//
+//   * The EDITED layout comes from the dashboard's stored meta, not from the
+//     run response. Run panels report only kind/size/report-id, so rebuilding
+//     a layout from them would drop each computed panel's stored config and a
+//     90-day KPI window would silently re-clamp to 30 on the next save.
+//   * Resize / reorder / remove apply LOCALLY and persist in the background:
+//     they change nothing the server computes, so re-running the whole board
+//     to watch a panel move would be a spinner in exchange for nothing. Adding
+//     a widget does need a run — there is a new panel with no result yet.
+//   * Editing controls are hidden when the server says can_edit is false, and
+//     the server refuses the PATCH regardless. The UI hiding a control is a
+//     courtesy; the server is the rule.
 
 // The days-back presets are open-ended ("since X", no end bound). Today is the
 // odd one out: it is a BOUNDED single day, so it carries its own flag rather
@@ -43,6 +63,27 @@ function panelAccent(run: DashboardRun['panels'][number]): string {
   return 'var(--p-gold)'
 }
 
+const PANEL_LABEL: Record<string, string> = {
+  kpis: 'My numbers', activity_feed: 'Recent activity',
+  tasks: 'Up next', goal: 'Goal',
+}
+
+function headingFor(p: DashboardRun['panels'][number]): string {
+  const kind = p.kind ?? 'report'
+  return PANEL_LABEL[kind] ?? p.name ?? 'Removed report'
+}
+
+/** Move an item within a list, returning a new list. Out-of-range moves return
+ *  the list unchanged rather than wrapping — a panel at the top that jumps to
+ *  the bottom on "move up" is a bug the user has to undo. */
+function moved<T>(list: T[], from: number, to: number): T[] {
+  if (to < 0 || to >= list.length || from === to) return list
+  const next = [...list]
+  const [item] = next.splice(from, 1)
+  next.splice(to, 0, item)
+  return next
+}
+
 export function DashboardView() {
   const { dashboardId } = useParams<{ dashboardId: string }>()
   const { user } = useAuth()
@@ -60,6 +101,14 @@ export function DashboardView() {
   const [initialized, setInitialized] = useState(false)
   const [isDefault, setIsDefault] = useState(false)
 
+  // Compose-in-place state.
+  const [layout, setLayout] = useState<DashboardPanel[]>([])
+  const [canEdit, setCanEdit] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+
   // Is THIS dashboard the user's default? The server resolves the default, so a
   // stale/deleted one comes back null and this is simply false.
   useEffect(() => {
@@ -71,14 +120,20 @@ export function DashboardView() {
     return () => { live = false }
   }, [isAdmin, dashboardId])
 
-  // seed the filter bar from the dashboard's stored default filters, once
+  // Seed the filter bar from the dashboard's stored default filters, and take
+  // the stored layout + edit permission from the same read. Every member needs
+  // this now (it carries can_edit), not just admins.
   useEffect(() => {
-    if (!isAdmin || !dashboardId) return
-    api.contactOwners().then((r) => setOwners(r.owners)).catch(() => setOwners([]))
+    if (!dashboardId) return
+    if (isAdmin) api.contactOwners().then((r) => setOwners(r.owners)).catch(() => setOwners([]))
     api.dashboardMeta(dashboardId).then((meta) => {
-      setStart(meta.default_filters?.date?.start ?? '')
-      setEnd(meta.default_filters?.date?.end ?? '')
-      setOwnerId(meta.default_filters?.owner_id ?? '')
+      if (isAdmin) {
+        setStart(meta.default_filters?.date?.start ?? '')
+        setEnd(meta.default_filters?.date?.end ?? '')
+        setOwnerId(meta.default_filters?.owner_id ?? '')
+      }
+      setLayout(meta.layout ?? [])
+      setCanEdit(!!meta.can_edit)
     }).catch(() => undefined).finally(() => setInitialized(true))
   }, [isAdmin, dashboardId])
 
@@ -100,6 +155,121 @@ export function DashboardView() {
   // the same signal. `logVersion` only moves on a SUCCESSFUL write, so this
   // cannot spin.
   useEffect(() => { if (initialized) load() }, [initialized, load, logVersion])
+
+  // ── Persisting a layout change ────────────────────────────────────────────
+  // The local state has already moved; this is the write-behind. On failure the
+  // caller's `revert` puts the board back, because a panel that springs back to
+  // where it was is honest and a panel that stays moved while the server
+  // disagrees is a lie the rep discovers on their next login.
+  const saveLayout = useCallback(async (next: DashboardPanel[], revert: () => void) => {
+    if (!dashboardId) return
+    try {
+      await api.updateDashboard(dashboardId, { layout: next })
+    } catch (e) {
+      revert()
+      toast.error('Could not save that change',
+                  e instanceof Error ? e.message : 'Please try again.')
+    }
+  }, [dashboardId, toast])
+
+  // Panels and layout are index-aligned (the server returns one run panel per
+  // stored panel, in order), so a local rearrangement moves both together and
+  // the board updates without a refetch.
+  const rearrange = useCallback((mutate: (l: DashboardPanel[]) => DashboardPanel[],
+                                 mutateRun: (p: DashboardRun['panels']) => DashboardRun['panels']) => {
+    const prevLayout = layout
+    const prevRun = run
+    const nextLayout = mutate(layout)
+    if (nextLayout === prevLayout) return
+    setLayout(nextLayout)
+    if (run) setRun({ ...run, panels: mutateRun(run.panels) })
+    void saveLayout(nextLayout, () => {
+      setLayout(prevLayout)
+      if (prevRun) setRun(prevRun)
+    })
+  }, [layout, run, saveLayout])
+
+  const movePanel = useCallback((from: number, to: number) => {
+    rearrange((l) => moved(l, from, to), (p) => moved(p, from, to))
+  }, [rearrange])
+
+  const setSize = useCallback((i: number, size: PanelSize) => {
+    rearrange(
+      (l) => l.map((p, idx) => (idx === i ? { ...p, size } : p)),
+      (p) => p.map((x, idx) => (idx === i ? { ...x, size } : x)))
+  }, [rearrange])
+
+  const removePanel = useCallback((i: number) => {
+    rearrange((l) => l.filter((_, idx) => idx !== i),
+              (p) => p.filter((_, idx) => idx !== i))
+  }, [rearrange])
+
+  // Adding is the one change that needs the server: the new panel has no
+  // computed result yet.
+  const addPanel = useCallback(async (panel: DashboardPanel) => {
+    if (!dashboardId) return
+    const prev = layout
+    const next = [...layout, panel]
+    setLayout(next)
+    setAdding(false)
+    try {
+      await api.updateDashboard(dashboardId, { layout: next })
+      load()
+      toast.info('Widget added', 'It landed at the bottom — drag it where you want it.')
+    } catch (e) {
+      setLayout(prev)
+      toast.error('Could not add that widget',
+                  e instanceof Error ? e.message : 'Please try again.')
+    }
+  }, [dashboardId, layout, load, toast])
+
+  // Coming back from the builder with a freshly saved chart (?add=<report id>).
+  // It waits for `initialized` because appending to a layout that has not
+  // loaded yet would PATCH a one-panel board over the real one — the whole
+  // dashboard, replaced by the chart just built.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const pendingAdd = searchParams.get('add')
+  const consumedAdd = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pendingAdd || !initialized || !canEdit) return
+    if (consumedAdd.current === pendingAdd) return
+    consumedAdd.current = pendingAdd
+    // Strip the param first so a refresh cannot add the panel a second time.
+    setSearchParams({}, { replace: true })
+    void addPanel({ kind: 'report', saved_report_id: pendingAdd, size: 'half' })
+    setEditing(true)
+  }, [pendingAdd, initialized, canEdit, addPanel, setSearchParams])
+
+  // ── Drag to reorder ───────────────────────────────────────────────────────
+  // HTML5 DnD, no dependency. It is mouse-only by nature, which is exactly why
+  // the kebab carries Move up / Move down as the keyboard path.
+  const dropDone = useRef(false)
+
+  function onDragStart(i: number, e: React.DragEvent) {
+    dropDone.current = false
+    setDragFrom(i)
+    e.dataTransfer.effectAllowed = 'move'
+    // Firefox refuses to start a drag without payload, even unused payload.
+    e.dataTransfer.setData('text/plain', String(i))
+  }
+
+  function onDragOver(i: number, e: React.DragEvent) {
+    if (dragFrom === null) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOver !== i) setDragOver(i)
+  }
+
+  function onDrop(i: number, e: React.DragEvent) {
+    e.preventDefault()
+    dropDone.current = true
+    if (dragFrom !== null && dragFrom !== i) movePanel(dragFrom, i)
+    setDragFrom(null); setDragOver(null)
+  }
+
+  function onDragEnd() {
+    setDragFrom(null); setDragOver(null)
+  }
 
   async function toggleFavorite() {
     if (!run || !dashboardId) return
@@ -171,6 +341,22 @@ export function DashboardView() {
             {isDefault ? 'Default for me' : 'Set as default'}
           </button>
           {isDefault && <span className="pill gold">You land here</span>}
+
+          {/* Editing controls appear only for someone the SERVER says may edit;
+              the PATCH is refused either way. */}
+          {canEdit && (
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <button className={`plat-btn${editing ? '' : ' ghost'}`}
+                      onClick={() => setEditing((v) => !v)}
+                      aria-pressed={editing}
+                      title="Rearrange, resize and remove widgets">
+                {editing ? 'Done editing' : 'Edit layout'}
+              </button>
+              <button className="plat-btn" onClick={() => { setEditing(true); setAdding(true) }}>
+                + Add widget
+              </button>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
           <span style={{ fontSize: 12, color: 'var(--p-body)' }}>From</span>
@@ -195,28 +381,71 @@ export function DashboardView() {
           )}
           <span style={{ fontSize: 11, color: 'var(--p-body)' }}>Dashboard filters override each report.</span>
         </div>
+        {editing && (
+          <div className="note dash-edit-hint">
+            Drag a widget to move it, or use its ⋮ menu to resize, reorder or
+            remove it. Changes save as you make them.
+          </div>
+        )}
       </div>
 
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
       {loading && !run && <div className="admin-loading">Loading dashboard…</div>}
 
       {run && panels.length === 0 && (
-        <div className="panel"><div className="note">This dashboard has no panels yet. Add saved reports from the Reports → Dashboards tab.</div></div>
+        <div className="panel">
+          <div className="note">
+            This dashboard has no widgets yet.{' '}
+            {canEdit
+              ? 'Add the first one and start composing.'
+              : 'Its owner has not added any yet.'}
+          </div>
+          {canEdit && (
+            <button className="plat-btn" style={{ marginTop: 10 }}
+                    onClick={() => { setEditing(true); setAdding(true) }}>
+              + Add widget
+            </button>
+          )}
+        </div>
       )}
 
-      <div className="dash-grid">
+      <div className={`dash-grid${editing ? ' editing' : ''}`}>
         {panels.map((p, i) => {
           const kind = p.kind ?? 'report'
-          const head = kind === 'kpis' ? 'My numbers'
-            : kind === 'activity_feed' ? 'Recent activity'
-            : kind === 'tasks' ? 'Up next'
-            : (p.name ?? 'Removed report')
+          const head = headingFor(p)
+          const size = p.size ?? 'full'
           return (
             <div key={`${kind}-${p.saved_report_id ?? 'x'}-${i}`}
-                 className={`dash-panel${p.size === 'half' ? ' half' : ''}`}>
+                 className={`dash-panel ${size}`
+                   + (editing ? ' editable' : '')
+                   + (dragFrom === i ? ' dragging' : '')
+                   + (dragOver === i && dragFrom !== i ? ' drag-over' : '')}
+                 draggable={editing}
+                 onDragStart={editing ? (e) => onDragStart(i, e) : undefined}
+                 onDragOver={editing ? (e) => onDragOver(i, e) : undefined}
+                 onDrop={editing ? (e) => onDrop(i, e) : undefined}
+                 onDragEnd={editing ? onDragEnd : undefined}>
               {/* The kpis panel carries its own hero header — a second label
-                  above a greeting reads like furniture. */}
-              {kind !== 'kpis' && <div className="dash-panel-head">{head}</div>}
+                  above a greeting reads like furniture. In edit mode it gets
+                  one anyway, because a widget you cannot grab by its title bar
+                  is a widget you cannot move. */}
+              {(kind !== 'kpis' || editing) && (
+                <div className="dash-panel-head">
+                  {editing && <span className="dash-grip" aria-hidden>⠿</span>}
+                  {head}
+                  {editing && (
+                    <PanelMenu
+                      size={size}
+                      label={head}
+                      isFirst={i === 0}
+                      isLast={i === panels.length - 1}
+                      onSize={(s) => setSize(i, s)}
+                      onMove={(dir) => movePanel(i, i + dir)}
+                      onRemove={() => removePanel(i)}
+                    />
+                  )}
+                </div>
+              )}
               {p.error ? (
                 <div className="panel"><div className="note">{p.error}</div></div>
               ) : kind === 'kpis' && p.result ? (
@@ -225,6 +454,8 @@ export function DashboardView() {
                 <ActivityFeed data={p.result as ActivityFeedResult} />
               ) : kind === 'tasks' && p.result ? (
                 <UpNextPanel data={p.result as UpNextResult} />
+              ) : kind === 'goal' && p.result ? (
+                <GoalGauge data={p.result as GoalResult} />
               ) : p.result ? (
                 // The panel's EFFECTIVE definition (saved report + this
                 // dashboard's date/owner overrides), so a drill returns the
@@ -237,6 +468,15 @@ export function DashboardView() {
           )
         })}
       </div>
+
+      {adding && dashboardId && (
+        <AddWidgetDrawer
+          present={layout}
+          dashboardId={dashboardId}
+          onAdd={(panel) => { void addPanel(panel) }}
+          onClose={() => setAdding(false)}
+        />
+      )}
     </div>
   )
 }
