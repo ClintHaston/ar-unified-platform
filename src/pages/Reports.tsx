@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Icon } from '../components/shell/icons'
 import {
   api,
   type CallActivityReport,
@@ -83,7 +82,7 @@ export function Reports() {
   }, [isAdmin])
 
   useEffect(() => {
-    if (!isAdmin || tab === 'custom' || tab === 'dashboards') return   // these fetch their own data
+    if (tab === 'custom' || tab === 'dashboards') return   // these fetch their own data
     const filters: ReportFilters = {
       start: start || undefined,
       end: end || undefined,
@@ -108,15 +107,9 @@ export function Reports() {
     return () => { live = false }
   }, [isAdmin, tab, start, end, ownerId])
 
-  if (!isAdmin) {
-    return (
-      <div className="ws-placeholder">
-        <div className="ws-ph-ic"><Icon name="reports" size={26} /></div>
-        <h2>Reports are admin-only</h2>
-        <p>Ask an admin for pipeline funnels, deal, and call reporting.</p>
-      </div>
-    )
-  }
+  // Reps land here too now (2026-08-02 rep-dashboards build). The server pins
+  // every rep query to owner = self, so this page shows a rep their own book —
+  // the UI just stops pretending there is a choice (owner select is admin-only).
 
   async function applyPreset(p: Preset) {
     if (p.today) {
@@ -143,9 +136,9 @@ export function Reports() {
               </button>
             ))}
           </div>
-          <Link to="/commission" className="plat-btn ghost" style={{ marginLeft: 'auto', textDecoration: 'none' }}>
+          {isAdmin && <Link to="/commission" className="plat-btn ghost" style={{ marginLeft: 'auto', textDecoration: 'none' }}>
             Commission report →
-          </Link>
+          </Link>}
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
@@ -160,13 +153,17 @@ export function Reports() {
               <button key={p.label} onClick={() => { void applyPreset(p) }}>{p.label}</button>
             ))}
           </div>
-          <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
-                  value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-            <option value="">All reps</option>
-            {owners.map((o) => (
-              <option key={o.id} value={o.id}>{o.is_active ? o.name : `${o.name} (inactive)`}</option>
-            ))}
-          </select>
+          {isAdmin ? (
+            <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
+                    value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              <option value="">All reps</option>
+              {owners.map((o) => (
+                <option key={o.id} value={o.id}>{o.is_active ? o.name : `${o.name} (inactive)`}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="pill" title="Your reports always show your own book">Mine</span>
+          )}
         </div>
       </div>
 

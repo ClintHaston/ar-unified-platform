@@ -2,15 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Icon } from '../components/shell/icons'
-import { api, type DashboardRun, type OwnerOption, type ReportFilters } from '../lib/api'
+import { api, type DashboardRun, type OwnerOption, type ReportFilters,
+         type MyKpis, type ActivityFeedResult, type RunResult } from '../lib/api'
 import { ResultView } from '../components/reports/ResultView'
+import { KpiRow, ActivityFeed } from '../components/reports/MyDayPanels'
 import { companyTz, todayIn } from '../components/reports/companyTz'
 import { useToast } from '../components/shell/ToastContext'
 
 // WS2c dashboard view. Composes a saved dashboard's panels by running each
 // referenced report back through the 2b engine (server-side), with the
 // dashboard-level date/owner filters overlaid. A panel whose report was
-// deleted degrades to a friendly card, never a crash. Admin-only.
+// deleted degrades to a friendly card, never a crash. Open to every member
+// since the rep-dashboards build: the server scopes panels to the viewer.
 
 // The days-back presets are open-ended ("since X", no end bound). Today is the
 // odd one out: it is a BOUNDED single day, so it carries its own flag rather
@@ -29,7 +32,8 @@ function isoDaysAgo(days: number): string {
 }
 
 function panelAccent(run: DashboardRun['panels'][number]): string {
-  const r = run.result
+  // Only 'report' panels carry a RunResult; computed panels never reach here.
+  const r = (run.kind ?? 'report') === 'report' ? (run.result as RunResult | undefined) : undefined
   if (r && r.viz === 'funnel' && r.pipelines[0]?.pipeline_name?.toLowerCase().includes('buyer')) {
     return 'var(--p-buy)'
   }
@@ -55,7 +59,7 @@ export function DashboardView() {
   // Is THIS dashboard the user's default? The server resolves the default, so a
   // stale/deleted one comes back null and this is simply false.
   useEffect(() => {
-    if (!isAdmin || !dashboardId) { setIsDefault(false); return }
+    if (!dashboardId) { setIsDefault(false); return }
     let live = true
     api.defaultDashboard()
       .then((r) => { if (live) setIsDefault(r.default?.dashboard_id === dashboardId) })
@@ -134,15 +138,9 @@ export function DashboardView() {
 
   const panels = useMemo(() => run?.panels ?? [], [run])
 
-  if (!isAdmin) {
-    return (
-      <div className="ws-placeholder">
-        <div className="ws-ph-ic"><Icon name="dashboard" size={26} /></div>
-        <h2>Dashboards are admin-only</h2>
-        <p>Ask an admin for saved reporting dashboards.</p>
-      </div>
-    )
-  }
+  // Reps see dashboards now (2026-08-02 rep-dashboards build). The server
+  // scopes every panel to the viewer, so the same dashboard shows a rep their
+  // own book and an admin the whole one.
 
   return (
     <div>
@@ -177,11 +175,15 @@ export function DashboardView() {
               <button key={p.label} onClick={() => { void applyPreset(p) }}>{p.label}</button>
             ))}
           </div>
-          <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
-                  value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-            <option value="">All reps</option>
-            {owners.map((o) => <option key={o.id} value={o.id}>{o.is_active ? o.name : `${o.name} (inactive)`}</option>)}
-          </select>
+          {isAdmin ? (
+            <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
+                    value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              <option value="">All reps</option>
+              {owners.map((o) => <option key={o.id} value={o.id}>{o.is_active ? o.name : `${o.name} (inactive)`}</option>)}
+            </select>
+          ) : (
+            <span className="pill" title="Your dashboards always show your own book">Mine</span>
+          )}
           <span style={{ fontSize: 11, color: 'var(--p-body)' }}>Dashboard filters override each report.</span>
         </div>
       </div>
@@ -194,21 +196,32 @@ export function DashboardView() {
       )}
 
       <div className="dash-grid">
-        {panels.map((p, i) => (
-          <div key={`${p.saved_report_id}-${i}`} className={`dash-panel${p.size === 'half' ? ' half' : ''}`}>
-            <div className="dash-panel-head">{p.name ?? 'Removed report'}</div>
-            {p.error ? (
-              <div className="panel"><div className="note">{p.error}</div></div>
-            ) : p.result ? (
-              // The panel's EFFECTIVE definition (saved report + this
-              // dashboard's date/owner overrides), so a drill returns the
-              // population the panel actually rendered.
-              <ResultView result={p.result} accent={panelAccent(p)} definition={p.definition} />
-            ) : (
-              <div className="admin-loading">…</div>
-            )}
-          </div>
-        ))}
+        {panels.map((p, i) => {
+          const kind = p.kind ?? 'report'
+          const head = kind === 'kpis' ? 'My numbers'
+            : kind === 'activity_feed' ? 'Recent activity'
+            : (p.name ?? 'Removed report')
+          return (
+            <div key={`${kind}-${p.saved_report_id ?? 'x'}-${i}`}
+                 className={`dash-panel${p.size === 'half' ? ' half' : ''}`}>
+              <div className="dash-panel-head">{head}</div>
+              {p.error ? (
+                <div className="panel"><div className="note">{p.error}</div></div>
+              ) : kind === 'kpis' && p.result ? (
+                <KpiRow data={p.result as MyKpis} />
+              ) : kind === 'activity_feed' && p.result ? (
+                <ActivityFeed data={p.result as ActivityFeedResult} />
+              ) : p.result ? (
+                // The panel's EFFECTIVE definition (saved report + this
+                // dashboard's date/owner overrides), so a drill returns the
+                // population the panel actually rendered.
+                <ResultView result={p.result as RunResult} accent={panelAccent(p)} definition={p.definition} />
+              ) : (
+                <div className="admin-loading">…</div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

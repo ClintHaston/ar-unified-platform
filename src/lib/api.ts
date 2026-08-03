@@ -929,9 +929,50 @@ export interface SavedReport {
 // ── WS2c saveable dashboards ──
 export type PanelSize = 'full' | 'half'
 
+// Rep-dashboards build (2026-08-02): panels come in three kinds. 'report' is
+// the original saved-report reference and the default when `kind` is absent,
+// so every stored layout keeps rendering. 'kpis' and 'activity_feed' are
+// computed server-side per viewer and carry their payload in `result`.
+export type PanelKind = 'report' | 'kpis' | 'activity_feed'
+
 export interface DashboardPanel {
-  saved_report_id: string
+  kind?: PanelKind
+  saved_report_id?: string
   size: PanelSize
+  window?: number
+  limit?: number
+}
+
+export interface MyKpis {
+  scope: string | null
+  window_days: number
+  open_pipeline_cents: number
+  weighted_pipeline_cents: number
+  stale_deals: number
+  won: number
+  lost: number
+  win_rate: number | null
+  avg_days_to_close: number | null
+  calls: number
+  emails: number
+  tasks_due_today: number
+}
+
+export interface FeedItem {
+  id: string
+  kind: string
+  subject: string | null
+  call_outcome: string | null
+  occurred_at: string | null
+  deal_id: string | null
+  contact_id: string | null
+  unit_id: string | null
+  buyer_opportunity_id: string | null
+}
+
+export interface ActivityFeedResult {
+  scope: string | null
+  items: FeedItem[]
 }
 
 export interface DashboardFilters {
@@ -952,8 +993,10 @@ export interface DashboardListItem {
   name: string
   layout: DashboardPanel[]
   default_filters: DashboardFilters
-  owner_id: string
+  owner_id: string | null
   owner_name: string | null
+  visibility?: 'private' | 'team'
+  system_key?: string | null
   favorited: boolean
   panel_count: number
   updated_at: string
@@ -968,10 +1011,13 @@ export interface DashboardMeta {
 }
 
 export interface DashboardRunPanel {
-  saved_report_id: string
+  kind?: PanelKind
+  saved_report_id?: string
   size: PanelSize
-  name: string | null
-  result?: RunResult
+  name?: string | null
+  // 'report' panels carry a RunResult; 'kpis' and 'activity_feed' panels carry
+  // their computed payloads in the same slot. The renderer switches on `kind`.
+  result?: RunResult | MyKpis | ActivityFeedResult
   // The EFFECTIVE definition this panel ran (saved report + the dashboard's
   // date/owner overrides). Drilling must re-run the population the panel showed,
   // so it uses this rather than the stored definition. Absent on an errored panel.

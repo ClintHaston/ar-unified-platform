@@ -183,8 +183,12 @@ export function DashboardsPanel({ start, end, ownerId }: Props) {
               <div className="note">Add saved reports to build this dashboard.</div>
             ) : (
               panels.map((p, i) => (
-                <div key={`${p.saved_report_id}-${i}`} className="dash-panel-row">
-                  <span style={{ flex: 1, fontSize: 13 }}>{reportName[p.saved_report_id] ?? '(unknown report)'}</span>
+                <div key={`${p.saved_report_id ?? p.kind}-${i}`} className="dash-panel-row">
+                  <span style={{ flex: 1, fontSize: 13 }}>
+                    {(p.kind ?? 'report') === 'kpis' ? 'KPI card row'
+                      : (p.kind ?? 'report') === 'activity_feed' ? 'Activity feed'
+                      : (p.saved_report_id ? reportName[p.saved_report_id] : undefined) ?? '(unknown report)'}
+                  </span>
                   <div className="roletoggle">
                     <button className={p.size === 'full' ? 'active' : ''} onClick={() => setSize(i, 'full')}>Full</button>
                     <button className={p.size === 'half' ? 'active' : ''} onClick={() => setSize(i, 'half')}>Half</button>

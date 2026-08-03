@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { api } from '../lib/api'
-import { useAuth } from '../contexts/AuthContext'
 
 // The landing route ("/"), which is where Login sends every user.
 //
@@ -22,23 +21,23 @@ import { useAuth } from '../contexts/AuthContext'
 // the sidebar's target, so it has to be predictable and bookmarkable.
 
 export function DashboardLanding() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
   const [to, setTo] = useState<string | null>(null)
 
   useEffect(() => {
-    // Dashboards are admin-only, so a rep has no default by definition. Skip
-    // the round-trip rather than ask on every rep's landing.
-    if (!isAdmin) { setTo('/dashboard'); return }
+    // Every member resolves a default now (rep-dashboards build): listing
+    // dashboards provisions My Day server-side, and a rep with no explicit
+    // default lands on the static KPI page same as before. First we make the
+    // list call so a brand-new rep's My Day exists before we ask for it.
     let live = true
-    api.defaultDashboard()
+    api.dashboards()
+      .then(() => api.defaultDashboard())
       .then((r) => {
         if (!live) return
         setTo(r.default ? `/dashboards/${r.default.dashboard_id}` : '/dashboard')
       })
       .catch(() => { if (live) setTo('/dashboard') })
     return () => { live = false }
-  }, [isAdmin])
+  }, [])
 
   // Hold rather than flash the KPI page and yank it away a moment later.
   if (to === null) return <div className="admin-loading">Loading…</div>

@@ -972,3 +972,25 @@ input, select, textarea {
   .kpi, .card, .unit-card { transition: none !important; }
   .kpi:hover, .card:hover, .unit-card:hover { transform: none; }
 }
+
+/* ── My Day panels (rep-dashboards build 2026-08-02, site design system) ── */
+.kpi-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 2px 2px; position: relative; }
+.kpi-card {
+  flex: 1 1 130px; min-width: 130px; background: var(--p-white);
+  border: 1px solid var(--p-border); border-radius: 10px; padding: 14px 14px 11px;
+}
+.kpi-value { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 26px; letter-spacing: 0.03em; color: var(--p-navy-dark); line-height: 1.05; }
+.kpi-label { font-size: 11px; color: var(--p-blue-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-window { position: absolute; top: -26px; right: 4px; font-size: 11px; color: var(--p-blue-muted); }
+.feed-list { display: flex; flex-direction: column; }
+.feed-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  border-bottom: 1px solid var(--p-border); font-size: 13px; color: var(--p-body);
+  text-decoration: none;
+}
+.feed-item:last-child { border-bottom: 0; }
+a.feed-item:hover { background: var(--p-cream); color: var(--p-navy-dark); }
+.feed-ic { width: 20px; text-align: center; flex: 0 0 auto; }
+.feed-subject { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-outcome { color: var(--p-blue-muted); }
+.feed-when { flex: 0 0 auto; font-size: 11px; color: var(--p-blue-muted); }
