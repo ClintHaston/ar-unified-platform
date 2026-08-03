@@ -951,6 +951,14 @@ export interface MyKpis {
   stale_deals: number
   won: number
   lost: number
+  // Previous-window comparisons (3e8d32f). Optional so a cached older payload
+  // renders without deltas rather than crashing.
+  won_prev?: number
+  lost_prev?: number
+  won_value_cents?: number
+  won_value_prev_cents?: number
+  calls_prev?: number
+  emails_prev?: number
   win_rate: number | null
   avg_days_to_close: number | null
   calls: number

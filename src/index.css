@@ -973,24 +973,63 @@ input, select, textarea {
   .kpi:hover, .card:hover, .unit-card:hover { transform: none; }
 }
 
-/* ── My Day panels (rep-dashboards build 2026-08-02, site design system) ── */
+/* ── My Day panels v2 (experience layer, 2026-08-02) ── */
+.myday-hero { padding: 2px 4px 12px; }
+.myday-greet { font-size: 30px; letter-spacing: 0.04em; color: var(--p-navy-dark); line-height: 1; }
+.myday-sub { font-size: 13px; color: var(--p-body); margin-top: 4px; }
+
 .kpi-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 2px 2px; position: relative; }
 .kpi-card {
-  flex: 1 1 130px; min-width: 130px; background: var(--p-white);
+  flex: 1 1 150px; min-width: 150px; background: var(--p-white);
   border: 1px solid var(--p-border); border-radius: 10px; padding: 14px 14px 11px;
+  text-decoration: none; display: block; position: relative; overflow: hidden;
+  transition: transform 160ms cubic-bezier(0.16,1,0.3,1), box-shadow 160ms cubic-bezier(0.16,1,0.3,1), border-color 160ms;
 }
-.kpi-value { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 26px; letter-spacing: 0.03em; color: var(--p-navy-dark); line-height: 1.05; }
+.kpi-card::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
+  background: var(--p-border);
+}
+.kpi-card.ac-gold::before { background: var(--p-gold); }
+.kpi-card.ac-teal::before { background: var(--p-buy); }
+.kpi-card.ac-warn::before { background: #B4432B; }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ws-sh-md); border-color: var(--p-gold); }
+.kpi-card.urgent { background: var(--p-cream); border-color: var(--p-gold); }
+.kpi-value { font-family: 'Bebas Neue', Arial, sans-serif; font-size: 27px; letter-spacing: 0.03em; color: var(--p-navy-dark); line-height: 1.05; }
+.kpi-empty { font-size: 15px; color: var(--p-blue-muted); letter-spacing: 0; }
 .kpi-label { font-size: 11px; color: var(--p-blue-muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-delta { display: block; font-size: 11px; margin-top: 6px; font-weight: 500; }
+.kpi-delta.good { color: var(--p-buy); }
+.kpi-delta.bad { color: #B4432B; }
+.kpi-delta.flat { color: var(--p-blue-muted); font-weight: 400; }
 .kpi-window { position: absolute; top: -26px; right: 4px; font-size: 11px; color: var(--p-blue-muted); }
+
 .feed-list { display: flex; flex-direction: column; }
+.feed-day {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--p-blue-muted); padding: 12px 12px 4px; font-weight: 600;
+}
 .feed-item {
   display: flex; align-items: center; gap: 10px; padding: 9px 12px;
   border-bottom: 1px solid var(--p-border); font-size: 13px; color: var(--p-body);
-  text-decoration: none;
+  text-decoration: none; border-radius: 6px;
 }
-.feed-item:last-child { border-bottom: 0; }
+.feed-block:last-child .feed-item { border-bottom: 0; }
 a.feed-item:hover { background: var(--p-cream); color: var(--p-navy-dark); }
-.feed-ic { width: 20px; text-align: center; flex: 0 0 auto; }
+.feed-ic { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex: 0 0 auto; background: var(--p-row); }
+.feed-ic.fk-call { background: rgba(243, 206, 0, 0.18); }
+.feed-ic.fk-email { background: rgba(44, 122, 123, 0.12); }
+.feed-ic.fk-meeting { background: rgba(26, 33, 46, 0.08); }
 .feed-subject { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feed-outcome { color: var(--p-blue-muted); }
 .feed-when { flex: 0 0 auto; font-size: 11px; color: var(--p-blue-muted); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rep-fbar { animation: fbar-grow 0.7s cubic-bezier(0.16, 1, 0.3, 1); transform-origin: left; }
+  .feed-block { animation: feed-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+}
+@keyframes fbar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes feed-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .kpi-card { transition: none; }
+  .kpi-card:hover { transform: none; }
+}

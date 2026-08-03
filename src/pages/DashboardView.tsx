@@ -204,7 +204,9 @@ export function DashboardView() {
           return (
             <div key={`${kind}-${p.saved_report_id ?? 'x'}-${i}`}
                  className={`dash-panel${p.size === 'half' ? ' half' : ''}`}>
-              <div className="dash-panel-head">{head}</div>
+              {/* The kpis panel carries its own hero header — a second label
+                  above a greeting reads like furniture. */}
+              {kind !== 'kpis' && <div className="dash-panel-head">{head}</div>}
               {p.error ? (
                 <div className="panel"><div className="note">{p.error}</div></div>
               ) : kind === 'kpis' && p.result ? (
