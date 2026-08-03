@@ -1033,3 +1033,36 @@ a.feed-item:hover { background: var(--p-cream); color: var(--p-navy-dark); }
   .kpi-card { transition: none; }
   .kpi-card:hover { transform: none; }
 }
+
+/* ── Funnel v2: centered taper, depth, conversion callouts, shine ── */
+.fnl { display: flex; flex-direction: column; padding: 6px 2px 2px; }
+.fnl-stage { padding: 2px 0 8px; border-radius: 8px; transition: background 140ms; }
+.fnl-stage:hover { background: var(--p-cream); }
+.fnl-row { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; }
+.fnl-name { font-size: 13px; font-weight: 600; color: var(--p-navy-dark); }
+.fnl-count { font-size: 22px; letter-spacing: 0.03em; color: var(--p-navy-dark); line-height: 1; }
+.fnl-count.zero { color: var(--p-blue-muted); font-size: 16px; }
+.fnl-track { padding: 3px 8px 0; }
+.fnl-bar {
+  height: 16px; border-radius: 999px; margin: 0 auto; position: relative; overflow: hidden;
+  box-shadow: inset 0 -3px 5px rgba(26, 33, 46, 0.18), inset 0 2px 3px rgba(255, 255, 255, 0.35);
+}
+.fnl-bar.empty { box-shadow: none; border: 1px dashed var(--p-border); background: transparent !important; }
+.fnl-bar.win::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-120%);
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+}
+.fnl-conv { display: flex; justify-content: center; gap: 12px; padding: 6px 0 4px; font-size: 11px; }
+.fnl-conv-pct { color: var(--p-body); font-weight: 600; }
+.fnl-conv-drop { color: #B4432B; font-weight: 500; }
+.fnl-meta { text-align: center; font-size: 11px; color: var(--p-blue-muted); padding-top: 4px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .fnl-bar { animation: fnl-grow 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; transform-origin: center; }
+  .fnl-stage { animation: feed-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .fnl-bar.win::after { animation: fnl-shine 2.6s cubic-bezier(0.4, 0, 0.2, 1) 0.9s infinite; }
+  .fnl-count { animation: fnl-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+}
+@keyframes fnl-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes fnl-pop { from { opacity: 0; transform: translateY(3px) scale(0.9); } to { opacity: 1; transform: none; } }
+@keyframes fnl-shine { 0% { transform: translateX(-120%); } 45% { transform: translateX(120%); } 100% { transform: translateX(120%); } }
