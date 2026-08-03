@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type InboundLead, type InboundLeadsResponse } from '../lib/api'
+import { Mailto, Tel } from '../components/quicklog/Contactable'
 
 // Lead approvals (build step 4b): the §5 inbound door's human half. The
 // 15-minute poller lands newly created HubSpot contacts here; approval
@@ -117,8 +118,10 @@ export function LeadApprovals() {
               (data?.leads ?? []).map((lead) => (
                 <tr key={lead.id}>
                   <td><b>{lead.name ?? '(no name)'}</b></td>
-                  <td>{lead.email ?? '—'}</td>
-                  <td>{lead.phone ?? '—'}</td>
+                  {/* No anchor yet — an unapproved lead has no contact row to
+                      log against. The number still dials. */}
+                  <td><Mailto email={lead.email} /></td>
+                  <td><Tel phone={lead.phone} /></td>
                   <td>{lead.lifecyclestage ?? '—'}</td>
                   <td className="note">
                     {when(tab === 'pending_approval' ? lead.imported_at : lead.resolved_at)}

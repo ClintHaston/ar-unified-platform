@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type PlatformUser } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { SortableTh, useClientSort, type ClientSortColumn } from './SortableTh'
+import { Mailto } from './quicklog/Contactable'
 
 // Task B: admin user management (Settings > Team). This is what gives reps
 // logins at cutover. Admin-only (the backend returns 403 for reps; this screen
@@ -201,7 +202,7 @@ export function UserManagement() {
               return (
                 <tr key={u.id}>
                   <td><b>{u.name}</b>{isSelf && <span className="note" style={{ marginLeft: 6 }}>(you)</span>}</td>
-                  <td>{u.email}</td>
+                  <td><Mailto email={u.email} /></td>
                   <td><span className={`badge-role ${u.role}`}>{u.role}</span></td>
                   <td><span className={`pill ${st.cls}`}>{st.text}</span></td>
                   <td style={{ whiteSpace: 'nowrap', color: 'var(--p-body)', fontSize: 12 }}>{lastActive(u.last_active)}</td>

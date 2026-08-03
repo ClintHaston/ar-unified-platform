@@ -5,6 +5,7 @@ import {
   type SearchResult, type UnitOffer,
 } from '../lib/api'
 import { recordRecent } from '../lib/recentlyViewed'
+import { Mailto, Tel } from '../components/quicklog/Contactable'
 
 // Buy opp detail (4e + P1 usability). Buyer + owning rep + probability/timeframe
 // + buy-side stage; an append-only note HISTORY (activities rows anchored by
@@ -137,8 +138,18 @@ export function BuyerOpportunityDetail() {
               <b><Link to={`/contacts/${o.buyer_contact_id}`} style={{ color: 'var(--p-gold-text)' }}>{o.buyer_name ?? 'Unnamed'}</Link></b>
             </div>
             {o.company_name && <div className="fieldrow"><span>Company</span><b>{o.company_name}</b></div>}
-            {o.buyer_email && <div className="fieldrow"><span>Email</span><b>{o.buyer_email}</b></div>}
-            {o.buyer_phone && <div className="fieldrow"><span>Phone</span><b>{o.buyer_phone}</b></div>}
+            {o.buyer_email && <div className="fieldrow"><span>Email</span><b><Mailto email={o.buyer_email} /></b></div>}
+            {/* Anchored to the OPPORTUNITY, not the buyer contact: a call about
+                a buy-opp belongs on the opp's own timeline. */}
+            {o.buyer_phone && (
+              <div className="fieldrow"><span>Phone</span><b>
+                <Tel phone={o.buyer_phone} anchor={{
+                  type: 'buyer_opportunity', id: o.id,
+                  label: o.buyer_name ?? 'Buy opportunity',
+                  subtitle: o.company_name,
+                }} />
+              </b></div>
+            )}
             <div className="fieldrow"><span>Owner</span><b>{o.owner_name ?? 'Unassigned'}</b></div>
             <div className="fieldrow"><span>Stage</span>
               <b>

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { api, type CompanyDetailResponse, type ConsignmentDoc } from '../lib/api'
 import { CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { recordRecent } from '../lib/recentlyViewed'
+import { Mailto, Tel } from '../components/quicklog/Contactable'
 import { useBreadcrumbTitle } from '../components/shell/BreadcrumbTitle'
 import { TYPE_LABEL } from './Contacts'
 
@@ -154,7 +155,7 @@ export function CompanyDetail() {
                   {isAdmin && <button className="plat-btn ghost" onClick={startEdit}>Edit</button>}
                 </div>
                 <div className="fieldrow"><span>Domain</span><span>{company.domain ?? '—'}</span></div>
-                <div className="fieldrow"><span>Phone</span><span>{company.phone ? <a href={`tel:${company.phone}`}>{company.phone}</a> : '—'}</span></div>
+                <div className="fieldrow"><span>Phone</span><span><Tel phone={company.phone} /></span></div>
                 <div className="fieldrow">
                   <span>Address</span>
                   <span>{addr.length === 0 ? '—' : addr.map((l, i) => <div key={i}>{l}</div>)}</span>
@@ -222,7 +223,7 @@ export function CompanyDetail() {
                   <div className="hist-item" key={c.id}>
                     <button className="linklike" onClick={() => navigate(`/contacts/${c.id}`)}><b>{c.name ?? c.email ?? '(no name)'}</b></button>
                     <span className="pill grey" style={{ marginLeft: 8 }}>{TYPE_LABEL[c.contact_type]}</span>
-                    <div className="when">{c.email ?? '—'}{c.owner_name ? ` · ${c.owner_name}` : ''}</div>
+                    <div className="when"><Mailto email={c.email} />{c.owner_name ? ` · ${c.owner_name}` : ''}</div>
                   </div>
                 ))}
                 {contacts_total > contacts.length && (

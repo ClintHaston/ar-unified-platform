@@ -929,11 +929,12 @@ export interface SavedReport {
 // ── WS2c saveable dashboards ──
 export type PanelSize = 'full' | 'half'
 
-// Rep-dashboards build (2026-08-02): panels come in three kinds. 'report' is
+// Rep-dashboards build (2026-08-02): panels come in four kinds. 'report' is
 // the original saved-report reference and the default when `kind` is absent,
-// so every stored layout keeps rendering. 'kpis' and 'activity_feed' are
-// computed server-side per viewer and carry their payload in `result`.
-export type PanelKind = 'report' | 'kpis' | 'activity_feed'
+// so every stored layout keeps rendering. 'kpis', 'activity_feed' and 'tasks'
+// ("Up next", quick-log build) are computed server-side per viewer and carry
+// their payload in `result`.
+export type PanelKind = 'report' | 'kpis' | 'activity_feed' | 'tasks'
 
 export interface DashboardPanel {
   kind?: PanelKind
@@ -983,6 +984,50 @@ export interface ActivityFeedResult {
   items: FeedItem[]
 }
 
+// ── Quick log (2026-08-02 night) ──
+// An activity belongs to exactly ONE record. The server enforces that; this
+// union is the client saying the same thing, so a modal can never assemble a
+// two-anchor payload in the first place.
+export type QuickLogAnchorType = 'deal' | 'contact' | 'unit' | 'buyer_opportunity'
+
+export interface QuickLogAnchor {
+  type: QuickLogAnchorType
+  id: string
+  // What the rep picked, kept for the modal header and the toast. Never sent.
+  label: string
+  subtitle?: string | null
+}
+
+export interface QuickLogInput {
+  kind: 'call' | 'note'
+  body?: string
+  subject?: string
+  call_outcome?: CallOutcome | null
+  occurred_at?: string
+  deal_id?: string
+  contact_id?: string
+  unit_id?: string
+  buyer_opportunity_id?: string
+}
+
+// The "Up next" panel: open tasks due today or already overdue, in the company
+// timezone, soonest first. `overdue` is computed server-side against that same
+// timezone — the browser must not re-decide it, or a rep in another timezone
+// sees a different colour than the KPI card counts.
+export interface UpNextTask {
+  id: string
+  title: string
+  due_at: string | null
+  overdue: boolean
+  deal_id: string | null
+  contact_id: string | null
+}
+
+export interface UpNextResult {
+  scope: string | null
+  items: UpNextTask[]
+}
+
 export interface DashboardFilters {
   date?: { start?: string; end?: string }
   owner_id?: string
@@ -1025,7 +1070,7 @@ export interface DashboardRunPanel {
   name?: string | null
   // 'report' panels carry a RunResult; 'kpis' and 'activity_feed' panels carry
   // their computed payloads in the same slot. The renderer switches on `kind`.
-  result?: RunResult | MyKpis | ActivityFeedResult
+  result?: RunResult | MyKpis | ActivityFeedResult | UpNextResult
   // The EFFECTIVE definition this panel ran (saved report + the dashboard's
   // date/owner overrides). Drilling must re-run the population the panel showed,
   // so it uses this rather than the stored definition. Absent on an errored panel.
@@ -1525,7 +1570,13 @@ export const api = {
     }),
 
   completeTask: (taskId: string) =>
-    request<{ ok: boolean }>(`/platform/tasks/${taskId}/complete`, { method: 'POST' }),
+    request<{ ok: boolean; done_at?: string | null }>(
+      `/platform/tasks/${taskId}/complete`, { method: 'POST' }),
+
+  // The undo behind the "Up next" checkbox. Reopening an already-open task is
+  // a 404 server-side, so a failed undo surfaces rather than lying.
+  uncompleteTask: (taskId: string) =>
+    request<{ ok: boolean }>(`/platform/tasks/${taskId}/uncomplete`, { method: 'POST' }),
 
   pipelines: () => request<{ pipelines: Pipeline[] }>('/platform/pipelines'),
 
@@ -1784,6 +1835,15 @@ export const api = {
 
   globalSearch: (q: string) =>
     request<{ results: SearchResult[] }>(`/platform/search?q=${encodeURIComponent(q)}`),
+
+  // ── Quick log: one endpoint, any anchor. The server decides whose activity
+  // it is (a rep is always themselves), so nothing here sends a rep id.
+  quickLog: (input: QuickLogInput) =>
+    request<{ id: string; kind: string; rep_id: string; anchor: string; anchor_id: string }>(
+      '/platform/activities', { method: 'POST', body: JSON.stringify(input) }),
+
+  myUpNext: (limit?: number) =>
+    request<UpNextResult>(`/platform/my/tasks${limit ? `?limit=${limit}` : ''}`),
 
   // ── 3c-6 notifications + password reset ──
   notifications: () => request<NotificationsResponse>('/platform/notifications'),

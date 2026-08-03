@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { Mailto, Tel } from '../components/quicklog/Contactable'
 import {
   api, SALES_LEAD_STATUSES, type ContactListResponse, type ContactRow,
   type ContactSort, type ContactType, type OwnerOption, type SegmentListItem,
@@ -605,7 +606,7 @@ export function Contacts() {
                       </span>
                     ) : (
                       <>
-                        {c.email ? <a href={`mailto:${c.email}`} onClick={(e) => e.stopPropagation()}>{c.email}</a> : '—'}
+                        <Mailto email={c.email} />
                         <button className="edit-pencil" title="Edit email" aria-label="Edit email"
                                 onClick={() => startEdit(c, 'email')}>✎</button>
                       </>
@@ -620,7 +621,13 @@ export function Contacts() {
                       </span>
                     ) : (
                       <>
-                        {c.phone ? <a href={`tel:${c.phone}`} onClick={(e) => e.stopPropagation()}>{c.phone}</a> : '—'}
+                        {/* Anchored: calling from the list offers to log it
+                            against that contact, same as the record page. */}
+                        <Tel phone={c.phone} anchor={{
+                          type: 'contact', id: c.id,
+                          label: c.name ?? c.email ?? 'Contact',
+                          subtitle: c.company_name,
+                        }} />
                         <button className="edit-pencil" title="Edit phone" aria-label="Edit phone"
                                 onClick={() => startEdit(c, 'phone')}>✎</button>
                       </>

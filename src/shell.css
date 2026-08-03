@@ -359,6 +359,15 @@
 .ws-toast.err { border-left-color: #B4432B; }
 .ws-toast .ws-toast-t { font-weight: bold; }
 .ws-toast .ws-toast-b { color: var(--p-body); font-size: 12px; margin-top: 2px; }
+/* The one optional action — undo a completed task, or log the call you just
+   dialled. Deliberately quiet: an offer, not a demand. */
+.ws-toast .ws-toast-act {
+  margin-top: 8px; background: var(--p-gold); border: 1px solid var(--p-gold-deep);
+  color: var(--p-navy-dark); border-radius: var(--ws-r-sm);
+  padding: 4px 11px; font-size: 12px; font-weight: bold; cursor: pointer;
+  transition: background var(--ws-in) var(--ws-ease);
+}
+.ws-toast .ws-toast-act:hover { background: var(--p-gold-deep); }
 @keyframes wsToastIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
 
 /* ── Empty / placeholder surface ── */
@@ -496,8 +505,11 @@ tr:hover .edit-pencil, .edit-pencil:focus-visible { opacity: 1; }
 .rb-band-row .rb-band-tone { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
 .rb-band-row .plat-btn { flex: 0 0 auto; padding: 5px 9px; font-size: 11px; }
 
-/* ── Phase 3 drill-down: the records behind a datapoint ── */
-.drill-scrim {
+/* ── Modal shell ──
+   One scrim + one panel treatment for every dialog in the app. The drill
+   popup shipped it first; the quick-log modal joins the same selector list
+   rather than inventing a second modal language two pixels away from this one. */
+.drill-scrim, .ws-modal-scrim {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(26, 43, 71, 0.32);
   backdrop-filter: blur(2px);
@@ -505,11 +517,105 @@ tr:hover .edit-pencil, .edit-pencil:focus-visible { opacity: 1; }
   padding: 8vh 16px 16px;
   animation: wsFade var(--ws-in) ease both;
 }
-.drill-modal {
+.drill-modal, .ws-modal {
   width: 880px; max-width: 96vw; max-height: 78vh;
   display: flex; flex-direction: column; margin-top: 0;
   animation: wsPalette var(--ws-in) var(--ws-ease) both;
 }
+.ws-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+.ws-modal-head h3 { margin: 0; font-size: 16px; color: var(--p-navy-dark); }
+.ws-modal-foot {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 12px; margin-top: 14px; border-top: 1px solid var(--p-row);
+}
+.ws-modal-foot .ql-hint { margin-right: auto; margin-top: 0; }
+
+/* ── Quick log ── */
+.ql-modal { width: 560px; overflow: auto; }
+.ql-label {
+  display: block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .3px; color: var(--p-blue-muted);
+  margin: 12px 0 5px;
+}
+.ql-modal .ql-label:first-of-type { margin-top: 0; }
+.ql-textarea { resize: vertical; min-height: 62px; font-family: inherit; }
+.ql-error { color: #B4432B; }
+.ql-warn { color: var(--pill-amber-fg); }
+
+/* Anchor picker */
+.ql-anchor { position: relative; }
+.ql-anchor.picked {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--p-row); border-radius: var(--ws-r-sm); padding: 8px 10px;
+}
+.ql-anchor .plat-input { margin-bottom: 0; }
+.ql-anchor-name {
+  min-width: 0; flex: 1; font-size: 13px; color: var(--p-navy-dark);
+  overflow: hidden; text-overflow: ellipsis;
+}
+.ql-anchor-name small {
+  display: block; font-size: 11px; color: var(--p-body); font-weight: normal;
+}
+.ql-anchor-clear { flex-shrink: 0; padding: 3px 9px; font-size: 11px; }
+.ql-anchor-list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5;
+  background: var(--p-white); border: 1px solid var(--p-steel);
+  border-radius: var(--ws-r-md); box-shadow: var(--ws-sh-md);
+  max-height: 240px; overflow: auto;
+}
+.ql-anchor-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 10px; background: none; border: 0; text-align: left; cursor: pointer;
+}
+.ql-anchor-item.active, .ql-anchor-item:hover { background: var(--p-cream); }
+.ql-anchor-empty { padding: 9px 11px; font-size: 12px; color: var(--p-body); }
+
+/* One-tap chips: outcomes and due presets. */
+.ql-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ql-chip {
+  border: 1px solid var(--p-steel); background: var(--p-white);
+  color: var(--p-body); border-radius: 999px;
+  padding: 6px 13px; font-size: 12px; cursor: pointer;
+  transition: background var(--ws-in) var(--ws-ease),
+              border-color var(--ws-in) var(--ws-ease);
+}
+.ql-chip:hover { background: var(--p-cream); border-color: var(--p-gold-text); }
+/* Yellow fill always carries ink text — the retheme rule. */
+.ql-chip.on {
+  background: var(--p-gold); border-color: var(--p-gold-deep);
+  color: var(--p-navy-dark); font-weight: bold;
+}
+.ql-date { margin-bottom: 0; width: auto; font-size: 12px; padding: 5px 8px; }
+
+/* ── "Up next" tasks panel ── */
+.upnext-list { list-style: none; margin: 0; padding: 0; }
+.upnext-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px; border-bottom: 1px solid var(--p-row);
+  font-size: 13px;
+  animation: wsToastIn var(--ws-in) var(--ws-ease) both;
+}
+.upnext-row:last-child { border-bottom: 0; }
+/* Overdue is a warning tint, not an alarm: these are late, not on fire. */
+.upnext-row.over { background: var(--pill-amber-bg); }
+.upnext-row.over .upnext-due { color: var(--pill-amber-fg); font-weight: bold; }
+.upnext-check {
+  flex: 0 0 auto; width: 17px; height: 17px; border-radius: 5px;
+  border: 2px solid var(--p-blue-muted); background: var(--p-white);
+  cursor: pointer; transition: background var(--ws-in) var(--ws-ease),
+                               border-color var(--ws-in) var(--ws-ease);
+}
+.upnext-check:hover { border-color: var(--p-gold-text); background: var(--p-cream); }
+.upnext-check:disabled { opacity: .5; cursor: default; }
+.upnext-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.upnext-title a { color: var(--p-navy-dark); text-decoration: none; }
+.upnext-title a:hover { color: var(--p-gold-text); text-decoration: underline; }
+.upnext-due { flex: 0 0 auto; font-size: 11px; color: var(--p-body); }
+.upnext-empty { padding: 14px 4px; font-size: 13px; color: var(--p-body); }
+.upnext-empty-t { color: var(--p-navy-dark); font-weight: bold; margin-bottom: 3px; }
 .drill-head {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 12px; margin-bottom: 10px;
@@ -533,7 +639,8 @@ tr:hover .edit-pencil, .edit-pencil:focus-visible { opacity: 1; }
   .plat-grid,
   .ws-navitem, .ws-flyout, .ws-menu, .ws-topbtn, .ws-overlay, .ws-palette,
   .ws-toast, .ws-rail-item, .ws-brand .ws-collapse, .ws-rail-toggle, .rep-fbar,
-  .drill-scrim, .drill-modal {
+  .drill-scrim, .drill-modal,
+  .ws-modal-scrim, .ws-modal, .ql-chip, .upnext-row, .upnext-check {
     transition: none !important;
     animation: none !important;
   }

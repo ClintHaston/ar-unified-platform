@@ -5,6 +5,7 @@ import { api } from '../../lib/api'
 import { NotificationBell } from '../NotificationBell'
 import { PersistentIframes } from '../PersistentIframes'
 import { ToastProvider } from './ToastContext'
+import { QuickLogProvider } from '../quicklog/QuickLogContext'
 import { BreadcrumbTitleProvider } from './BreadcrumbTitle'
 import { AppSidebar } from './AppSidebar'
 import { Breadcrumbs } from './Breadcrumbs'
@@ -66,7 +67,11 @@ export function AppShell() {
   const gridClass = `plat-grid${navCollapsed ? ' ws-nav-collapsed' : ''}${railCollapsed ? ' ws-rail-collapsed' : ''}`
 
   return (
+    // QuickLogProvider sits INSIDE ToastProvider: logging confirms itself with
+    // a toast, and the "log it?" offer after a tel: tap is a toast with a
+    // button, so the log layer depends on the toast layer and not the reverse.
     <ToastProvider>
+      <QuickLogProvider>
       <BreadcrumbTitleProvider>
       <div className={gridClass}>
         {preview && (
@@ -94,7 +99,7 @@ export function AppShell() {
                 <span>Search or jump to…</span>
                 <span className="ws-cmd-hint">Ctrl K</span>
               </button>
-              <QuickAdd onLogNote={() => setPaletteOpen(true)} />
+              <QuickAdd />
               <button
                 className={`ws-rail-toggle${!railCollapsed ? ' on' : ''}`}
                 onClick={toggleRail}
@@ -123,6 +128,7 @@ export function AppShell() {
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       </BreadcrumbTitleProvider>
+      </QuickLogProvider>
     </ToastProvider>
   )
 }

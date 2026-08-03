@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type CompanyMemberRow, type ContactRow, type ContactSort, type OwnerOption, type SearchResult, type SegmentCriteria, type SegmentDetailResponse, type SegmentSource, type SortDir } from '../lib/api'
 import { SegmentCriteriaBuilder } from '../components/SegmentCriteriaBuilder'
+import { Mailto, Tel } from '../components/quicklog/Contactable'
 import { useBreadcrumbTitle } from '../components/shell/BreadcrumbTitle'
 import { TYPE_LABEL, fmtDate } from './Contacts'
 
@@ -212,8 +213,12 @@ export function SegmentDetail() {
                 {(members as ContactRow[]).map((c) => (
                   <tr key={c.id}>
                     <td><button className="linklike" onClick={() => navigate(`/contacts/${c.id}`)}><b>{c.name ?? c.email ?? '(no name)'}</b></button></td>
-                    <td>{c.email ? <a href={`mailto:${c.email}`}>{c.email}</a> : '—'}</td>
-                    <td>{c.phone ? <a href={`tel:${c.phone}`}>{c.phone}</a> : '—'}</td>
+                    <td><Mailto email={c.email} /></td>
+                    <td><Tel phone={c.phone} anchor={{
+                      type: 'contact', id: c.id,
+                      label: c.name ?? c.email ?? 'Contact',
+                      subtitle: c.company_name,
+                    }} /></td>
                     <td>{TYPE_LABEL[c.contact_type]}</td>
                     <td>{c.sales_lead_status ?? '—'}</td>
                     <td>{c.company_name ?? '—'}</td>

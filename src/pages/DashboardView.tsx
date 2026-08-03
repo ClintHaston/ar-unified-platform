@@ -3,11 +3,14 @@ import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Icon } from '../components/shell/icons'
 import { api, type DashboardRun, type OwnerOption, type ReportFilters,
-         type MyKpis, type ActivityFeedResult, type RunResult } from '../lib/api'
+         type MyKpis, type ActivityFeedResult, type RunResult,
+         type UpNextResult } from '../lib/api'
 import { ResultView } from '../components/reports/ResultView'
 import { KpiRow, ActivityFeed } from '../components/reports/MyDayPanels'
+import { UpNextPanel } from '../components/reports/UpNextPanel'
 import { companyTz, todayIn } from '../components/reports/companyTz'
 import { useToast } from '../components/shell/ToastContext'
+import { useQuickLog } from '../components/quicklog/QuickLogContext'
 
 // WS2c dashboard view. Composes a saved dashboard's panels by running each
 // referenced report back through the 2b engine (server-side), with the
@@ -44,6 +47,7 @@ export function DashboardView() {
   const { dashboardId } = useParams<{ dashboardId: string }>()
   const { user } = useAuth()
   const toast = useToast()
+  const { logVersion } = useQuickLog()
   const isAdmin = user?.role === 'admin'
 
   const [start, setStart] = useState('')
@@ -90,7 +94,12 @@ export function DashboardView() {
       .finally(() => setLoading(false))
   }, [dashboardId, start, end, ownerId])
 
-  useEffect(() => { if (initialized) load() }, [initialized, load])
+  // Reload when something was logged anywhere in the app. A rep who logs a
+  // call from the quick-log modal and watches their feed not change concludes
+  // the log did not save — so the feed, Up next and the KPI counts refresh on
+  // the same signal. `logVersion` only moves on a SUCCESSFUL write, so this
+  // cannot spin.
+  useEffect(() => { if (initialized) load() }, [initialized, load, logVersion])
 
   async function toggleFavorite() {
     if (!run || !dashboardId) return
@@ -200,6 +209,7 @@ export function DashboardView() {
           const kind = p.kind ?? 'report'
           const head = kind === 'kpis' ? 'My numbers'
             : kind === 'activity_feed' ? 'Recent activity'
+            : kind === 'tasks' ? 'Up next'
             : (p.name ?? 'Removed report')
           return (
             <div key={`${kind}-${p.saved_report_id ?? 'x'}-${i}`}
@@ -213,6 +223,8 @@ export function DashboardView() {
                 <KpiRow data={p.result as MyKpis} />
               ) : kind === 'activity_feed' && p.result ? (
                 <ActivityFeed data={p.result as ActivityFeedResult} />
+              ) : kind === 'tasks' && p.result ? (
+                <UpNextPanel data={p.result as UpNextResult} />
               ) : p.result ? (
                 // The panel's EFFECTIVE definition (saved report + this
                 // dashboard's date/owner overrides), so a drill returns the

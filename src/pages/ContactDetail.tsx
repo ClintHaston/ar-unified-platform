@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { api, SALES_LEAD_STATUSES, type CallOutcome, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption, type SalesLeadStatus } from '../lib/api'
+import { api, SALES_LEAD_STATUSES, type CallOutcome, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption, type QuickLogAnchor, type SalesLeadStatus } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
+import { Mailto, Tel } from '../components/quicklog/Contactable'
+import { useQuickLog } from '../components/quicklog/QuickLogContext'
 import { CALL_OUTCOMES, CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { recordRecent } from '../lib/recentlyViewed'
 import { TYPE_LABEL, ownerLabel } from './Contacts'
@@ -69,6 +71,7 @@ function initials(name: string | null, email: string | null): string {
 export function ContactDetail() {
   const { contactId } = useParams<{ contactId: string }>()
   const { user } = useAuth()
+  const quickLog = useQuickLog()
   const isAdmin = user?.role === 'admin'
 
   const [data, setData] = useState<ContactDetailResponse | null>(null)
@@ -107,10 +110,19 @@ export function ContactDetail() {
       .finally(() => setLoading(false))
   }, [contactId])
 
-  useEffect(() => { load() }, [load])
+  // Reload after anything is logged anywhere — the quick-log modal, or the
+  // "log it?" toast after tapping this contact's number.
+  useEffect(() => { load() }, [load, quickLog.logVersion])
   useEffect(() => {
     api.contactOwners().then((res) => setOwners(res.owners)).catch(() => setOwners([]))
   }, [])
+
+  // What a quick log opened from this page attaches to: no picker step.
+  const contactAnchor: QuickLogAnchor | null = data
+    ? { type: 'contact', id: data.contact.id,
+        label: data.contact.name ?? data.contact.email ?? 'Contact',
+        subtitle: data.contact.company_name ?? data.contact.email }
+    : null
 
   function openActivity(kind: ActKind) {
     setOpenForm(kind); setActSubject(''); setActBody(''); setCallOutcome('')
@@ -320,7 +332,11 @@ export function ContactDetail() {
               <div className="crecord-avatar">{initials(contact.name, contact.email)}</div>
               <div style={{ minWidth: 0 }}>
                 <div className="crecord-name">{contact.name ?? contact.email ?? '(no name)'}</div>
-                {contact.email && <div className="note" style={{ marginTop: 2, wordBreak: 'break-all' }}>{contact.email}</div>}
+                {contact.email && (
+                  <div className="note" style={{ marginTop: 2, wordBreak: 'break-all' }}>
+                    <Mailto email={contact.email} />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -344,8 +360,10 @@ export function ContactDetail() {
                   <span className="crecord-section">About this contact</span>
                   <button className="plat-btn ghost" onClick={startEdit}>Edit</button>
                 </div>
-                <div className="fieldrow"><span>Email</span><span>{contact.email ? <a href={`mailto:${contact.email}`}>{contact.email}</a> : '—'}</span></div>
-                <div className="fieldrow"><span>Phone</span><span>{contact.phone ? <a href={`tel:${contact.phone}`}>{contact.phone}</a> : '—'}</span></div>
+                <div className="fieldrow"><span>Email</span><span><Mailto email={contact.email} /></span></div>
+                {/* Tapping the number offers to log the call against this
+                    contact — an offer in a toast, not an auto-opened modal. */}
+                <div className="fieldrow"><span>Phone</span><span><Tel phone={contact.phone} anchor={contactAnchor} /></span></div>
                 <div className="fieldrow">
                   <span>Company</span>
                   <span>{contact.company_id ? <Link to={`/companies/${contact.company_id}`}>{contact.company_name}</Link> : '—'}</span>
@@ -395,8 +413,14 @@ export function ContactDetail() {
         <div className="crecord-col">
           <div className="panel">
             <div className="crecord-actions">
-              <button className="plat-btn ghost" onClick={() => openActivity('note')}>Note</button>
-              <button className="plat-btn ghost" onClick={() => openActivity('call')}>Log call</button>
+              {/* Call and note are the two a rep does all day, so they open
+                  the shared quick-log modal pre-anchored to this contact —
+                  the same form the + menu and Ctrl+K open, with the one-tap
+                  outcome chips. Email and meeting keep the inline composer:
+                  they are rarer, wordier, and the modal deliberately offers
+                  only call and note. */}
+              <button className="plat-btn ghost" onClick={() => quickLog.openNote(contactAnchor)}>Note</button>
+              <button className="plat-btn ghost" onClick={() => quickLog.openCall(contactAnchor)}>Log call</button>
               <button className="plat-btn ghost" onClick={() => openActivity('email')}>Log email</button>
               <button className="plat-btn ghost" onClick={() => openActivity('meeting')}>Log meeting</button>
               <button className="plat-btn ghost" onClick={openTask}>Create task</button>

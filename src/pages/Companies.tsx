@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type CompanyRow, type CompanySort, type SortDir } from '../lib/api'
+import { Tel } from '../components/quicklog/Contactable'
 
 // Companies index (closes the Amendment-35 loose end: Companies used to route
 // to the filtered contacts list because no index existed). Server-side
@@ -101,7 +102,10 @@ export function Companies() {
                 <tr key={c.id}>
                   <td><button className="linklike" onClick={() => navigate(`/companies/${c.id}`)}><b>{c.name}</b></button></td>
                   <td>{c.domain ?? '—'}</td>
-                  <td>{c.phone ? <a href={`tel:${c.phone}`}>{c.phone}</a> : '—'}</td>
+                  {/* No anchor: activity attaches to a deal, contact or unit,
+                      never to a company, so there is nothing to offer to log
+                      against from here. The number still dials. */}
+                  <td><Tel phone={c.phone} /></td>
                   <td>{[c.city, c.state].filter(Boolean).join(', ') || '—'}</td>
                   <td>{c.n_contacts.toLocaleString()}</td>
                   <td>{c.n_open_deals.toLocaleString()}</td>

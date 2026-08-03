@@ -2,19 +2,20 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   api,
-  type CallOutcome,
   type ContactHit,
   type DealDetailResponse,
   type DealPatchInput,
   type OwnerOption,
+  type QuickLogAnchor,
   type Stage,
 } from '../lib/api'
-import { CALL_OUTCOMES, CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
+import { CALL_OUTCOME_LABEL } from '../lib/callOutcomes'
 import { useAuth } from '../contexts/AuthContext'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { DocumentsPanel } from '../components/DocumentsPanel'
 import { TabListingPanel } from '../components/TabListingPanel'
 import { useToast } from '../components/shell/ToastContext'
+import { useQuickLog } from '../components/quicklog/QuickLogContext'
 import { recordRecent } from '../lib/recentlyViewed'
 
 function money(cents: number | null): string {
@@ -36,6 +37,7 @@ export function DealDetail() {
   const { dealId } = useParams<{ dealId: string }>()
   const { user } = useAuth()
   const toast = useToast()
+  const quickLog = useQuickLog()
   const isAdmin = user?.role === 'admin'
   const [data, setData] = useState<DealDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,12 +60,6 @@ export function DealDetail() {
   const [stages, setStages] = useState<Stage[]>([])
   const [owners, setOwners] = useState<OwnerOption[]>([])
 
-  const [actKind, setActKind] = useState<'note' | 'call'>('note')
-  const [actSubject, setActSubject] = useState('')
-  const [actBody, setActBody] = useState('')
-  const [callOutcome, setCallOutcome] = useState<CallOutcome | ''>('')
-  const [savingAct, setSavingAct] = useState(false)
-
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDue, setTaskDue] = useState('')
   const [taskAssignee, setTaskAssignee] = useState('')  // '' = self
@@ -78,7 +74,16 @@ export function DealDetail() {
       .finally(() => setLoading(false))
   }, [dealId])
 
-  useEffect(() => { load() }, [load])
+  // Reload after anything is logged — from the buttons below, from the + menu,
+  // or from the "log it?" toast after tapping the contact's number.
+  useEffect(() => { load() }, [load, quickLog.logVersion])
+
+  // What the quick-log modal anchors to when opened from this page: the deal
+  // itself, so there is no picker step.
+  const dealAnchor: QuickLogAnchor | null = data
+    ? { type: 'deal', id: data.deal.id, label: data.deal.name,
+        subtitle: data.deal.contact_name }
+    : null
 
   useEffect(() => {
     if (cq.trim().length < 2) { setChits([]); return }
@@ -154,43 +159,6 @@ export function DealDetail() {
       setError(err instanceof Error ? err.message : 'Failed to save deal')
     } finally {
       setSavingEdit(false)
-    }
-  }
-
-  async function submitActivity(e: FormEvent) {
-    e.preventDefault()
-    if (!dealId || !actBody.trim() || !data) return
-    if (actKind === 'call' && callOutcome === '') return  // outcome required for a call
-    const body = actBody.trim()
-    const subject = actSubject.trim() || null
-    const kind = actKind
-    const outcome: CallOutcome | null = kind === 'call' ? (callOutcome as CallOutcome) : null
-    setSavingAct(true)
-
-    // Optimistic: the note appears in the timeline instantly (Phase 4).
-    const prev = data
-    setData({
-      ...data,
-      timeline: [{
-        type: 'activity', at: new Date().toISOString(), actor_name: user?.name ?? null,
-        kind, subject, body, summary: null, call_outcome: outcome,
-      }, ...data.timeline],
-    })
-    setActSubject('')
-    setActBody('')
-    setCallOutcome('')
-
-    try {
-      await api.logActivity(dealId, { kind, subject: subject ?? undefined, body, call_outcome: outcome })
-      load()  // reconcile with server truth
-    } catch (err) {
-      setData(prev)  // rollback
-      setActSubject(subject ?? '')
-      setActBody(body)
-      setCallOutcome(outcome ?? '')
-      toast.error('Note not saved', err instanceof Error ? err.message : 'Please try again.')
-    } finally {
-      setSavingAct(false)
     }
   }
 
@@ -401,44 +369,14 @@ export function DealDetail() {
 
           <div className="panel">
             <h3>Activity</h3>
-            <form onSubmit={submitActivity} style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <div className="roletoggle">
-                  <button type="button" className={actKind === 'note' ? 'active' : ''} onClick={() => setActKind('note')}>Note</button>
-                  <button type="button" className={actKind === 'call' ? 'active' : ''} onClick={() => setActKind('call')}>Call</button>
-                </div>
-                <input
-                  className="plat-input"
-                  style={{ marginBottom: 0, flex: 1 }}
-                  placeholder="Subject (optional)"
-                  value={actSubject}
-                  onChange={(e) => setActSubject(e.target.value)}
-                />
-              </div>
-              {actKind === 'call' && (
-                <select
-                  className="plat-input"
-                  style={{ marginBottom: 8, maxWidth: 220 }}
-                  value={callOutcome}
-                  onChange={(e) => setCallOutcome(e.target.value as CallOutcome | '')}
-                >
-                  <option value="">Call outcome (required)…</option>
-                  {CALL_OUTCOMES.map((o) => (
-                    <option key={o} value={o}>{CALL_OUTCOME_LABEL[o]}</option>
-                  ))}
-                </select>
-              )}
-              <textarea
-                className="plat-input"
-                rows={3}
-                placeholder={actKind === 'call' ? 'Call summary…' : 'Note…'}
-                value={actBody}
-                onChange={(e) => setActBody(e.target.value)}
-              />
-              <button className="plat-btn" type="submit" disabled={savingAct || !actBody.trim() || (actKind === 'call' && callOutcome === '')}>
-                {savingAct ? 'Saving…' : `Log ${actKind}`}
-              </button>
-            </form>
+            {/* The inline note/call composer was a second copy of the quick-log
+                form. It is now the quick-log modal, pre-anchored to this deal
+                (no picker step), so the one-tap outcome chips and every future
+                improvement land here too instead of only in the modal. */}
+            <div className="crecord-actions" style={{ marginBottom: 14 }}>
+              <button className="plat-btn ghost" onClick={() => quickLog.openCall(dealAnchor)}>Log call</button>
+              <button className="plat-btn ghost" onClick={() => quickLog.openNote(dealAnchor)}>Log note</button>
+            </div>
             {timeline.length === 0 ? (
               <div className="note">No activity logged yet.</div>
             ) : (
