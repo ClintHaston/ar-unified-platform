@@ -722,6 +722,11 @@ export interface PlatformUser {
   name: string
   role: string
   is_active: boolean
+  // Soft-removed: sign-in is blocked and they are gone from the owner pickers,
+  // but every record they own or logged still carries their name. The roster
+  // lists them so a removal can be undone.
+  is_removed: boolean
+  archived_at: string | null
   locked_until: string | null
   last_active: string | null
   created_at: string
@@ -915,6 +920,29 @@ export interface DrillResult {
   total: number
   limit: number
   offset: number
+}
+
+// ── Funnel stage drill-down: who is in the stage right now ──
+// Deliberately EXTENDS DrillResult rather than restating it: the popup renders
+// the same table, pager and Open links, so the two answers cannot drift into
+// two layouts. The extra fields are what this drill knows that a datapoint
+// drill does not — which stage, and which half of the population it is showing.
+export interface StageOccupantsResult extends DrillResult {
+  // Records still open in the stage. These ignore the date filters entirely:
+  // a deal is in a stage now or it is not.
+  open_total: number
+  // Records that CLOSED into the stage. These are the ones the date window
+  // applies to.
+  closed_total: number
+  date_filtered: boolean
+  stage: {
+    id: string
+    name: string
+    position: number
+    pipeline_id: string
+    pipeline_name: string
+    kind: string
+  }
 }
 
 export interface SavedReport {
@@ -1997,7 +2025,9 @@ export const api = {
 
   // ── Task B: admin user management (Settings > Team) ──
   adminUsers: () => request<{ users: PlatformUser[] }>('/platform/users'),
-  createPlatformUser: (input: { email: string; name: string; role: string }) =>
+  // role is optional: the server defaults a new user to 'rep'. Leaving it out
+  // must never be a way to mint an admin, on either side of the wire.
+  createPlatformUser: (input: { email: string; name: string; role?: string }) =>
     request<{ user: PlatformUser; temp_password: string }>('/platform/users', {
       method: 'POST', body: JSON.stringify(input),
     }),
@@ -2005,6 +2035,10 @@ export const api = {
     request<{ temp_password: string }>(`/platform/users/${id}/reset-password`, { method: 'POST' }),
   updatePlatformUser: (id: string, patch: { role?: string; is_active?: boolean; name?: string }) =>
     request<{ ok: boolean }>(`/platform/users/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  // Soft remove. Reactivating is updatePlatformUser({is_active: true}) — the
+  // server clears archived_at on that same call, so there is one way back.
+  removePlatformUser: (id: string) =>
+    request<{ ok: boolean }>(`/platform/users/${id}`, { method: 'DELETE' }),
 
   // ── WS2a prebuilt reports (admin-only, read-only) ──
   sellFunnel: (f: ReportFilters = {}) =>
@@ -2015,6 +2049,14 @@ export const api = {
     request<DealsByRepReport>(`/platform/reports/deals-by-rep${reportQs(f)}`),
   callActivity: (f: ReportFilters = {}) =>
     request<CallActivityReport>(`/platform/reports/call-activity${reportQs(f)}`),
+  // Who is in a funnel stage right now. The server re-scopes regardless of
+  // what owner_id rides along, exactly like the funnel that opened it.
+  stageOccupants: (stageId: string, f: ReportFilters = {}, limit: number, offset: number) => {
+    const qs = reportQs(f)
+    return request<StageOccupantsResult>(
+      `/platform/reports/stage-occupants${qs ? `${qs}&` : '?'}`
+      + `stage_id=${encodeURIComponent(stageId)}&limit=${limit}&offset=${offset}`)
+  },
 
   // ── WS2b custom report builder (admin-only) ──
   reportRegistry: () => request<{ sources: RegistrySource[] }>('/platform/reports/registry'),

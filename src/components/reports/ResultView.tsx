@@ -32,7 +32,15 @@ export function ResultView({ result, accent, definition }: Props) {
 
   if (result.viz === 'funnel') {
     if (result.pipelines.length === 0) return <div className="note">No funnel data.</div>
-    return <>{result.pipelines.map((p) => <Funnel key={p.pipeline_id} pipeline={p} accent={accent} />)}</>
+    // A funnel DATAPOINT cannot be drilled (the server refuses: a bar counts
+    // entries over time, not the records in the stage now). A funnel STAGE
+    // can, through its own route — so the effective definition's window and
+    // owner ride through, and the panel's drill matches the panel's numbers.
+    return <>{result.pipelines.map((p) => (
+      <Funnel key={p.pipeline_id} pipeline={p} accent={accent}
+              start={definition?.date?.start} end={definition?.date?.end}
+              ownerId={definition?.owner_id} />
+    ))}</>
   }
 
   const { columns, rows } = result

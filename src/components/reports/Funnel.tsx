@@ -1,10 +1,18 @@
-import type { FunnelPipeline } from '../../lib/api'
+import { useState } from 'react'
+import type { FunnelPipeline, FunnelStage } from '../../lib/api'
+import { StageDrillPopup } from './StageDrillPopup'
 
 // Funnel v2 (2026-08-02): a funnel that LOOKS like a funnel. Centered,
 // tapering bars with depth that builds stage over stage, conversion drops
 // called out between stages, money-big counts, a shine sweep on the winning
 // stage, and staggered grow-in. These render on every rep's My Day all day —
 // they earn the polish. No charting dependency; still plain divs + CSS.
+//
+// DRILL_USERS (2026-08-03): a stage is now a button. Clicking it lists WHO IS
+// IN IT right now — the question the bar makes you ask and, until now, the one
+// thing the funnel could not answer. The popup owns the fetch; this component
+// only says which stage was clicked and hands the funnel's own filters through
+// so the drill and the bar are looking at the same book.
 
 function fmtDays(d: number | null): string {
   if (d === null) return '-'
@@ -15,7 +23,19 @@ function fmtDays(d: number | null): string {
 const WIN_RE = /won|sold|signed/i
 const LOSS_RE = /lost|rejected|removed/i
 
-export function Funnel({ pipeline, accent }: { pipeline: FunnelPipeline; accent: string }) {
+interface Props {
+  pipeline: FunnelPipeline
+  accent: string
+  // The window and owner the funnel itself was run with, so the drill matches
+  // what is on screen. Omitted (My Day's undated funnels) means no window,
+  // which is the honest answer for a current-state list anyway.
+  start?: string
+  end?: string
+  ownerId?: string
+}
+
+export function Funnel({ pipeline, accent, start, end, ownerId }: Props) {
+  const [drill, setDrill] = useState<FunnelStage | null>(null)
   const max = Math.max(1, ...pipeline.stages.map((s) => s.reached))
   const anyMovement = pipeline.stages.some((s) => s.reached > 0)
   const n = Math.max(1, pipeline.stages.length - 1)
@@ -47,21 +67,32 @@ export function Funnel({ pipeline, accent }: { pipeline: FunnelPipeline; accent:
                     )}
                   </div>
                 )}
-                <div className="fnl-row">
-                  <span className="fnl-name">{s.name}</span>
-                  <span className={`fnl-count bebas${s.reached === 0 ? ' zero' : ''}`}>{s.reached}</span>
-                </div>
-                <div className="fnl-track">
-                  <div
-                    className={`fnl-bar${isWin ? ' win' : ''}${isLoss ? ' loss' : ''}${s.reached === 0 ? ' empty' : ''}`}
-                    style={{
-                      width: `${width}%`,
-                      background: isLoss ? 'var(--p-blue-muted)' : accent,
-                      opacity: s.reached === 0 ? 0.25 : depth,
-                      animationDelay: `${i * 80}ms`,
-                    }}
-                  />
-                </div>
+                {/* A button, not a div with onClick: this is keyboard-reachable
+                    and announced as an action, which is the whole difference
+                    between a chart and a chart you can use. EVERY stage is
+                    clickable, including one the funnel counted zero for — the
+                    bar counts entries in the window and the drill counts who
+                    is in there now, so "0" above does not mean "empty". */}
+                <button type="button" className="fnl-hit"
+                        onClick={() => setDrill(s)}
+                        title={`See who is in ${s.name} right now`}
+                        aria-label={`See who is in ${s.name} right now`}>
+                  <div className="fnl-row">
+                    <span className="fnl-name">{s.name}</span>
+                    <span className={`fnl-count bebas${s.reached === 0 ? ' zero' : ''}`}>{s.reached}</span>
+                  </div>
+                  <div className="fnl-track">
+                    <div
+                      className={`fnl-bar${isWin ? ' win' : ''}${isLoss ? ' loss' : ''}${s.reached === 0 ? ' empty' : ''}`}
+                      style={{
+                        width: `${width}%`,
+                        background: isLoss ? 'var(--p-blue-muted)' : accent,
+                        opacity: s.reached === 0 ? 0.25 : depth,
+                        animationDelay: `${i * 80}ms`,
+                      }}
+                    />
+                  </div>
+                </button>
                 {(s.completed_visits > 0 || s.reached > 0) && (
                   <div className="fnl-meta">
                     {s.completed_visits > 0 && (
@@ -74,6 +105,12 @@ export function Funnel({ pipeline, accent }: { pipeline: FunnelPipeline; accent:
             )
           })}
         </div>
+      )}
+      {drill && (
+        <StageDrillPopup stageId={drill.stage_id}
+                         start={start} end={end} ownerId={ownerId}
+                         label={`${pipeline.pipeline_name} · ${drill.name}`}
+                         onClose={() => setDrill(null)} />
       )}
     </div>
   )

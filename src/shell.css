@@ -784,6 +784,10 @@ tr:hover .edit-pencil, .edit-pencil:focus-visible { opacity: 1; }
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 12px; margin-bottom: 10px;
 }
+/* Which population this drill is showing. The funnel bar above counts entries
+   over a window and the list counts occupants now; saying so is what stops the
+   two numbers reading as a contradiction. */
+.drill-sub { margin-top: 2px; color: var(--p-blue-muted); font-size: 11px; }
 /* The table scrolls inside the modal so the head and pager stay put. */
 .drill-tablewrap { overflow: auto; flex: 1; min-height: 0; margin: 0 -14px; }
 .drill-tablewrap .plat-table { margin: 0; }

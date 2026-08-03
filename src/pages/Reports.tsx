@@ -195,12 +195,23 @@ export function Reports() {
       {!loading && tab === 'sell' && sell && (
         sell.pipelines.length === 0
           ? <div className="note">No sell pipelines.</div>
-          : sell.pipelines.map((p) => <Funnel key={p.pipeline_id} pipeline={p} accent="var(--p-gold)" />)
+          // The same filters the funnel above was run with ride into the stage
+          // drill, so the popup lists the book the bars were drawn from. The
+          // server re-scopes a rep to self regardless.
+          : sell.pipelines.map((p) => (
+              <Funnel key={p.pipeline_id} pipeline={p} accent="var(--p-gold)"
+                      start={start || undefined} end={end || undefined}
+                      ownerId={ownerId || undefined} />
+            ))
       )}
       {!loading && tab === 'buy' && buy && (
         buy.pipelines.length === 0
           ? <div className="note">No buy pipeline.</div>
-          : buy.pipelines.map((p) => <Funnel key={p.pipeline_id} pipeline={p} accent="var(--p-buy)" />)
+          : buy.pipelines.map((p) => (
+              <Funnel key={p.pipeline_id} pipeline={p} accent="var(--p-buy)"
+                      start={start || undefined} end={end || undefined}
+                      ownerId={ownerId || undefined} />
+            ))
       )}
       {!loading && tab === 'deals' && deals && <DealsByRepTable report={deals} />}
       {!loading && tab === 'calls' && calls && <CallActivityTable report={calls} />}

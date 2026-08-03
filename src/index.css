@@ -713,6 +713,12 @@ input, select, textarea {
   background: transparent; border: 1px solid var(--p-steel); color: var(--p-body);
 }
 .plat-btn.ghost:hover { border-color: var(--p-gold-text); color: var(--p-navy-dark); }
+/* A destructive action reads as one. Muted until hover so it does not shout
+   from every row of a table it only appears once in. */
+.plat-btn.ghost.danger { color: #B4432B; border-color: #E0BDB4; }
+.plat-btn.ghost.danger:hover { border-color: #B4432B; color: #8E351F; }
+/* An admin row says what admin MEANS, not just that it is set. */
+.role-warn { margin-left: 6px; font-size: 10px; color: #B4432B; white-space: nowrap; }
 
 .hist-item { padding: 8px 0; border-bottom: 1px solid var(--p-row); font-size: 12px; }
 .hist-item:last-child { border-bottom: 0; }
@@ -1038,6 +1044,16 @@ a.feed-item:hover { background: var(--p-cream); color: var(--p-navy-dark); }
 .fnl { display: flex; flex-direction: column; padding: 6px 2px 2px; }
 .fnl-stage { padding: 2px 0 8px; border-radius: 8px; transition: background 140ms; }
 .fnl-stage:hover { background: var(--p-cream); }
+/* The clickable stage. A real <button> for keyboard and screen readers, reset
+   to look like the div it replaced — the drill affordance is the row's own
+   hover, not a button chrome that would fight the funnel. */
+.fnl-hit {
+  display: block; width: 100%; padding: 0; margin: 0; border: 0;
+  background: none; font: inherit; color: inherit; text-align: inherit;
+  cursor: pointer; border-radius: 8px;
+}
+.fnl-hit:hover .fnl-name { color: var(--p-gold-text); }
+.fnl-hit:focus-visible { outline: 2px solid var(--p-gold); outline-offset: 2px; }
 .fnl-row { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; }
 .fnl-name { font-size: 13px; font-weight: 600; color: var(--p-navy-dark); }
 .fnl-count { font-size: 22px; letter-spacing: 0.03em; color: var(--p-navy-dark); line-height: 1; }
