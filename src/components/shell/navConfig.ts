@@ -36,13 +36,13 @@ export const NAV: NavItem[] = [
       items: [
         { label: 'Contacts', path: '/contacts', icon: 'contacts' },
         { label: 'Lists', path: '/lists', icon: 'contacts', sublabel: 'saved segments' },
-        { label: 'Companies', path: '/companies', icon: 'company' },
         { label: 'Deals', path: '/pipelines', icon: 'deal', sublabel: 'on the pipeline board' },
         { label: 'Offers', path: '/inventory', icon: 'offer', sublabel: 'logged on each unit' },
       ],
     },
   },
   { key: 'lists', label: 'Lists', icon: 'contacts', path: '/lists', section: 'primary' },
+  { key: 'companies', label: 'Companies', icon: 'company', path: '/companies', section: 'primary' },
   { key: 'buyops', label: 'Buy opps', icon: 'buyops', path: '/buyer-opportunities', buy: true, section: 'primary' },
   {
     key: 'reports', label: 'Reports', icon: 'reports', path: '/reports', section: 'primary',
