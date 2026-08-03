@@ -116,8 +116,13 @@ export function KpiRow({ data }: { data: MyKpis }) {
         <Card to="/deals" accent="gold">
           <Value>{money(openC)}</Value>
           <Lbl>Open pipeline</Lbl>
-          <Delta now={data.won_value_cents ?? 0} prev={data.won_value_prev_cents}
-                 label={`${prior} won $`} />
+          {(data.won_value_cents ?? 0) === 0 && (data.won_value_prev_cents ?? 0) === 0 ? (
+            <span className="kpi-delta flat">nothing closed-won yet this window</span>
+          ) : (
+            <span className={`kpi-delta ${(data.won_value_cents ?? 0) >= (data.won_value_prev_cents ?? 0) ? 'good' : 'bad'}`}>
+              {money(data.won_value_cents ?? 0)} won · {(data.won_value_cents ?? 0) >= (data.won_value_prev_cents ?? 0) ? '▲' : '▼'} vs {prior}
+            </span>
+          )}
         </Card>
         <Card to="/deals" accent="gold">
           <Value>{money(weightC)}</Value>
@@ -140,7 +145,7 @@ export function KpiRow({ data }: { data: MyKpis }) {
         <Card to="/reports?tab=deals" accent="teal">
           <Value>
             {data.avg_days_to_close === null
-              ? <span className="kpi-empty">—</span>
+              ? <span className="kpi-empty">waiting on wins</span>
               : data.avg_days_to_close.toFixed(0)}
           </Value>
           <Lbl>Avg days to close</Lbl>
