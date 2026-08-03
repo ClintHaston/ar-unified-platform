@@ -37,12 +37,12 @@ export function Funnel({ pipeline, accent }: { pipeline: FunnelPipeline; accent:
             const depth = 0.6 + 0.4 * (i / n)
             return (
               <div key={s.stage_id} className="fnl-stage" style={{ animationDelay: `${i * 80}ms` }}>
-                {i > 0 && (s.conversion_from_prev_pct !== null || s.drop_from_prev > 0) && (
+                {i > 0 && (s.conversion_from_prev_pct !== null || (s.drop_from_prev ?? 0) > 0) && (
                   <div className="fnl-conv">
                     {s.conversion_from_prev_pct !== null && (
                       <span className="fnl-conv-pct">▼ {s.conversion_from_prev_pct}%</span>
                     )}
-                    {s.drop_from_prev > 0 && (
+                    {(s.drop_from_prev ?? 0) > 0 && (
                       <span className="fnl-conv-drop">{s.drop_from_prev} dropped</span>
                     )}
                   </div>
