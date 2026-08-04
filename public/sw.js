@@ -36,6 +36,13 @@
  * UPDATES: install skipWaiting()s and activate claims, so a new deploy takes
  * over on the next open with no prompt. The page listens for controllerchange,
  * reloads itself exactly once, and says so in a toast.
+ *
+ * THIS FILE MUST NOT BE HTTP-CACHED. The browser learns a new deploy exists by
+ * re-fetching /sw.js and byte-comparing it, so a stale CDN copy is a fleet that
+ * cannot be updated. vercel.json pins it to `max-age=0, must-revalidate` and
+ * serves the manifest with the right content type. That file is plain JSON with
+ * no comment support, which is why the reason is written down here — a "//" key
+ * in a headers block is not in Vercel's schema and fails the deploy outright.
  */
 
 // Replaced at build time by the stampServiceWorker plugin in vite.config.ts
