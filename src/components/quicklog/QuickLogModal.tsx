@@ -149,7 +149,10 @@ export function QuickLogModal({ mode, anchor: initialAnchor, onClose, onLogged }
   const t = TITLES[mode]
 
   return (
-    <div className="ws-modal-scrim" onMouseDown={onClose} role="presentation">
+    // ql-scrim rides alongside the shared scrim class so the phone can turn
+    // THIS dialog into a full-screen sheet without dragging the drill popup and
+    // the widget drawer along with it.
+    <div className="ws-modal-scrim ql-scrim" onMouseDown={onClose} role="presentation">
       <form
         className="ws-modal panel ql-modal"
         onMouseDown={(e) => e.stopPropagation()}

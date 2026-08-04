@@ -4,6 +4,7 @@ import { api, type TaskItem } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { SortableTh, useClientSort, type ClientSortColumn } from '../components/SortableTh'
 import { useToast } from '../components/shell/ToastContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 // "My Tasks" — the real list behind GET /platform/tasks (api.myTasks), plus a
 // create form. Task create is optimistic (Phase 4): a self-assigned task
@@ -28,8 +29,53 @@ const TASK_SORT_COLS: ClientSortColumn<OptimisticTask>[] = [
   { key: 'due', value: (t) => t.due_at },
 ]
 
+// The phone list: a full-width check-off list, deliberately the SAME markup and
+// the same .upnext-* rules as My Day's "Up next" panel.
+//
+// It could have been a fifth set of classes. It is not, because a task is the
+// one object a rep meets on two different screens in the same morning, and a
+// checkbox that is 26px and on the left in one place and a "Complete" button on
+// the right in the other is two things to learn for one action. One idiom.
+//
+// The desktop table keeps its sortable headers and its Complete buttons — it
+// has the width for them and a mouse is not a thumb.
+function MobileTaskRows({ tasks, busy, onComplete }: {
+  tasks: OptimisticTask[]
+  busy: string | null
+  onComplete: (id: string) => void
+}) {
+  return (
+    <ul className="upnext-list">
+      {tasks.map((t) => {
+        const d = dueLabel(t.due_at)
+        const linked = t.deal_name ?? t.unit_title
+        return (
+          <li key={t.id}
+              className={`upnext-row${d.cls === 'over' ? ' over' : ''}`
+                + `${busy === t.id || t._pending ? ' ws-pending' : ''}`}>
+            <button
+              type="button"
+              className="upnext-check"
+              disabled={busy === t.id || t._pending}
+              aria-label={`Complete: ${t.title}`}
+              title="Mark done"
+              onClick={() => onComplete(t.id)}
+            />
+            <span className="upnext-title">
+              {t.deal_id ? <Link to={`/deals/${t.deal_id}`}>{t.title}</Link> : t.title}
+              {linked && <span className="upnext-sub">{linked}</span>}
+            </span>
+            <span className="upnext-due">{d.text}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 export function Tasks() {
   const toast = useToast()
+  const isMobile = useIsMobile()
   const [searchParams, setSearchParams] = useSearchParams()
   const [tasks, setTasks] = useState<OptimisticTask[]>([])
   const [loading, setLoading] = useState(true)
@@ -129,6 +175,8 @@ export function Tasks() {
       <div className="panel">
         {tasks.length === 0 ? (
           <div className="note">No open tasks. Nicely done.</div>
+        ) : isMobile ? (
+          <MobileTaskRows tasks={taskSort.sorted} busy={completing} onComplete={complete} />
         ) : (
           <table className="plat-table">
             <thead>

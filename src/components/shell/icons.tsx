@@ -9,7 +9,7 @@ export type IconName =
   | 'evaluator' | 'leads' | 'command' | 'outbox' | 'approvals' | 'spine'
   | 'search' | 'plus' | 'note' | 'chevron-right' | 'chevron-down'
   | 'chevron-left' | 'panel' | 'clock' | 'activity' | 'sparkle' | 'intake'
-  | 'star' | 'star-filled'
+  | 'star' | 'star-filled' | 'phone' | 'user'
 
 const P: Record<IconName, JSX.Element> = {
   dashboard: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
@@ -43,6 +43,10 @@ const P: Record<IconName, JSX.Element> = {
   sparkle: <><path d="M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6z" /></>,
   star: <path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17l-5.3 2.6 1-5.8-4.2-4.1 5.9-.9z" />,
   'star-filled': <path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17l-5.3 2.6 1-5.8-4.2-4.1 5.9-.9z" fill="currentColor" />,
+  // A handset, for the mobile "Log" tab. `note` was the nearest existing icon
+  // and it says the wrong thing: that tab opens the CALL form.
+  phone: <path d="M7.5 3.5h-2A1.8 1.8 0 0 0 3.7 5.4c0 8.2 6.7 14.9 14.9 14.9a1.8 1.8 0 0 0 1.9-1.8v-2a1.4 1.4 0 0 0-1.2-1.4l-2.7-.4a1.4 1.4 0 0 0-1.3.5l-1 1.2a12.6 12.6 0 0 1-5.7-5.7l1.2-1a1.4 1.4 0 0 0 .5-1.3l-.4-2.7a1.4 1.4 0 0 0-1.4-1.2z" />,
+  user: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
 }
 
 interface IconProps {

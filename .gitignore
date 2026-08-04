@@ -7,3 +7,8 @@ dist
 
 .env*.local
 tsconfig.tsbuildinfo
+
+# Screenshots written by scripts/verify_mobile.py. Regenerable by running it,
+# and a few MB of PNG per run is not history worth carrying.
+verification
+__pycache__

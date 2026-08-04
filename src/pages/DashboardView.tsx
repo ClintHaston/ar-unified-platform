@@ -349,7 +349,12 @@ export function DashboardView() {
 
   return (
     <div>
-      <div className="panel" style={{ padding: '12px 16px' }}>
+      {/* dash-head / dash-head-actions / dash-filters are hooks for the phone
+          layer, which hides the composing controls and the raw date inputs.
+          A rep opening My Day in a truck needs the numbers above the fold, and
+          on a 390x844 screen this header was 900px of chrome before the first
+          one. Rearranging a widget mosaic is a desk job either way. */}
+      <div className="panel dash-head" style={{ padding: '12px 16px' }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Link to="/reports" className="back-link" style={{ marginRight: 4 }}>← Reports</Link>
           <h2 style={{ fontSize: 18, margin: 0, color: 'var(--p-navy-dark)' }}>{run?.name ?? 'Dashboard'}</h2>
@@ -371,7 +376,7 @@ export function DashboardView() {
           {/* Editing controls appear only for someone the SERVER says may edit;
               the PATCH is refused either way. */}
           {canEdit && (
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <div className="dash-head-actions" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               {/* Only in edit mode: it is a change to the dashboard, and it
                   sits beside the other things edit mode lets you change. */}
               {editing && (
@@ -389,13 +394,15 @@ export function DashboardView() {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
-          <span style={{ fontSize: 12, color: 'var(--p-body)' }}>From</span>
-          <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
-                 value={start} onChange={(e) => setStart(e.target.value)} />
-          <span style={{ fontSize: 12, color: 'var(--p-body)' }}>to</span>
-          <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
-                 value={end} onChange={(e) => setEnd(e.target.value)} />
+        <div className="dash-filters" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+          <span className="dash-dates">
+            <span style={{ fontSize: 12, color: 'var(--p-body)' }}>From</span>
+            <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
+                   value={start} onChange={(e) => setStart(e.target.value)} />
+            <span style={{ fontSize: 12, color: 'var(--p-body)' }}>to</span>
+            <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
+                   value={end} onChange={(e) => setEnd(e.target.value)} />
+          </span>
           <div className="roletoggle">
             {PRESETS.map((p) => (
               <button key={p.label} onClick={() => { void applyPreset(p) }}>{p.label}</button>
@@ -410,7 +417,7 @@ export function DashboardView() {
           ) : (
             <span className="pill" title="Your dashboards always show your own book">Mine</span>
           )}
-          <span style={{ fontSize: 11, color: 'var(--p-body)' }}>Dashboard filters override each report.</span>
+          <span className="dash-filter-note" style={{ fontSize: 11, color: 'var(--p-body)' }}>Dashboard filters override each report.</span>
         </div>
         {editing && (
           <div className="note dash-edit-hint">

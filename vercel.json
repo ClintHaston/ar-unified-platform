@@ -2,5 +2,27 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://asset-resource-backend-production.up.railway.app/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "//": "The worker script itself must never be served from an HTTP cache: a stale sw.js is a fleet that cannot be updated, since the browser only learns about a new deploy by re-fetching this file.",
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "//": "Icons are versioned by deploy, not by filename hash, so they revalidate rather than pin.",
+      "source": "/icons/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+    }
   ]
 }

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { Icon } from '../components/shell/icons'
 import { Mailto, Tel } from '../components/quicklog/Contactable'
 import { CompanyField, type CompanySelection } from '../components/CompanyField'
 import { CriteriaChips } from '../components/CriteriaChips'
@@ -86,9 +88,47 @@ function FunnelGlyph({ on }: { on: boolean }) {
   )
 }
 
+// The phone list. NOT a restyled table — a table with nine columns has no
+// width at which it becomes thumb-friendly, and squeezing one into 390px is
+// how you get a row where the phone number is four pixels tall.
+//
+// Three things per row, in the order a rep needs them: who, where they work,
+// and the number. The number is a bordered 44px control of its own rather than
+// a link inside the row, because tapping a contact to open it and tapping a
+// contact to CALL it are different intentions and must not share a hit area.
+function MobileContactRows({ contacts, onOpen }: {
+  contacts: ContactRow[]
+  onOpen: (id: string) => void
+}) {
+  return (
+    <ul className="mc-list">
+      {contacts.map((c) => {
+        const label = c.name ?? c.email ?? '(no name)'
+        const bits = [c.company_name, TYPE_LABEL[c.contact_type]].filter(Boolean)
+        return (
+          <li key={c.id} className="mc-row">
+            <button type="button" className="mc-main" onClick={() => onOpen(c.id)}>
+              <span className="mc-name">{label}</span>
+              <span className="mc-sub">{bits.join(' · ') || c.email || '—'}</span>
+            </button>
+            <div className={`mc-call-row${c.phone ? '' : ' empty'}`}>
+              <span className="mc-call-ic" aria-hidden><Icon name="phone" size={16} /></span>
+              {/* Anchored, so calling from the list offers to log it against
+                  that contact — the same offer the record page makes. */}
+              <Tel phone={c.phone} className="mc-call" empty="No phone on file"
+                   anchor={{ type: 'contact', id: c.id, label, subtitle: c.company_name }} />
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 export function Contacts() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const isMobile = useIsMobile()
   const isAdmin = user?.role === 'admin'
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -519,6 +559,11 @@ export function Contacts() {
       {notice && <div className="note" style={{ color: 'var(--p-buy)' }}>{notice}</div>}
 
       <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+        {isMobile ? (
+          data && data.contacts.length > 0
+            ? <MobileContactRows contacts={data.contacts} onOpen={(id) => navigate(`/contacts/${id}`)} />
+            : <div className="mc-empty">{loading ? 'Loading…' : 'No contacts match.'}</div>
+        ) : (
         <div style={{ overflowX: 'auto' }}>
           <table className="plat-table">
             <thead>
@@ -699,6 +744,7 @@ export function Contacts() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

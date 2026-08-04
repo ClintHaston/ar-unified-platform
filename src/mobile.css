@@ -1,0 +1,363 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PWA build — the phone layer (2026-08-03).
+
+   Loaded LAST, after index.css and shell.css, so every rule here is an
+   override and nothing above needs editing to make room for it.
+
+   SCOPE IS THE POINT. Everything is inside `@media (max-width: 767px)` and
+   most of it is further scoped to `.ws-mobile` (the class AppShell adds only
+   on a phone). Desktop is not touched by a single declaration in this file —
+   that was the spec's constraint and it is enforced structurally rather than
+   by care.
+
+   767px matches MOBILE_MAX_PX in hooks/useIsMobile.ts. Two places, one number.
+
+   The four screens this covers: My Day, Contacts, Quick Log, Tasks. Other
+   screens still render on a phone — they inherit the shell, the tab bar and
+   the touch-target floor — they just have not been designed for it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ── Shell: one column, tabs at the bottom ──────────────────────────────
+     100dvh, not 100vh: on mobile Safari 100vh is the tallest the viewport
+     ever gets, so a 100vh grid puts the bottom tab bar underneath the URL
+     bar until the user scrolls. dvh tracks the chrome as it collapses. */
+  .plat-grid.ws-mobile {
+    height: 100vh;
+    height: 100dvh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 52px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "banner"
+      "top"
+      "main"
+      "tabbar";
+  }
+  .ws-mobile .topbar { padding: 0 12px; gap: 8px; }
+  .ws-mobile .plat-main { padding: 12px 12px 16px; -webkit-overflow-scrolling: touch; }
+  .ws-mobile .preview-banner { font-size: 11px; padding: 6px 12px; }
+
+  .ws-mbrand {
+    font-family: 'Bebas Neue', Arial, sans-serif;
+    letter-spacing: 0.06em;
+    font-size: 18px;
+    color: var(--p-navy-dark);
+    white-space: nowrap;
+  }
+
+  /* Icon buttons in the collapsed topbar. 44px is the floor everywhere on
+     these screens; it is not negotiable on the two controls that ARE the
+     topbar. */
+  .ws-miconbtn {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: var(--ws-r-md);
+    color: var(--p-navy-dark); cursor: pointer;
+  }
+  .ws-miconbtn:active { background: var(--p-row); }
+
+  /* ── Account menu (the one thing that could not collapse away) ── */
+  .ws-macct { position: relative; }
+  .ws-macct-btn {
+    width: 44px; height: 44px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 50%; cursor: pointer;
+    background: transparent; color: var(--p-navy-dark);
+    font-weight: bold; font-size: 12px;
+  }
+  .ws-macct-btn::before {
+    content: ''; position: absolute; inset: 5px;
+    background: var(--p-gold); border-radius: 50%; z-index: -1;
+  }
+  .ws-macct-menu {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 210;
+    min-width: 200px; background: var(--p-white);
+    border: 1px solid var(--p-steel); border-radius: var(--ws-r-md);
+    box-shadow: var(--ws-sh-lg); overflow: hidden;
+  }
+  .ws-macct-who {
+    padding: 11px 13px; border-bottom: 1px solid var(--p-row);
+    font-size: 13px; color: var(--p-navy-dark);
+  }
+  .ws-macct-who small { display: block; color: var(--p-body); font-size: 11px; margin-top: 2px; }
+  .ws-macct-item {
+    display: block; width: 100%; min-height: 44px; padding: 0 13px;
+    background: none; border: 0; text-align: left; cursor: pointer;
+    font-size: 14px; color: var(--p-navy-dark);
+  }
+  .ws-macct-item:active { background: var(--p-cream); }
+
+  /* ── Bottom tab bar ─────────────────────────────────────────────────────
+     env(safe-area-inset-bottom) is why index.html carries viewport-fit=cover:
+     without it the home indicator sits on top of the Tasks tab. */
+  .ws-tabbar {
+    grid-area: tabbar;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--p-white);
+    border-top: 1px solid var(--p-border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -2px 10px rgba(26, 43, 71, 0.06);
+  }
+  .ws-tab {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; min-height: 56px; padding: 6px 2px;
+    background: none; border: 0; cursor: pointer;
+    color: var(--p-blue-muted); font: inherit;
+  }
+  .ws-tab-label { font-size: 10px; letter-spacing: .3px; text-transform: uppercase; }
+  .ws-tab.active { color: var(--p-navy-dark); }
+  .ws-tab.active .ws-tab-ic { color: var(--p-gold-text); }
+  .ws-tab:active { background: var(--p-row); }
+  /* Log is an action, not a place — the gold pill says so without a label
+     change, and it is the tab a rep hits with a glove on. */
+  .ws-tab-log .ws-tab-ic {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--p-gold); color: var(--p-navy-dark);
+  }
+  .ws-tab-log { color: var(--p-navy-dark); }
+
+  /* Toasts must clear the tab bar, or the one that offers "Log call" after a
+     tel: tap lands under the thing you would tap to dismiss it. */
+  .ws-toasts {
+    left: 12px; right: 12px; bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    align-items: stretch;
+  }
+  .ws-toast { max-width: none; }
+  .ws-toast-act { min-height: 44px; }
+
+  /* ── My Day ─────────────────────────────────────────────────────────────
+     KPI cards become a swipeable rail. They are a glance, not a grid: eight
+     cards stacked vertically is eight screens of scrolling before the funnel
+     a rep actually opened the app for. Snap points keep the swipe landing on
+     a card edge instead of halfway through one. */
+  .kpi-row,
+  .kpis {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Bleed to the screen edges so the last card is visibly cut off — the
+       only honest "there is more this way" affordance on a touch screen. */
+    margin: 0 -12px 14px;
+    padding: 4px 12px 8px;
+  }
+  .kpi-row::-webkit-scrollbar,
+  .kpis::-webkit-scrollbar { display: none; }
+  .kpi-card,
+  .kpi {
+    flex: 0 0 auto;
+    width: 62vw; max-width: 240px; min-width: 0;
+    scroll-snap-align: start;
+  }
+  /* Absolute, and the rail now scrolls under it — put the window label back
+     in the flow above the cards. */
+  .kpi-window {
+    position: static; display: block; text-align: right;
+    padding: 0 2px 2px; order: -1;
+  }
+  .myday-greet { font-size: 24px; }
+  .myday-hero { padding-bottom: 8px; }
+
+  /* Every panel is full width on a phone: half and third are desk sizes.
+     (shell.css already folds these at 760px; this restates them at the
+     spec's 767px so the two breakpoints cannot disagree in the 760–767 gap.) */
+  .dash-grid { gap: 10px; }
+  .dash-panel,
+  .dash-panel.full,
+  .dash-panel.half,
+  .dash-panel.third { grid-column: span 6; }
+  .dash-panel.third .panel { padding: 14px 14px 12px; }
+
+  /* Funnels stack (they already do inside a panel) — what they needed was a
+     tappable stage. The whole row is the hit area, at thumb height. */
+  .fnl-hit { min-height: 52px; padding: 4px 0; }
+  .fnl-name { font-size: 14px; }
+
+  /* THE DASHBOARD HEADER IS NOT THE DASHBOARD. On a desk it is one tidy strip
+     above the board; at 390px wide it wraps into ~900px of chrome — a back
+     link, a star, a default toggle, two composing buttons, two date pickers
+     and a caption — and pushes every number off a 844px screen. So on a phone
+     it keeps the title, the presets and (for an admin) the owner filter, and
+     drops the rest. None of what is dropped is lost: composing a mosaic,
+     starring, and picking an exact date range are all things a rep does at a
+     desk, on the same screen, unchanged. */
+  .ws-mobile .dash-head .back-link,
+  .dash-head .ws-star,
+  .dash-head .pill.gold,
+  .dash-dates,
+  .dash-filter-note { display: none; }
+  /* !important, reluctantly and specifically: this element carries an inline
+     `display: flex`, and an inline style outranks any selector. The tidy fix
+     is a className on that div instead of a style object, but that div is
+     shared desktop code and this file's whole contract is that it changes
+     nothing above 767px. */
+  .dash-head-actions { display: none !important; }
+  .dash-head { padding: 10px 14px !important; }
+  .dash-head h2 { font-size: 20px; }
+  /* "Set as default" survives as the one header control worth a thumb: it is
+     what makes this screen the one the app opens on. */
+  .dash-head > div:first-child > .plat-btn.ghost { min-height: 40px; font-size: 12px; }
+  .dash-filters { margin-top: 8px !important; }
+  .ws-mobile .roletoggle { flex-wrap: wrap; }
+  .ws-mobile .roletoggle button { min-height: 40px; }
+
+  /* ── Check-off lists: My Day "Up next" AND the Tasks page ───────────────
+     One idiom, one set of rules. The Tasks page renders this same markup on a
+     phone instead of its four-column table, so a task looks and behaves the
+     same wherever a rep meets it. */
+  .upnext-row {
+    gap: 12px; padding: 12px 2px; font-size: 15px;
+    min-height: 52px;
+  }
+  /* THE BUTTON IS 44x44. THE BOX IT DRAWS IS 22.
+     Two earlier attempts got this wrong in instructive ways. A fat border is
+     drawn, so it shipped a grey slab. An overflowing ::after is not hit-tested
+     where a later sibling paints over it, and it runs outside the row anyway,
+     so half the "target" belonged to the panel behind it. The only version
+     that is honestly 44px is a button that IS 44px, with the checkbox as a
+     centred pseudo-element inside it. */
+  .upnext-check {
+    position: relative;
+    width: 44px; height: 44px; border: 0; border-radius: 0;
+    background: transparent;
+  }
+  .upnext-check::before {
+    content: ''; position: absolute; top: 11px; left: 11px;
+    width: 22px; height: 22px; box-sizing: border-box;
+    border: 2px solid var(--p-blue-muted); border-radius: 7px;
+    background: var(--p-white);
+    transition: background var(--ws-in) var(--ws-ease),
+                border-color var(--ws-in) var(--ws-ease);
+  }
+  .upnext-check:hover { background: transparent; }
+  .upnext-check:hover::before,
+  .upnext-check:active::before {
+    border-color: var(--p-gold-text); background: var(--p-cream);
+  }
+  .upnext-title { font-weight: 500; }
+  .upnext-title a { display: block; padding: 2px 0; }
+  .upnext-due { font-size: 12px; }
+  .upnext-sub {
+    display: block; font-size: 12px; color: var(--p-body);
+    font-weight: 400; margin-top: 2px;
+  }
+
+  /* ── Contacts: cards, not a nine-column table ───────────────────────────
+     tel: is the reason this screen exists on a phone, so the number is a
+     bordered, full-width, 44px-tall control rather than a link inside a cell
+     you have to pinch-zoom to hit. */
+  .mc-list { list-style: none; margin: 0; padding: 0; }
+  .mc-row {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 14px; border-bottom: 1px solid var(--p-row);
+  }
+  .mc-row:last-child { border-bottom: 0; }
+  .mc-main {
+    display: block; width: 100%; min-height: 44px; padding: 2px 0;
+    background: none; border: 0; text-align: left; cursor: pointer; font: inherit;
+  }
+  .mc-name {
+    display: block; font-size: 15px; font-weight: bold;
+    color: var(--p-navy-dark);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mc-sub {
+    display: block; font-size: 12px; color: var(--p-body); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mc-sub .pill { margin-right: 6px; }
+  .mc-call-row {
+    display: flex; align-items: center; gap: 9px;
+    border: 1px solid var(--p-steel); border-radius: var(--ws-r-md);
+    padding: 0 12px; background: var(--p-white);
+  }
+  .mc-call-row.empty { border-style: dashed; color: var(--p-blue-muted); }
+  .mc-call-ic { flex: 0 0 auto; display: flex; color: var(--p-gold-text); }
+  .mc-call-row.empty .mc-call-ic { color: var(--p-steel); }
+  .mc-call {
+    flex: 1; display: block; min-height: 44px; line-height: 44px;
+    font-size: 15px; font-weight: 500; color: var(--p-navy-dark);
+    text-decoration: none;
+  }
+  .mc-call:active { color: var(--p-gold-text); }
+  .mc-empty { padding: 20px 14px; text-align: center; color: var(--p-body); font-size: 13px; }
+
+  /* Filter bar / pager controls: stop the 9-control row from becoming a
+     column of slivers. */
+  .ws-mobile .plat-input { min-height: 44px; }
+  .ws-mobile .plat-btn { min-height: 44px; }
+  .ws-mobile .panel { padding: 12px 14px; }
+  .ws-mobile .panel .plat-input[type="search"],
+  .ws-mobile .panel > div > .plat-input:first-child { flex: 1 1 100%; max-width: none; }
+
+  /* ── Quick Log: a full-screen sheet ─────────────────────────────────────
+     A centred 560px card on a 390px screen is a card with 8px margins and a
+     scrim nobody can tap. Full screen also means the keyboard has somewhere
+     to go, and the save button stays pinned instead of being pushed under it. */
+  .ql-scrim {
+    padding: 0; align-items: stretch; justify-content: stretch;
+    backdrop-filter: none;
+  }
+  .ql-scrim .ql-modal {
+    width: 100%; max-width: 100%;
+    height: 100dvh; max-height: 100dvh;
+    margin: 0; border-radius: 0; border: 0;
+    padding: 0 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    animation: none;
+  }
+  .ql-scrim .ws-modal-head {
+    position: sticky; top: 0; z-index: 2;
+    margin: 0 -16px 10px; padding: 12px 16px;
+    background: var(--p-white); border-bottom: 1px solid var(--p-row);
+  }
+  /* margin-top: auto is what pins the actions to the BOTTOM of a full-height
+     sheet. sticky alone does not: with a short form there is nothing to stick
+     against, so Save would float in the middle of an empty screen — well out
+     of thumb reach, and reading as though the form were still loading. auto
+     places it at the bottom when the content is short; sticky keeps it there
+     once the content is long enough to scroll. */
+  .ql-scrim .ws-modal-foot {
+    position: sticky; bottom: 0; z-index: 2;
+    margin: auto -16px 0; padding: 10px 16px;
+    background: var(--p-white); border-top: 1px solid var(--p-row);
+  }
+  /* The keyboard hint is a keyboard hint. There is no Ctrl key here. */
+  .ql-scrim .ql-hint { display: none; }
+  .ql-scrim .ws-modal-foot .plat-btn { flex: 1; min-height: 46px; }
+  .ql-chip { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; font-size: 14px; }
+  .ql-date { min-height: 44px; }
+  .ql-textarea { min-height: 88px; font-size: 16px; }
+  /* 16px is the floor iOS uses to decide whether to zoom the page on focus.
+     Anything smaller and tapping a field jerks the whole screen sideways. */
+  .ql-scrim .plat-input { font-size: 16px; }
+  .ql-anchor-item { min-height: 48px; }
+
+  /* ── Contact detail: card over timeline ─────────────────────────────────
+     The three columns already fold to one at 1100px, which puts the About
+     card above the timeline — the order the spec asked for. What was missing
+     was the thumb treatment on the row that matters and on the action strip. */
+  .crecord-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .crecord-actions .plat-btn { flex: 1 1 45%; min-height: 44px; }
+  .fieldrow a[href^="tel:"] {
+    display: inline-block; min-height: 44px; line-height: 44px;
+    font-weight: 600; font-size: 15px;
+  }
+
+  /* ── Touch-target floor for the shared controls on these screens ── */
+  .ws-mobile .linklike { min-height: 32px; }
+  .ws-mobile .back-link { display: inline-block; min-height: 44px; line-height: 44px; }
+  .ws-mobile select.plat-input { min-height: 44px; font-size: 16px; }
+}
+
+/* A phone in landscape is 400px tall. A full-height sheet there is a form you
+   scroll through a letterbox, so the sheet keeps its stickies and simply lets
+   the body scroll. Nothing else changes. */
+@media (max-width: 767px) and (max-height: 480px) {
+  .ql-scrim .ql-modal { height: 100dvh; }
+  .ws-tab { min-height: 46px; }
+  .ws-tab-log .ws-tab-ic { width: 28px; height: 28px; }
+}

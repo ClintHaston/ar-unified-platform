@@ -52,7 +52,16 @@ export default function App() {
             <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
             <Route path="/tasks" element={<AuthGuard><Tasks /></AuthGuard>} />
             <Route path="/reports" element={<AuthGuard><Reports /></AuthGuard>} />
-            <Route path="/dashboards/:dashboardId" element={<AuthGuard adminOnly><DashboardView /></AuthGuard>} />
+            {/* NOT adminOnly. The guard here was left over from before the
+                rep-dashboards build and it made My Day unreachable for the
+                people it was built for: DashboardLanding sends every member to
+                their default dashboard, GET/PUT /platform/dashboards/default
+                is _require_member (a rep may set their own), and DashboardView
+                scopes every panel to the viewer server-side — so a rep who
+                pressed "Set as default" was routed straight into an Access
+                Restricted page on their next sign-in. Visibility is the
+                server's call: a dashboard a rep may not see 404s. */}
+            <Route path="/dashboards/:dashboardId" element={<AuthGuard><DashboardView /></AuthGuard>} />
             <Route path="/pipelines" element={<AuthGuard><Pipelines /></AuthGuard>} />
             <Route path="/buyer-opportunities" element={<AuthGuard><BuyerOpportunities /></AuthGuard>} />
             <Route path="/buyer-opportunities/:opportunityId" element={<AuthGuard><BuyerOpportunityDetail /></AuthGuard>} />
