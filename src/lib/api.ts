@@ -984,6 +984,14 @@ export interface SavedReport {
   owner_id: string
   owner_name: string | null
   updated_at: string
+  visibility?: 'private' | 'team'
+  // Server-decided, never inferred client-side — the list route has always
+  // sent it ("the client should not have to re-derive the rule to grey out a
+  // button") and this type simply had not declared it. A panel's kebab reads
+  // it to decide between "Edit chart" and "Customize a copy". Optional so an
+  // older cached payload degrades to not-editable rather than to undefined
+  // being read as false by accident.
+  can_edit?: boolean
 }
 
 // ── WS2c saveable dashboards ──
@@ -1005,6 +1013,10 @@ export interface DashboardPanel {
   size: PanelSize
   window?: number
   limit?: number
+  // activity_feed only. The server stores one config MAP per computed kind, so
+  // a new option is a new key here rather than an existing one growing a
+  // second meaning.
+  group?: FeedGroup
 }
 
 // The three sizes, in the order the size control offers them. Widest first
@@ -1051,9 +1063,34 @@ export interface FeedItem {
   buyer_opportunity_id: string | null
 }
 
+// How the feed sections itself. 'kind' (Calls, Emails, Notes, Meetings, Tasks)
+// is the default and Clint's ask; 'day' is the pre-existing reading. Chosen per
+// panel and stored in that panel's config.
+export type FeedGroup = 'kind' | 'day'
+
 export interface ActivityFeedResult {
   scope: string | null
   items: FeedItem[]
+  // Optional so a cached payload from before this option existed renders with
+  // the default rather than with undefined.
+  group?: FeedGroup
+}
+
+// ── KPI card drill-down (MYDAY_POLISH, 2026-08-04) ──
+// The eight metrics a KPI card can open. The server holds the same closed set
+// and refuses anything else, so this union is the client saying the same thing
+// rather than a second source of truth.
+export type KpiMetric =
+  | 'open_pipeline' | 'weighted_pipeline' | 'win_rate' | 'avg_days_to_close'
+  | 'calls' | 'emails' | 'tasks_due_today' | 'stale_deals'
+
+// Deliberately EXTENDS DrillResult, like StageOccupantsResult does: it renders
+// through the same DrillModal, so the two answers cannot drift into two
+// layouts. The extra fields are what this drill knows that a datapoint drill
+// does not — which card was opened, and which population it is showing.
+export interface KpiDrillResult extends DrillResult {
+  metric: KpiMetric
+  subtitle: string
 }
 
 // ── Quick log (2026-08-02 night) ──
@@ -2002,6 +2039,23 @@ export const api = {
   myUpNext: (limit?: number) =>
     request<UpNextResult>(`/platform/my/tasks${limit ? `?limit=${limit}` : ''}`),
 
+  // ── KPI card drill-down (MYDAY_POLISH) ──
+  // The records behind one card. `window` must be the SAME window the card was
+  // drawn with or the popup's total will not reconcile with the number that
+  // was clicked.
+  kpiDrill: (metric: KpiMetric, window: number, limit: number, offset: number,
+             ownerId?: string) =>
+    request<KpiDrillResult>(
+      `/platform/my/kpi-drill?metric=${metric}&window=${window}`
+      + `&limit=${limit}&offset=${offset}`
+      + (ownerId ? `&owner_id=${encodeURIComponent(ownerId)}` : '')),
+
+  // The company's day boundary, readable by any member. Every date preset is
+  // computed in this timezone so the range a user picks is the range the
+  // server reads back.
+  myTimezone: () =>
+    request<{ timezone: string; week_starts_on: string }>('/platform/my/timezone'),
+
   // ── Goal gauge (My Day v3) ──
   // Reading is rep-facing and scoped by the server; WRITING a target is admin
   // work and lives under /platform/users, which is why the two sit apart here
@@ -2147,6 +2201,11 @@ export const api = {
       method: 'POST', body: JSON.stringify({ definition, at, limit, offset }),
     }),
   savedReports: () => request<{ reports: SavedReport[] }>('/platform/reports/saved'),
+  // "Customize a copy": a private copy, owned by the caller, of a report they
+  // can SEE. The server rescopes the definition to them at rest.
+  cloneSavedReport: (id: string) =>
+    request<SavedReport & { cloned_from: string }>(
+      `/platform/reports/saved/${id}/clone`, { method: 'POST' }),
   createSavedReport: (name: string, definition: ReportDefinition) =>
     request<SavedReport>('/platform/reports/saved', {
       method: 'POST', body: JSON.stringify({ name, definition }),

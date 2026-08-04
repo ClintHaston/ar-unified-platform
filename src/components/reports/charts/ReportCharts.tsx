@@ -6,8 +6,8 @@ import {
 import type { ComboConfig, DrillAt, GaugeConfig, RunColumn } from '../../../lib/api'
 import { fmt } from '../reportFormat'
 import {
-  AXIS_INK, GRID_INK, LABEL_INK, seriesColors, toneHex, useChartScheme,
-  useReducedMotion,
+  AXIS_INK, GRID_INK, LABEL_INK, markColors, seriesColors, toneHex,
+  useChartScheme, useReducedMotion,
 } from './palette'
 import { pivotSeries } from './pivot'
 
@@ -65,6 +65,11 @@ export function SimpleBarChart({ columns, rows, accent, onPoint }: ChartProps) {
   const dim = columns.find((c) => c.role === 'dimension')!
   const measures = columns.filter((c) => c.role === 'measure')
   const colors = seriesColors(accent, measures.length, scheme)
+  // One colour per CATEGORY when there is a single measure — otherwise the
+  // whole chart is one hue and the active scheme is invisible on it. Null for
+  // a multi-measure chart (each measure keeps its own colour, which is what
+  // the legend is naming) and for a time sequence.
+  const bars = markColors(accent, dim.key, measures.length, rows.length, scheme)
   const typeByKey = Object.fromEntries(measures.map((m) => [m.key, m.type]))
   const height = barHeight(rows.length, measures.length)
 
@@ -87,7 +92,9 @@ export function SimpleBarChart({ columns, rows, accent, onPoint }: ChartProps) {
           {measures.map((m, i) => (
             <Bar key={m.key} dataKey={m.key} name={m.label} fill={colors[i]} radius={[0, 3, 3, 0]}
                  isAnimationActive={!reduced} onClick={click}
-                 cursor={onPoint ? 'pointer' : undefined} />
+                 cursor={onPoint ? 'pointer' : undefined}>
+              {bars?.map((c, j) => <Cell key={j} fill={c} />)}
+            </Bar>
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -431,6 +438,13 @@ export function ScatterChartViz({ columns, rows, accent, onPoint, onRecord }: Ch
   const measures = columns.filter((c) => c.role === 'measure')
   const [mx, my] = measures
   const colors = seriesColors(accent, 1, scheme)
+  // Per-GROUP scatter: a point is a category, so it takes that category's
+  // colour — the same rule the bar and the pie follow, and the reason a scheme
+  // is now visible here at all. Per-RECORD scatter (onRecord) deliberately
+  // does not: 500 points in eight cycling colours is noise, not a breakdown.
+  const points = onRecord
+    ? null
+    : markColors(accent, dim.key, 1, rows.length, scheme)
   const interactive = !!onPoint || !!onRecord
 
   const click = interactive
@@ -462,7 +476,9 @@ export function ScatterChartViz({ columns, rows, accent, onPoint, onRecord }: Ch
           <Tooltip cursor={{ strokeDasharray: '3 3' }}
                    content={<ScatterTip dim={dim} mx={mx} my={my} />} />
           <Scatter data={rows} fill={colors[0]} isAnimationActive={!reduced}
-                   onClick={click} cursor={interactive ? 'pointer' : undefined} />
+                   onClick={click} cursor={interactive ? 'pointer' : undefined}>
+            {points?.map((c, i) => <Cell key={i} fill={c} />)}
+          </Scatter>
         </ScatterChart>
       </ResponsiveContainer>
     </div>

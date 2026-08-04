@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   api, GAUGE_TONES, type ComboAs, type ComboAxis, type ComboConfig,
@@ -17,12 +17,16 @@ interface Props {
   start: string
   end: string
   ownerId: string
-  /** Where "Build a new chart" came from (My Day v3). Set, a freshly SAVED
-   *  report hands itself straight back to that dashboard instead of leaving
-   *  the rep on a builder page wondering how to get their chart onto the board
-   *  they were composing. Only on create: an EDIT of an existing report was
-   *  not part of a compose flow and must not teleport anyone. */
+  /** Where "Build a new chart" or "Edit chart" came from (My Day v3, widened
+   *  by MYDAY_POLISH). Set, a report that is SAVED here hands itself straight
+   *  back to that dashboard instead of leaving the rep on a builder page
+   *  wondering how to get back to the board they were composing. */
   returnTo?: string
+  /** A saved report to open on arrival — the panel kebab's "Edit chart". The
+   *  builder already knows how to load a saved report (openSaved); this is the
+   *  same door, opened from a URL instead of from the saved list, so a rep
+   *  never has to find their own panel by name in a list of everyone's. */
+  editId?: string
 }
 
 // 'number' is labelled "Metric" because that is what it is: one big figure per
@@ -100,7 +104,7 @@ function shapeHint(viz: ReportViz): string {
   return ''
 }
 
-export function ReportBuilder({ start, end, ownerId, returnTo }: Props) {
+export function ReportBuilder({ start, end, ownerId, returnTo, editId }: Props) {
   const toast = useToast()
   const navigate = useNavigate()
   const [sources, setSources] = useState<RegistrySource[]>([])
@@ -136,6 +140,20 @@ export function ReportBuilder({ start, end, ownerId, returnTo }: Props) {
     }).catch((e: unknown) => setPreviewErr(e instanceof Error ? e.message : 'Failed to load registry'))
     loadSaved()
   }, [loadSaved, sourceKey])
+
+  // Arriving from a dashboard panel's "Edit chart". The definition comes from
+  // the saved list this page already loads, so there is no second fetch — it
+  // just waits for the list. Guarded by a ref: loadSaved() runs again after
+  // every save, and reopening the report on that would throw away whatever the
+  // user had changed since.
+  const openedEdit = useRef<string | null>(null)
+  useEffect(() => {
+    if (!editId || openedEdit.current === editId) return
+    const report = saved.find((r) => r.id === editId)
+    if (!report) return
+    openedEdit.current = editId
+    openSaved(report)
+  }, [editId, saved])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // switching source resets the selection to a clean slate
   function chooseSource(key: string) {
@@ -201,6 +219,14 @@ export function ReportBuilder({ start, end, ownerId, returnTo }: Props) {
       if (editingId) {
         await api.updateSavedReport(editingId, { name: name.trim(), definition })
         toast.info('Report updated', name.trim())
+        if (returnTo) {
+          // Came from a panel's "Edit chart", so saving finishes the errand:
+          // back to the board, which re-runs and draws the change. No ?add=
+          // here — the panel already points at this report, and appending it
+          // would put a second copy of the same chart on the board.
+          navigate(returnTo)
+          return
+        }
       } else {
         const created = await api.createSavedReport(name.trim(), definition)
         setEditingId(created.id)

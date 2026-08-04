@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Icon } from '../components/shell/icons'
 import { api, type DashboardRun, type DashboardPanel, type OwnerOption,
@@ -15,7 +15,7 @@ import { UpNextPanel } from '../components/reports/UpNextPanel'
 import { GoalGauge } from '../components/reports/GoalGauge'
 import { PanelMenu } from '../components/reports/PanelMenu'
 import { AddWidgetDrawer } from '../components/reports/AddWidgetDrawer'
-import { companyTz, todayIn } from '../components/reports/companyTz'
+import { DatePresets } from '../components/reports/DatePresets'
 import { useToast } from '../components/shell/ToastContext'
 import { useQuickLog } from '../components/quicklog/QuickLogContext'
 
@@ -40,22 +40,6 @@ import { useQuickLog } from '../components/quicklog/QuickLogContext'
 //   * Editing controls are hidden when the server says can_edit is false, and
 //     the server refuses the PATCH regardless. The UI hiding a control is a
 //     courtesy; the server is the rule.
-
-// The days-back presets are open-ended ("since X", no end bound). Today is the
-// odd one out: it is a BOUNDED single day, so it carries its own flag rather
-// than pretending to be a days-back offset.
-type Preset = { label: string; days: number | null; today?: boolean }
-const PRESETS: Preset[] = [
-  { label: 'Today', days: null, today: true },
-  { label: '30d', days: 30 }, { label: '90d', days: 90 },
-  { label: '12mo', days: 365 }, { label: 'All', days: null },
-]
-
-function isoDaysAgo(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
-}
 
 function panelAccent(run: DashboardRun['panels'][number]): string {
   // Only 'report' panels carry a RunResult; computed panels never reach here.
@@ -91,8 +75,11 @@ export function DashboardView() {
   const { dashboardId } = useParams<{ dashboardId: string }>()
   const { user } = useAuth()
   const toast = useToast()
+  const navigate = useNavigate()
   const { logVersion } = useQuickLog()
   const isAdmin = user?.role === 'admin'
+  // "Custom" is the from/to inputs, so pressing it puts the cursor in one.
+  const fromRef = useRef<HTMLInputElement>(null)
 
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
@@ -116,6 +103,10 @@ export function DashboardView() {
   const [adding, setAdding] = useState(false)
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
+  // Which saved reports the viewer may EDIT. One list call, taken only when
+  // editing starts, because the run response deliberately does not carry it:
+  // a panel reports what it drew, not what its viewer is allowed to do to it.
+  const [editableReports, setEditableReports] = useState<Set<string> | null>(null)
 
   // Is THIS dashboard the user's default? The server resolves the default, so a
   // stale/deleted one comes back null and this is simply false.
@@ -230,6 +221,67 @@ export function DashboardView() {
               (p) => p.filter((_, idx) => idx !== i))
   }, [rearrange])
 
+  // ── Editing a panel in place (MYDAY_POLISH) ───────────────────────────────
+  // Which reports the viewer may edit. Fetched when edit mode opens rather
+  // than on mount: it answers a question nobody asks until then.
+  useEffect(() => {
+    if (!editing || editableReports !== null) return
+    let live = true
+    api.savedReports()
+      .then((r) => {
+        if (live) setEditableReports(new Set(r.reports.filter((x) => x.can_edit)
+                                                      .map((x) => x.id)))
+      })
+      .catch(() => { if (live) setEditableReports(new Set()) })
+    return () => { live = false }
+  }, [editing, editableReports])
+
+  /** A computed panel's stored options. Unlike a resize this DOES change what
+   *  the server computes — a 90-day KPI window is a different query — so it
+   *  re-runs the board rather than only repainting it. */
+  const setConfig = useCallback(async (i: number, patch: Partial<DashboardPanel>) => {
+    if (!dashboardId) return
+    const prev = layout
+    const next = layout.map((p, idx) => (idx === i ? { ...p, ...patch } : p))
+    setLayout(next)
+    try {
+      await api.updateDashboard(dashboardId, { layout: next })
+      load()
+    } catch (e) {
+      setLayout(prev)
+      toast.error('Could not save that option',
+                  e instanceof Error ? e.message : 'Please try again.')
+    }
+  }, [dashboardId, layout, load, toast])
+
+  /** Open the builder on a panel's report, and come back here when it saves. */
+  const editChart = useCallback((reportId: string) => {
+    const back = encodeURIComponent(`/dashboards/${dashboardId}`)
+    navigate(`/reports?tab=custom&edit=${encodeURIComponent(reportId)}&from=${back}`)
+  }, [dashboardId, navigate])
+
+  /** "Customize a copy": clone a report the viewer cannot edit, repoint THIS
+   *  panel at the clone, then open the builder on it. The repoint is the part
+   *  that matters — a copy the board still does not use would leave the rep
+   *  editing a chart that is not the one in front of them. */
+  const customizeCopy = useCallback(async (i: number, reportId: string) => {
+    if (!dashboardId) return
+    const prev = layout
+    try {
+      const copy = await api.cloneSavedReport(reportId)
+      const next = layout.map((p, idx) =>
+        (idx === i ? { ...p, saved_report_id: copy.id } : p))
+      setLayout(next)
+      await api.updateDashboard(dashboardId, { layout: next })
+      toast.info('Copied to your reports', `${copy.name} — this panel now uses it.`)
+      editChart(copy.id)
+    } catch (e) {
+      setLayout(prev)
+      toast.error('Could not make a copy',
+                  e instanceof Error ? e.message : 'Please try again.')
+    }
+  }, [dashboardId, layout, toast, editChart])
+
   // Adding is the one change that needs the server: the new panel has no
   // computed result yet.
   const addPanel = useCallback(async (panel: DashboardPanel) => {
@@ -326,21 +378,6 @@ export function DashboardView() {
     }
   }
 
-  async function applyPreset(p: Preset) {
-    if (p.today) {
-      // Today = start and end BOTH set to today's date in the company timezone.
-      // The server reads those dates in that same timezone, so the window runs
-      // local midnight to local midnight. Sending the browser's date, or letting
-      // the server read UTC, would put the boundary 5-6 hours out.
-      const d = todayIn(await companyTz())
-      setStart(d)
-      setEnd(d)
-      return
-    }
-    setEnd('')
-    setStart(p.days === null ? '' : isoDaysAgo(p.days))
-  }
-
   const panels = useMemo(() => run?.panels ?? [], [run])
 
   // Reps see dashboards now (2026-08-02 rep-dashboards build). The server
@@ -397,17 +434,16 @@ export function DashboardView() {
         <div className="dash-filters" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
           <span className="dash-dates">
             <span style={{ fontSize: 12, color: 'var(--p-body)' }}>From</span>
-            <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
+            <input ref={fromRef} type="date" className="plat-input"
+                   style={{ marginBottom: 0, width: 'auto' }}
                    value={start} onChange={(e) => setStart(e.target.value)} />
             <span style={{ fontSize: 12, color: 'var(--p-body)' }}>to</span>
             <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
                    value={end} onChange={(e) => setEnd(e.target.value)} />
           </span>
-          <div className="roletoggle">
-            {PRESETS.map((p) => (
-              <button key={p.label} onClick={() => { void applyPreset(p) }}>{p.label}</button>
-            ))}
-          </div>
+          <DatePresets start={start} end={end}
+                       onChange={(r) => { setStart(r.start); setEnd(r.end) }}
+                       onCustom={() => fromRef.current?.focus()} />
           {isAdmin ? (
             <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
                     value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
@@ -458,6 +494,7 @@ export function DashboardView() {
           const kind = p.kind ?? 'report'
           const head = headingFor(p)
           const size = p.size ?? 'full'
+          const rid = p.saved_report_id
           return (
             <div key={`${kind}-${p.saved_report_id ?? 'x'}-${i}`}
                  className={`dash-panel ${size}`
@@ -486,6 +523,24 @@ export function DashboardView() {
                       onSize={(s) => setSize(i, s)}
                       onMove={(dir) => movePanel(i, i + dir)}
                       onRemove={() => removePanel(i)}
+                      // The STORED panel, not the run panel: a run panel
+                      // reports only kind/size/report-id, so its options would
+                      // all read as unset and the first change would clobber
+                      // the rest of the config.
+                      panel={layout[i] ?? { kind, size }}
+                      onConfig={kind === 'report'
+                        ? undefined
+                        : (patch) => { void setConfig(i, patch) }}
+                      // Whichever of these applies — never both. Until the
+                      // permission list has loaded, neither is offered rather
+                      // than the wrong one being guessed at.
+                      onEditChart={kind === 'report' && rid && editableReports?.has(rid)
+                        ? () => editChart(rid)
+                        : undefined}
+                      onCustomizeCopy={kind === 'report' && rid
+                        && editableReports && !editableReports.has(rid)
+                        ? () => { void customizeCopy(i, rid) }
+                        : undefined}
                     />
                   )}
                 </div>

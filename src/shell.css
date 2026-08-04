@@ -611,6 +611,20 @@
 .pm-item:disabled { color: var(--p-blue-muted); cursor: default; }
 .pm-item.danger { color: #B4432B; }
 .pm-item.danger:hover { background: var(--pill-red-bg); }
+/* Panel options (MYDAY_POLISH). A labelled control rather than a menu item,
+   because these SET something rather than doing something. */
+.pm-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 12px; color: var(--p-body); padding: 4px 8px 6px;
+}
+.pm-opt .plat-input { margin-bottom: 0; width: auto; max-width: 130px; font-size: 12px; }
+.pm-note {
+  font-size: 11px; line-height: 1.4; color: var(--p-blue-muted);
+  padding: 0 8px 4px; max-width: 240px;
+}
+/* The preset row wraps on a narrow filter bar rather than pushing the owner
+   select off the end — five labels are wider than the old five were. */
+.date-presets { flex-wrap: wrap; }
 
 /* ── Add-widget drawer ── */
 .widget-drawer { max-width: 720px; }

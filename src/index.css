@@ -985,12 +985,18 @@ input, select, textarea {
 .myday-sub { font-size: 13px; color: var(--p-body); margin-top: 4px; }
 
 .kpi-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 2px 2px; position: relative; }
+/* A KPI card is a BUTTON since MYDAY_POLISH — it opens the records behind its
+   number rather than navigating to a page that could only ever be an
+   approximation of them. The reset is the button-specific half; everything
+   below it is what the card always looked like, unchanged. */
 .kpi-card {
   flex: 1 1 150px; min-width: 150px; background: var(--p-white);
   border: 1px solid var(--p-border); border-radius: 10px; padding: 14px 14px 11px;
   text-decoration: none; display: block; position: relative; overflow: hidden;
+  font: inherit; text-align: left; cursor: pointer; width: 100%;
   transition: transform 160ms cubic-bezier(0.16,1,0.3,1), box-shadow 160ms cubic-bezier(0.16,1,0.3,1), border-color 160ms;
 }
+.kpi-card:focus-visible { outline: 2px solid var(--p-gold); outline-offset: 2px; }
 .kpi-card::before {
   content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
   background: var(--p-border);
@@ -1010,6 +1016,23 @@ input, select, textarea {
 .kpi-window { position: absolute; top: -26px; right: 4px; font-size: 11px; color: var(--p-blue-muted); }
 
 .feed-list { display: flex; flex-direction: column; }
+/* Kind sections (MYDAY_POLISH). The header carries its count because "Calls"
+   answers a different question than "Calls 12", and the second one is the one
+   a rep is actually asking their morning screen. */
+.feed-sect + .feed-sect { margin-top: 6px; }
+.feed-sect-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px;
+  color: var(--p-navy-dark); font-weight: 700;
+  padding: 10px 12px 6px; border-bottom: 1px solid var(--p-border);
+}
+.feed-sect-count {
+  background: var(--p-row); color: var(--p-blue-muted); border-radius: 999px;
+  padding: 1px 7px; font-size: 10px; letter-spacing: 0.3px; font-weight: 600;
+}
+/* A day divider nested inside a kind section is secondary to it, so it sits
+   lighter than the section header above it rather than competing with it. */
+.feed-sect .feed-day { padding-top: 8px; font-weight: 500; opacity: 0.85; }
 .feed-day {
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px;
   color: var(--p-blue-muted); padding: 12px 12px 4px; font-weight: 600;
@@ -1020,6 +1043,7 @@ input, select, textarea {
   text-decoration: none; border-radius: 6px;
 }
 .feed-block:last-child .feed-item { border-bottom: 0; }
+.feed-sect:last-child > div:last-child .feed-item { border-bottom: 0; }
 a.feed-item:hover { background: var(--p-cream); color: var(--p-navy-dark); }
 .feed-ic { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex: 0 0 auto; background: var(--p-row); }
 .feed-ic.fk-call { background: rgba(243, 206, 0, 0.18); }

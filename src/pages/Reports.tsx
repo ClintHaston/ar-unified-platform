@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -14,7 +14,7 @@ import { DealsByRepTable } from '../components/reports/DealsByRepTable'
 import { CallActivityTable } from '../components/reports/CallActivityTable'
 import { ReportBuilder } from '../components/reports/ReportBuilder'
 import { DashboardsPanel } from '../components/reports/DashboardsPanel'
-import { companyTz, todayIn } from '../components/reports/companyTz'
+import { DatePresets } from '../components/reports/DatePresets'
 
 // WS2a reporting hub — calls + sales + funnels, the data we fully own. Admin
 // only (data endpoints 403 for reps); reps see a friendly pointer. Every tab
@@ -32,23 +32,10 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'dashboards', label: 'Dashboards' },
 ]
 
-// Quick date presets. days = days back from today (open-ended, no end bound),
-// or null for all-time. Today is the odd one out: a BOUNDED single day in the
-// company timezone, so it carries its own flag instead of faking a days offset.
-type Preset = { label: string; days: number | null; today?: boolean }
-const PRESETS: Preset[] = [
-  { label: 'Today', days: null, today: true },
-  { label: '30d', days: 30 },
-  { label: '90d', days: 90 },
-  { label: '12mo', days: 365 },
-  { label: 'All', days: null },
-]
-
-function isoDaysAgo(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
-}
+// The date presets are DatePresets now (MYDAY_POLISH): Today / Yesterday /
+// This week / Last week / Custom, all bounded and all computed in the company
+// timezone. The rolling 30d/90d/12mo/All row it replaces is gone from both
+// surfaces that carried it, so there is one preset vocabulary in the app.
 
 function isTabKey(v: string | null): v is TabKey {
   return TABS.some((t) => t.key === v)
@@ -71,10 +58,18 @@ export function Reports() {
   // this app.
   const fromParam = searchParams.get('from')
   const returnTo = fromParam && /^\/[^/\\]/.test(fromParam) ? fromParam : null
+  // ?edit=<saved report id> is a panel's "Edit chart" (MYDAY_POLISH). Only a
+  // uuid is honoured — the builder looks it up in the saved list it can see,
+  // so anything else simply finds nothing, but refusing it here keeps a junk
+  // value out of the component's state in the first place.
+  const editParam = searchParams.get('edit')
+  const editId = editParam && /^[0-9a-f-]{36}$/i.test(editParam) ? editParam : undefined
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [ownerId, setOwnerId] = useState('')
   const [owners, setOwners] = useState<OwnerOption[]>([])
+  // "Custom" is the from/to inputs, so pressing it puts the cursor in one.
+  const fromRef = useRef<HTMLInputElement>(null)
 
   const [sell, setSell] = useState<FunnelReport | null>(null)
   const [buy, setBuy] = useState<FunnelReport | null>(null)
@@ -118,20 +113,6 @@ export function Reports() {
   // every rep query to owner = self, so this page shows a rep their own book —
   // the UI just stops pretending there is a choice (owner select is admin-only).
 
-  async function applyPreset(p: Preset) {
-    if (p.today) {
-      // Today = start and end BOTH set to today's date in the company timezone.
-      // The server reads those dates in that same timezone, so the window runs
-      // local midnight to local midnight rather than cutting the day at UTC.
-      const d = todayIn(await companyTz())
-      setStart(d)
-      setEnd(d)
-      return
-    }
-    setEnd('')
-    setStart(p.days === null ? '' : isoDaysAgo(p.days))
-  }
-
   return (
     <div>
       <div className="panel" style={{ padding: '12px 16px' }}>
@@ -150,16 +131,15 @@ export function Reports() {
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
           <span style={{ fontSize: 12, color: 'var(--p-body)' }}>From</span>
-          <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
+          <input ref={fromRef} type="date" className="plat-input"
+                 style={{ marginBottom: 0, width: 'auto' }}
                  value={start} onChange={(e) => setStart(e.target.value)} />
           <span style={{ fontSize: 12, color: 'var(--p-body)' }}>to</span>
           <input type="date" className="plat-input" style={{ marginBottom: 0, width: 'auto' }}
                  value={end} onChange={(e) => setEnd(e.target.value)} />
-          <div className="roletoggle">
-            {PRESETS.map((p) => (
-              <button key={p.label} onClick={() => { void applyPreset(p) }}>{p.label}</button>
-            ))}
-          </div>
+          <DatePresets start={start} end={end}
+                       onChange={(r) => { setStart(r.start); setEnd(r.end) }}
+                       onCustom={() => fromRef.current?.focus()} />
           {isAdmin ? (
             <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
                     value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
@@ -181,13 +161,16 @@ export function Reports() {
         <>
           {returnTo && (
             <div className="note rb-from">
-              Building a chart for a dashboard — saving it will take you back
-              and drop it on the board.{' '}
+              {editId
+                ? 'Editing a chart from a dashboard — saving it will take you '
+                  + 'back and the panel will show the change. '
+                : 'Building a chart for a dashboard — saving it will take you '
+                  + 'back and drop it on the board. '}
               <Link to={returnTo}>Go back without saving</Link>
             </div>
           )}
           <ReportBuilder start={start} end={end} ownerId={ownerId}
-                         returnTo={returnTo ?? undefined} />
+                         returnTo={returnTo ?? undefined} editId={editId} />
         </>
       )}
       {tab === 'dashboards' && <DashboardsPanel start={start} end={end} ownerId={ownerId} />}

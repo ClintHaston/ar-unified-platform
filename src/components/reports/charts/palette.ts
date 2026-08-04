@@ -130,6 +130,43 @@ export function seriesColors(accent: string, n: number,
   return Array.from({ length: n }, (_, i) => ordered[i % ordered.length])
 }
 
+// ── Colouring the MARKS of a single-series chart (MYDAY_POLISH, 2026-08-04) ──
+//
+// THE BUG THIS FIXES. Every chart already read the active scheme; picking one
+// still only visibly repainted the pie. The reason is what each chart asked
+// for: a pie asks for one colour per ROW, so it draws the whole palette, while
+// a bar/line/scatter asks for one colour per SERIES — and a dashboard panel is
+// almost always ONE series. So those charts drew entirely in scheme.colors[0],
+// which is a single hue and no scheme at all. Worse, Sunset's first colour IS
+// the brand gold and Ocean and Vivid share a first teal, so three of the six
+// schemes were indistinguishable from something else on a single-series chart.
+//
+// So a single-series CATEGORICAL chart now colours per category, exactly as
+// the pie does. It is also the right chart, independent of theming: one bar
+// per rep in one colour is a bar chart that has thrown its own legend away.
+//
+// TIME BUCKETS ARE EXCLUDED. "Calls by week" is a sequence, not a set of
+// categories: a rainbow across consecutive weeks reads as eight unrelated
+// things rather than one trend. Detected by the registry's own dimension keys,
+// because a week bucket's `type` is 'text' like any other label. `year` is
+// deliberately NOT here — on the units source it is the equipment's model
+// year, which is a category.
+const TIME_DIMENSIONS = new Set(['week', 'month', 'quarter', 'date', 'day'])
+
+export function isTimeDimension(key: string): boolean {
+  return TIME_DIMENSIONS.has(key)
+}
+
+/** One colour per MARK for a single-series chart, or null when the marks
+ *  should share the series colour (multi-series, or a time sequence). */
+export function markColors(accent: string, dimensionKey: string,
+                           seriesCount: number, markCount: number,
+                           scheme: ChartScheme): string[] | null {
+  if (seriesCount !== 1) return null
+  if (isTimeDimension(dimensionKey)) return null
+  return seriesColors(accent, markCount, scheme)
+}
+
 // Live reduced-motion preference; drives recharts isAnimationActive.
 export function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(
