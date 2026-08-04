@@ -16,6 +16,7 @@ import { QuickAdd } from './QuickAdd'
 import { DashboardSwitcher } from './DashboardSwitcher'
 import { ActivityRail } from './ActivityRail'
 import { MobileTabBar } from './MobileTabBar'
+import { InstallCoach } from './InstallCoach'
 import { MobileAccountMenu } from './MobileAccountMenu'
 import { ShellEffects } from './ShellEffects'
 import { Icon } from './icons'
@@ -175,6 +176,7 @@ export function AppShell() {
 
         {!isMobile && user && !railCollapsed && <ActivityRail />}
         {isMobile && user && <MobileTabBar />}
+      {isMobile && user && <InstallCoach />}
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

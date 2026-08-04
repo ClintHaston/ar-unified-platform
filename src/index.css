@@ -1082,3 +1082,24 @@ a.feed-item:hover { background: var(--p-cream); color: var(--p-navy-dark); }
 @keyframes fnl-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes fnl-pop { from { opacity: 0; transform: translateY(3px) scale(0.9); } to { opacity: 1; transform: none; } }
 @keyframes fnl-shine { 0% { transform: translateX(-120%); } 45% { transform: translateX(120%); } 100% { transform: translateX(120%); } }
+
+/* ── Install coach (iOS Safari never prompts; Chrome gets a real button) ── */
+.install-coach {
+  position: fixed; left: 10px; right: 10px; bottom: 76px; z-index: 90;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--p-navy-dark); color: var(--p-white);
+  border-radius: 12px; padding: 11px 14px; font-size: 13px;
+  box-shadow: var(--ws-sh-lg);
+}
+.install-coach .ic-text { flex: 1 1 auto; line-height: 1.35; }
+.install-coach .ic-share {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 5px;
+  background: var(--p-gold); color: var(--p-navy-dark); font-weight: 700;
+}
+.install-coach .ic-close {
+  flex: 0 0 auto; background: transparent; border: 0; color: var(--p-white);
+  opacity: 0.7; font-size: 14px; padding: 6px; cursor: pointer;
+  min-width: 32px; min-height: 32px;
+}
+@media (min-width: 768px) { .install-coach { display: none; } }
