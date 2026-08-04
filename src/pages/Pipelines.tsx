@@ -29,6 +29,13 @@ export function Pipelines() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [deals, setDeals] = useState<DealCard[]>([])
+  // The board OPENS ON MINE for everyone, admins included, and All is a toggle
+  // away — never the landing state. The CRM object layer is a shared book by
+  // design (a rep who clicks All sees every rep's deals, and the server
+  // honours it), so the default is the only thing standing between a rep and a
+  // board that looks like it belongs to someone else. The server declares the
+  // same default, which is what makes this a guarantee rather than a habit:
+  // see test_pipeline_scope.py.
   const [scope, setScope] = useState<DealScope>('mine')
   const [creating, setCreating] = useState(searchParams.get('new') === '1')
   const [loading, setLoading] = useState(true)

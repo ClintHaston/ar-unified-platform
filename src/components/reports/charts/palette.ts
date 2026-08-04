@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import type { ChartThemeId } from '../../../lib/api'
 
 // Brand-anchored categorical palette (ARS site retheme 2026-08-02). Yellow
 // (sell) and teal (buy) lead so the palette identity is preserved; the rest
@@ -17,6 +18,69 @@ export const SERIES_PALETTE = [
   '#6B7A8F', // steel blue
   '#F3CE00', // bright brand yellow
 ]
+
+// ── Selectable chart colour schemes (CHART_THEMES, 2026-08-03) ─────────────
+// Six prebuilt schemes, chosen per dashboard in Edit mode. The SERVER stores
+// only the id and validates it against this same closed set; every hex lives
+// here and only here, which is what makes it impossible for a stored string to
+// reach a CSS fill.
+//
+// WHAT DOES NOT THEME. Semantic colour carries meaning, and a meaning that
+// changes with a picker is not a meaning. So the funnel's sell-gold/buy-teal,
+// GAUGE_TONE_HEX's good/warn/bad, the delta chips and the KPI/goal widgets all
+// keep their brand tokens no matter which scheme is active. Only the SERIES
+// charts — pie/donut, bar, line, scatter, combo — read this.
+//
+// Each scheme is 8 colours, which is what seriesColors cycles; all are picked
+// to hold contrast against the white panel background, and none are neon.
+export interface ChartScheme {
+  id: ChartThemeId
+  name: string
+  colors: string[]
+}
+
+export const CHART_SCHEMES: ChartScheme[] = [
+  // 'brand' IS SERIES_PALETTE, by reference and not by copy — a scheme list
+  // that drifted from the palette it claims to mirror would recolour every
+  // dashboard that never picked anything.
+  { id: 'brand', name: 'Asset Gold', colors: SERIES_PALETTE },
+  { id: 'ocean', name: 'Ocean',
+    colors: ['#2C7A7B', '#1F5F8B', '#4FA3A5', '#6B8FB3',
+             '#123B52', '#8FB8C9', '#35586E', '#A7D0D2'] },
+  { id: 'sunset', name: 'Sunset',
+    colors: ['#E0BC00', '#D97B29', '#B4432B', '#8C5A2B',
+             '#F3CE00', '#C97F5A', '#6E3B23', '#E8A87C'] },
+  { id: 'forest', name: 'Forest',
+    colors: ['#2F6B3C', '#5A8F5E', '#1E4D2B', '#86AE8A',
+             '#3E7C4F', '#A9C5A0', '#57744F', '#12331C'] },
+  { id: 'slate', name: 'Slate',
+    colors: ['#1A212E', '#39414F', '#5A6472', '#7B8390',
+             '#9AA1AC', '#B8BEC6', '#4A5260', '#2A3240'] },
+  { id: 'vivid', name: 'Vivid',
+    colors: ['#2C7A7B', '#E0BC00', '#B4432B', '#1F5F8B',
+             '#D97B29', '#2F6B3C', '#6D4A9E', '#C25583'] },
+]
+
+export const DEFAULT_CHART_THEME: ChartThemeId = 'brand'
+
+const BRAND_SCHEME = CHART_SCHEMES[0]
+
+/** The scheme for an id. Anything unrecognised — an older payload, a scheme
+ *  added to the server before this bundle shipped — resolves to brand rather
+ *  than to undefined: a chart must never render colourless. */
+export function schemeOf(id: string | null | undefined): ChartScheme {
+  return CHART_SCHEMES.find((s) => s.id === id) ?? BRAND_SCHEME
+}
+
+// The active scheme, supplied by whatever surface knows which dashboard is on
+// screen. The DEFAULT IS BRAND, which is what keeps every chart rendered
+// OUTSIDE a dashboard — standalone report pages, the report builder's live
+// preview — on the brand palette without those call sites doing anything.
+export const ChartThemeContext = createContext<ChartScheme>(BRAND_SCHEME)
+
+export function useChartScheme(): ChartScheme {
+  return useContext(ChartThemeContext)
+}
 
 // Chart chrome (concrete hex — SVG tick/grid fills are attribute-applied).
 export const AXIS_INK = '#39414F' // --p-body
@@ -45,12 +109,24 @@ export function accentHex(accent: string): string {
   return accent.includes('buy') ? TEAL : GOLD
 }
 
-// The accent always colours the first series so a single-series chart matches
-// the rest of the app; remaining series cycle the palette.
-export function seriesColors(accent: string, n: number): string[] {
-  const lead = accentHex(accent)
-  const rest = SERIES_PALETTE.filter((c) => c.toLowerCase() !== lead.toLowerCase())
-  const ordered = [lead, ...rest]
+// On BRAND, the accent always colours the first series so a single-series
+// chart matches the rest of the app; remaining series cycle the palette. That
+// is the pre-existing behaviour and it is preserved exactly.
+//
+// On any OTHER scheme the accent is deliberately ignored and the scheme draws
+// in its own order. Leading every ocean chart with the brand gold would put a
+// colour the user did not pick at the front of every chart, and the scheme
+// would not read as chosen. The accent still drives the funnel, which does not
+// theme at all — so sell/buy stays legible where it carries meaning.
+export function seriesColors(accent: string, n: number,
+                             scheme: ChartScheme = BRAND_SCHEME): string[] {
+  const ordered = scheme.id === 'brand'
+    ? (() => {
+        const lead = accentHex(accent)
+        const rest = scheme.colors.filter((c) => c.toLowerCase() !== lead.toLowerCase())
+        return [lead, ...rest]
+      })()
+    : scheme.colors
   return Array.from({ length: n }, (_, i) => ordered[i % ordered.length])
 }
 

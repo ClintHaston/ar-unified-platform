@@ -6,7 +6,8 @@ import {
 import type { ComboConfig, DrillAt, GaugeConfig, RunColumn } from '../../../lib/api'
 import { fmt } from '../reportFormat'
 import {
-  AXIS_INK, GRID_INK, LABEL_INK, seriesColors, toneHex, useReducedMotion,
+  AXIS_INK, GRID_INK, LABEL_INK, seriesColors, toneHex, useChartScheme,
+  useReducedMotion,
 } from './palette'
 import { pivotSeries } from './pivot'
 
@@ -60,9 +61,10 @@ function shown(v: string | number | null): string {
 // ── Simple bar (one category dimension, one or more measures) ──────────────
 export function SimpleBarChart({ columns, rows, accent, onPoint }: ChartProps) {
   const reduced = useReducedMotion()
+  const scheme = useChartScheme()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measures = columns.filter((c) => c.role === 'measure')
-  const colors = seriesColors(accent, measures.length)
+  const colors = seriesColors(accent, measures.length, scheme)
   const typeByKey = Object.fromEntries(measures.map((m) => [m.key, m.type]))
   const height = barHeight(rows.length, measures.length)
 
@@ -96,11 +98,12 @@ export function SimpleBarChart({ columns, rows, accent, onPoint }: ChartProps) {
 // ── Stacked / grouped bar (category dimension × series × one measure) ──────
 function BreakdownBar({ columns, rows, accent, stacked, onPoint }: ChartProps & { stacked: boolean }) {
   const reduced = useReducedMotion()
+  const scheme = useChartScheme()
   const dim = columns.find((c) => c.role === 'dimension')!
   const series = columns.find((c) => c.role === 'series')!
   const measure = columns.find((c) => c.role === 'measure')!
   const { data, seriesValues, rawCategory, rawSeries } = pivotSeries(rows, dim.key, series.key, measure.key)
-  const colors = seriesColors(accent, seriesValues.length)
+  const colors = seriesColors(accent, seriesValues.length, scheme)
   const height = barHeight(data.length, stacked ? 1.4 : seriesValues.length)
 
   // A segment identifies BOTH its category and its series value, so the drill
@@ -147,6 +150,10 @@ export function GroupedBarChart(props: ChartProps) {
 // ── Line (category on x, one line per measure, or per series value) ────────
 export function LineChartViz({ columns, rows, accent, onPoint }: ChartProps) {
   const reduced = useReducedMotion()
+  // Read at the top, unconditionally: the branch below picks the line KEYS, not
+  // the palette, so a hook inside either arm would change hook order with the
+  // shape of the data.
+  const scheme = useChartScheme()
   const dim = columns.find((c) => c.role === 'dimension')!
   const series = columns.find((c) => c.role === 'series')
   const measures = columns.filter((c) => c.role === 'measure')
@@ -159,11 +166,11 @@ export function LineChartViz({ columns, rows, accent, onPoint }: ChartProps) {
     const pv = pivotSeries(rows, dim.key, series.key, measures[0].key)
     data = pv.data
     lineKeys = pv.seriesValues
-    colors = seriesColors(accent, lineKeys.length)
+    colors = seriesColors(accent, lineKeys.length, scheme)
   } else {
     data = rows
     lineKeys = measures.map((m) => m.key)
-    colors = seriesColors(accent, lineKeys.length)
+    colors = seriesColors(accent, lineKeys.length, scheme)
   }
   const nameByKey = series ? {} : Object.fromEntries(measures.map((m) => [m.key, m.label]))
 
@@ -220,9 +227,10 @@ export function ComboChart({ columns, rows, accent, combo, onPoint }: ChartProps
   combo: ComboConfig
 }) {
   const reduced = useReducedMotion()
+  const scheme = useChartScheme()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measures = columns.filter((c) => c.role === 'measure')
-  const colors = seriesColors(accent, measures.length)
+  const colors = seriesColors(accent, measures.length, scheme)
   const typeByKey = Object.fromEntries(measures.map((m) => [m.key, m.type]))
 
   // `combo` is the server's NORMALISED spec, so every measure has an entry; the
@@ -343,6 +351,7 @@ export function GaugeChart({ columns, rows, gauge }: ChartProps & {
 // single radius. Same wrapper pattern as BreakdownBar -> stacked/grouped above.
 function PieFamily({ columns, rows, accent, innerRadius, onPoint }: ChartProps & { innerRadius: number }) {
   const reduced = useReducedMotion()
+  const scheme = useChartScheme()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measure = columns.find((c) => c.role === 'measure')!
   // `raw` rides along beside the display name so a slice can drill the value the
@@ -352,7 +361,7 @@ function PieFamily({ columns, rows, accent, innerRadius, onPoint }: ChartProps &
     value: Number(r[measure.key] ?? 0),
     raw: r[dim.key] ?? null,
   }))
-  const colors = seriesColors(accent, data.length)
+  const colors = seriesColors(accent, data.length, scheme)
 
   const click = onPoint
     ? (entry: unknown) => {
@@ -417,10 +426,11 @@ export function ScatterChartViz({ columns, rows, accent, onPoint, onRecord }: Ch
   onRecord?: (id: string, label: string) => void
 }) {
   const reduced = useReducedMotion()
+  const scheme = useChartScheme()
   const dim = columns.find((c) => c.role === 'dimension')!
   const measures = columns.filter((c) => c.role === 'measure')
   const [mx, my] = measures
-  const colors = seriesColors(accent, 1)
+  const colors = seriesColors(accent, 1, scheme)
   const interactive = !!onPoint || !!onRecord
 
   const click = interactive

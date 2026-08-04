@@ -5,7 +5,10 @@ import { Icon } from '../components/shell/icons'
 import { api, type DashboardRun, type DashboardPanel, type OwnerOption,
          type ReportFilters, type MyKpis, type ActivityFeedResult,
          type RunResult, type UpNextResult, type GoalResult,
-         type PanelSize } from '../lib/api'
+         type PanelSize, type ChartThemeId } from '../lib/api'
+import { ChartThemeContext, DEFAULT_CHART_THEME, schemeOf }
+  from '../components/reports/charts/palette'
+import { ChartThemePicker } from '../components/reports/ChartThemePicker'
 import { ResultView } from '../components/reports/ResultView'
 import { KpiRow, ActivityFeed } from '../components/reports/MyDayPanels'
 import { UpNextPanel } from '../components/reports/UpNextPanel'
@@ -102,6 +105,11 @@ export function DashboardView() {
   const [isDefault, setIsDefault] = useState(false)
 
   // Compose-in-place state.
+  // The chart scheme is held locally so a pick repaints the board on the same
+  // frame — that IS the live preview — and is written behind, exactly like a
+  // resize or a reorder. It changes nothing the server computes, so there is
+  // nothing to re-run.
+  const [chartTheme, setChartTheme] = useState<ChartThemeId>(DEFAULT_CHART_THEME)
   const [layout, setLayout] = useState<DashboardPanel[]>([])
   const [canEdit, setCanEdit] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -134,6 +142,7 @@ export function DashboardView() {
       }
       setLayout(meta.layout ?? [])
       setCanEdit(!!meta.can_edit)
+      setChartTheme(meta.chart_theme ?? DEFAULT_CHART_THEME)
     }).catch(() => undefined).finally(() => setInitialized(true))
   }, [isAdmin, dashboardId])
 
@@ -198,6 +207,23 @@ export function DashboardView() {
       (l) => l.map((p, idx) => (idx === i ? { ...p, size } : p)),
       (p) => p.map((x, idx) => (idx === i ? { ...x, size } : x)))
   }, [rearrange])
+
+  // Same optimistic-then-revert shape as saveLayout: the board is already
+  // wearing the new colours, so a failed write must put the old ones back
+  // rather than leave the screen disagreeing with the server.
+  const pickTheme = useCallback(async (next: ChartThemeId) => {
+    if (!dashboardId) return
+    const prev = chartTheme
+    if (next === prev) return
+    setChartTheme(next)
+    try {
+      await api.updateDashboard(dashboardId, { chart_theme: next })
+    } catch (e) {
+      setChartTheme(prev)
+      toast.error('Could not save those colours',
+                  e instanceof Error ? e.message : 'Please try again.')
+    }
+  }, [dashboardId, chartTheme, toast])
 
   const removePanel = useCallback((i: number) => {
     rearrange((l) => l.filter((_, idx) => idx !== i),
@@ -346,6 +372,11 @@ export function DashboardView() {
               the PATCH is refused either way. */}
           {canEdit && (
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              {/* Only in edit mode: it is a change to the dashboard, and it
+                  sits beside the other things edit mode lets you change. */}
+              {editing && (
+                <ChartThemePicker value={chartTheme} onChange={(id) => { void pickTheme(id) }} />
+              )}
               <button className={`plat-btn${editing ? '' : ' ghost'}`}
                       onClick={() => setEditing((v) => !v)}
                       aria-pressed={editing}
@@ -409,6 +440,12 @@ export function DashboardView() {
         </div>
       )}
 
+      {/* The scheme reaches the charts through context rather than through a
+          prop on every panel: ResultView and the chart components are shared
+          with the report builder and the standalone report pages, and those
+          have no dashboard to ask. No provider there means the context default
+          — brand — which is exactly what the spec asked for. */}
+      <ChartThemeContext.Provider value={schemeOf(chartTheme)}>
       <div className={`dash-grid${editing ? ' editing' : ''}`}>
         {panels.map((p, i) => {
           const kind = p.kind ?? 'report'
@@ -468,6 +505,7 @@ export function DashboardView() {
           )
         })}
       </div>
+      </ChartThemeContext.Provider>
 
       {adding && dashboardId && (
         <AddWidgetDrawer

@@ -482,6 +482,31 @@
 .dash-panel.dragging { opacity: 0.45; }
 .dash-panel.drag-over .panel { outline: 2px dashed var(--p-gold); outline-offset: 2px; }
 
+/* ── Chart colors picker (edit mode) ──
+   Each scheme is shown as its own swatch strip: the name tells you nothing
+   about what it does to your charts, the swatches tell you everything. */
+.ctp-wrap { position: relative; }
+.ctp-dots { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -1px; }
+.ctp-dot { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
+.ctp-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 260px;
+  background: var(--p-white); border: 1px solid var(--p-border); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(26, 43, 71, 0.14); padding: 4px;
+}
+.ctp-row {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  background: none; border: 1px solid transparent; border-radius: 6px;
+  cursor: pointer; padding: 7px 8px; font-size: 13px; color: var(--p-navy-dark);
+}
+.ctp-row:hover { background: var(--p-row); }
+.ctp-row.active { border-color: var(--p-gold); }
+.ctp-row:focus-visible { outline: 2px solid var(--p-gold); outline-offset: -2px; }
+.ctp-swatches { display: inline-flex; border-radius: 3px; overflow: hidden; flex: none; }
+.ctp-sw { width: 12px; height: 16px; display: inline-block; }
+.ctp-name { flex: 1; }
+.ctp-check { color: var(--p-gold-deep); font-weight: 700; }
+.ctp-note { padding: 4px 8px 6px; font-size: 11px; }
+
 /* The kebab: present but quiet until the panel is hovered or something in it
    has focus. Always visible on touch, where there is no hover to reveal it. */
 .panel-menu { margin-left: auto; position: relative; }

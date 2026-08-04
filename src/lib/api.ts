@@ -1106,6 +1106,13 @@ export interface DefaultDashboard {
   name: string
 }
 
+// The wire contract for a chart colour scheme: the server stores and validates
+// exactly these ids and never a colour, so this lives here with the rest of the
+// API surface and charts/palette.ts imports it. One definition, so a scheme
+// cannot exist on one side of the request and not the other.
+export type ChartThemeId =
+  | 'brand' | 'ocean' | 'sunset' | 'forest' | 'slate' | 'vivid'
+
 export interface DashboardListItem {
   id: string
   name: string
@@ -1118,6 +1125,7 @@ export interface DashboardListItem {
   favorited: boolean
   panel_count: number
   updated_at: string
+  chart_theme?: ChartThemeId
 }
 
 // The dashboard's STORED shape. Editing reads from here rather than from the
@@ -1138,6 +1146,9 @@ export interface DashboardMeta {
   owner_id?: string
   visibility?: 'private' | 'team'
   system_key?: string | null
+  // Which colour scheme this dashboard's SERIES charts draw with. Optional so
+  // an older cached payload degrades to brand rather than to undefined.
+  chart_theme?: ChartThemeId
 }
 
 export interface DashboardRunPanel {
@@ -1161,6 +1172,7 @@ export interface DashboardRun {
   default_filters: DashboardFilters
   favorited: boolean
   panels: DashboardRunPanel[]
+  chart_theme?: ChartThemeId
 }
 
 export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
@@ -2083,7 +2095,7 @@ export const api = {
     request<DashboardRun>(`/platform/dashboards/${id}/run${reportQs(f)}`),
   createDashboard: (input: { name: string; layout: DashboardPanel[]; default_filters: DashboardFilters }) =>
     request<DashboardMeta>('/platform/dashboards', { method: 'POST', body: JSON.stringify(input) }),
-  updateDashboard: (id: string, patch: { name?: string; layout?: DashboardPanel[]; default_filters?: DashboardFilters }) =>
+  updateDashboard: (id: string, patch: { name?: string; layout?: DashboardPanel[]; default_filters?: DashboardFilters; chart_theme?: ChartThemeId }) =>
     request<DashboardMeta>(`/platform/dashboards/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteDashboard: (id: string) =>
     request<{ ok: boolean }>(`/platform/dashboards/${id}`, { method: 'DELETE' }),
