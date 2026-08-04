@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type OwnerOption, type SearchResult, type SegmentCriteria, type SegmentProp, type SegmentSource } from '../lib/api'
+import { api, type ContactCriteriaKind, type OwnerOption, type SearchResult, type SegmentCriteria, type SegmentProp, type SegmentSource } from '../lib/api'
+import { CriteriaChips } from './CriteriaChips'
 
 // OR-of-AND-groups criteria builder for Segments. Mirrors the WS2b report
 // builder's chip/panel styling. Every field/operator offered comes from the
@@ -20,6 +21,21 @@ function defaultOperator(prop: SegmentProp): string {
   return prop.operators[0]?.key ?? 'is'
 }
 
+// An array property's value is a LIST of option slugs, so its empty value is
+// [] rather than ''. Getting this wrong sends "" to an any_of and the server
+// (correctly) refuses it.
+function emptyValue(prop: SegmentProp | undefined): string | string[] {
+  return prop?.type === 'array' ? [] : ''
+}
+
+/** Which admin-editable option list an array property draws its chips from. */
+function criteriaKind(prop: SegmentProp): ContactCriteriaKind | null {
+  const ref = typeof prop.ref === 'string' ? prop.ref : ''
+  return ref.startsWith('contact_criteria:')
+    ? (ref.slice('contact_criteria:'.length) as ContactCriteriaKind)
+    : null
+}
+
 export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, accent }: Props) {
   const groups = criteria.groups ?? []
 
@@ -29,7 +45,7 @@ export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, acc
 
   function addGroup() {
     const first = source.props[0]
-    setGroups([...groups, { conditions: [{ field: first.key, operator: defaultOperator(first), value: '' }] }])
+    setGroups([...groups, { conditions: [{ field: first.key, operator: defaultOperator(first), value: emptyValue(first) }] }])
   }
   function cloneGroup(gi: number) {
     const copy = JSON.parse(JSON.stringify(groups[gi]))
@@ -41,7 +57,7 @@ export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, acc
   function addCondition(gi: number) {
     const first = source.props[0]
     const next = groups.map((g, i) => i === gi
-      ? { conditions: [...g.conditions, { field: first.key, operator: defaultOperator(first), value: '' }] }
+      ? { conditions: [...g.conditions, { field: first.key, operator: defaultOperator(first), value: emptyValue(first) }] }
       : g)
     setGroups(next)
   }
@@ -51,7 +67,7 @@ export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, acc
       : g).filter((g) => g.conditions.length > 0)
     setGroups(next)
   }
-  function patchCondition(gi: number, ci: number, patch: Partial<{ field: string; operator: string; value: string }>) {
+  function patchCondition(gi: number, ci: number, patch: Partial<{ field: string; operator: string; value: string | string[] }>) {
     const next = groups.map((g, i) => i === gi
       ? {
           conditions: g.conditions.map((c, j) => {
@@ -61,9 +77,11 @@ export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, acc
             if (patch.field !== undefined && patch.field !== c.field) {
               const p = source.props.find((x) => x.key === patch.field)
               merged.operator = p ? defaultOperator(p) : 'is'
-              merged.value = ''
+              merged.value = emptyValue(p)
             }
             if (patch.operator !== undefined && NO_VALUE_OPS.has(patch.operator)) {
+              // is_known/is_unknown carry no value on any type — including
+              // array, where they mean "has any" / "has none".
               merged.value = ''
             }
             return merged
@@ -104,7 +122,7 @@ export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, acc
                     {prop.operators.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
                   </select>
                   {!NO_VALUE_OPS.has(c.operator) && (
-                    <ConditionValue prop={prop} value={c.value ?? ''} owners={owners}
+                    <ConditionValue prop={prop} value={c.value ?? emptyValue(prop)} owners={owners}
                                     onChange={(v) => patchCondition(gi, ci, { value: v })} />
                   )}
                   <button type="button" className="linklike" style={{ color: '#B4432B' }}
@@ -127,35 +145,50 @@ export function SegmentCriteriaBuilder({ source, criteria, onChange, owners, acc
 
 interface ValueProps {
   prop: SegmentProp
-  value: string
+  value: string | string[]
   owners: OwnerOption[]
-  onChange: (v: string) => void
+  onChange: (v: string | string[]) => void
 }
 
 function ConditionValue({ prop, value, owners, onChange }: ValueProps) {
+  // An array property reuses the SAME chip picker the contact form uses, over
+  // the same admin-editable option list — so a rep filters by exactly the
+  // vocabulary they filled in, and neither side can drift from the other.
+  if (prop.type === 'array') {
+    const kind = criteriaKind(prop)
+    if (kind) {
+      return (
+        <div className="seg-chips">
+          <CriteriaChips kind={kind} label="" value={Array.isArray(value) ? value : []}
+                         onChange={onChange} placeholder="Choose one or more…" />
+        </div>
+      )
+    }
+  }
+  const str = typeof value === 'string' ? value : ''
   if (prop.type === 'enum') {
     return (
-      <select className="plat-input" style={{ marginBottom: 0, minWidth: 140 }} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className="plat-input" style={{ marginBottom: 0, minWidth: 140 }} value={str} onChange={(e) => onChange(e.target.value)}>
         <option value="">Select…</option>
         {(prop.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     )
   }
   if (prop.type === 'date') {
-    return <input type="date" className="plat-input" style={{ marginBottom: 0 }} value={value} onChange={(e) => onChange(e.target.value)} />
+    return <input type="date" className="plat-input" style={{ marginBottom: 0 }} value={str} onChange={(e) => onChange(e.target.value)} />
   }
   if (prop.type === 'uuid_ref' && prop.ref === 'owner') {
     return (
-      <select className="plat-input" style={{ marginBottom: 0, minWidth: 160 }} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className="plat-input" style={{ marginBottom: 0, minWidth: 160 }} value={str} onChange={(e) => onChange(e.target.value)}>
         <option value="">Select owner…</option>
         {owners.map((o) => <option key={o.id} value={o.id}>{o.is_active ? o.name : `${o.name} (inactive)`}</option>)}
       </select>
     )
   }
   if (prop.type === 'uuid_ref' && prop.ref === 'company') {
-    return <CompanyPicker value={value} onChange={onChange} />
+    return <CompanyPicker value={str} onChange={onChange} />
   }
-  return <input className="plat-input" style={{ marginBottom: 0, minWidth: 150 }} placeholder="value" value={value} onChange={(e) => onChange(e.target.value)} />
+  return <input className="plat-input" style={{ marginBottom: 0, minWidth: 150 }} placeholder="value" value={str} onChange={(e) => onChange(e.target.value)} />
 }
 
 function CompanyPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {

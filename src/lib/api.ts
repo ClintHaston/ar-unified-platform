@@ -284,7 +284,11 @@ export interface ContactRow {
   email: string | null
   phone: string | null
   contact_type: ContactType
+  // LEGACY free text, superseded by industries/equipment_types. Displayed
+  // read-only as "Legacy note" when non-empty; never editable.
   hunting_for: string | null
+  industries: string[]
+  equipment_types: string[]
   source: string
   company_id: string | null
   company_name: string | null
@@ -332,12 +336,32 @@ export interface ContactListParams {
 // ── Segments (Lists) ──
 export type SegmentObjectType = 'contact' | 'company'
 export type SegmentType = 'active' | 'static'
-export type SegmentPropType = 'enum' | 'uuid_ref' | 'text' | 'date'
+// ── Structured buyer-need criteria on contacts (2026-08-03) ──
+// Contacts store the stable `value` slug, never the label, so an admin
+// renaming an option leaves every contact untouched.
+export type ContactCriteriaKind = 'industry' | 'equipment_type'
+export type ContactCriteriaRef = 'contact_criteria:industry' | 'contact_criteria:equipment_type'
+
+export interface ContactCriteriaOption {
+  id: string
+  kind: ContactCriteriaKind
+  value: string
+  label: string
+  position: number
+}
+
+// Returned when a save minted a company from a typed name, so the UI can say
+// so rather than leaving the rep to wonder whether it linked or created.
+export interface CreatedCompany { id: string; name: string }
+
+export type SegmentPropType = 'enum' | 'uuid_ref' | 'text' | 'date' | 'array'
 
 export interface SegmentCondition {
   field: string
   operator: string
-  value?: string | null
+  // An 'array' property (the contact criteria) carries a LIST of option
+  // slugs; every other type carries a single scalar.
+  value?: string | string[] | null
 }
 export interface SegmentGroup { conditions: SegmentCondition[] }
 export interface SegmentCriteria { groups: SegmentGroup[] }
@@ -347,7 +371,10 @@ export interface SegmentProp {
   key: string
   label: string
   type: SegmentPropType
-  ref?: 'owner' | 'company' | null
+  // 'contact_criteria:<kind>' on an array prop names the option list the UI
+  // should load its chips from — the lists are admin-editable at runtime, so
+  // they cannot be a static `options` array here.
+  ref?: 'owner' | 'company' | ContactCriteriaRef | null
   options?: string[] | null
   operators: SegmentOperator[]
 }
@@ -504,8 +531,13 @@ export interface ContactPatch {
   email?: string | null
   phone?: string | null
   contact_type?: ContactType
-  hunting_for?: string | null
   sales_lead_status?: SalesLeadStatus | null
+  // Company: an explicit id wins; a bare name links an existing company or
+  // creates one. hunting_for is deliberately absent — it is read-only now.
+  company_id?: string | null
+  company_name?: string | null
+  industries?: string[]
+  equipment_types?: string[]
 }
 
 // ── Company detail (reverses Amendment 18) ──
@@ -1796,10 +1828,16 @@ export const api = {
     email?: string
     phone?: string
     contact_type?: ContactType
-    hunting_for?: string
+    // An explicit id wins; a bare name links an existing company (case
+    // insensitively) or creates one, in the same transaction as the contact.
+    // hunting_for is gone: it is legacy and read-only.
     company_id?: string
+    company_name?: string
+    industries?: string[]
+    equipment_types?: string[]
   }) =>
-    request<{ id: string }>('/platform/contacts', {
+    request<{ id: string; company_id: string | null
+              created_company: CreatedCompany | null }>('/platform/contacts', {
       method: 'POST',
       body: JSON.stringify(input),
     }),
@@ -1826,10 +1864,40 @@ export const api = {
     }),
 
   updateContact: (contactId: string, patch: ContactPatch) =>
-    request<{ ok: boolean }>(`/platform/contacts/${contactId}`, {
+    request<{ ok: boolean; created_company: CreatedCompany | null }>(
+      `/platform/contacts/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+
+  // ── Structured buyer-need criteria ──
+  // The option lists are DATA, not a deploy-time constant: an admin edits them
+  // in Settings and every form picks the change up on its next load.
+  contactCriteriaOptions: (kind?: ContactCriteriaKind) =>
+    request<{ options: ContactCriteriaOption[] }>(
+      `/platform/contact-criteria/options${kind ? `?kind=${kind}` : ''}`),
+
+  createContactCriteriaOption: (input: {
+    kind: ContactCriteriaKind; label: string; position?: number
+  }) =>
+    request<{ option: ContactCriteriaOption }>('/platform/contact-criteria/options', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  updateContactCriteriaOption: (
+    optionId: string,
+    patch: { label?: string; position?: number; archived?: boolean },
+  ) =>
+    request<{ ok: boolean }>(`/platform/contact-criteria/options/${optionId}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
     }),
+
+  // The dedupe guard's read half: warn before minting a twin company.
+  companyByName: (name: string) =>
+    request<{ match: { id: string; name: string } | null }>(
+      `/platform/companies/by-name?name=${encodeURIComponent(name)}`),
 
   reassignContactOwner: (contactId: string, ownerId: string | null) =>
     request<{ ok: boolean }>(`/platform/contacts/${contactId}/owner`, {

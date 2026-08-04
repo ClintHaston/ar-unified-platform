@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEven
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Mailto, Tel } from '../components/quicklog/Contactable'
+import { CompanyField, type CompanySelection } from '../components/CompanyField'
+import { CriteriaChips } from '../components/CriteriaChips'
 import {
   api, SALES_LEAD_STATUSES, type ContactListResponse, type ContactRow,
   type ContactSort, type ContactType, type OwnerOption, type SegmentListItem,
@@ -124,7 +126,14 @@ export function Contacts() {
   const [notice, setNotice] = useState('')
 
   const [showNew, setShowNew] = useState(searchParams.get('new') === '1')
-  const [nc, setNc] = useState({ first_name: '', last_name: '', email: '', phone: '', contact_type: 'other' as ContactType, hunting_for: '' })
+  // hunting_for is NOT here any more: it is legacy and read-only, so the
+  // create form cannot mint another one. The structured pair replaces it.
+  const [nc, setNc] = useState({
+    first_name: '', last_name: '', email: '', phone: '',
+    contact_type: 'other' as ContactType,
+    industries: [] as string[], equipment_types: [] as string[],
+  })
+  const [ncCompany, setNcCompany] = useState<CompanySelection>({ id: null, name: '' })
   const [savingNew, setSavingNew] = useState(false)
 
   const requestSeq = useRef(0)
@@ -369,7 +378,13 @@ export function Contacts() {
         email: nc.email.trim() || undefined,
         phone: nc.phone.trim() || undefined,
         contact_type: nc.contact_type,
-        hunting_for: nc.hunting_for.trim() || undefined,
+        // One of the two, never both: an id when the rep picked from the
+        // type-ahead, a name when they typed a new one. The server links an
+        // existing name rather than creating a twin.
+        company_id: ncCompany.id ?? undefined,
+        company_name: ncCompany.id ? undefined : (ncCompany.name.trim() || undefined),
+        industries: nc.industries.length ? nc.industries : undefined,
+        equipment_types: nc.equipment_types.length ? nc.equipment_types : undefined,
       })
       navigate(`/contacts/${created.id}`)
     } catch (err) {
@@ -440,7 +455,17 @@ export function Contacts() {
                 ))}
               </select>
             </div>
-            <input className="plat-input" placeholder="Hunting for (feeds buyer-need matching)…" value={nc.hunting_for} onChange={(e) => setNc({ ...nc, hunting_for: e.target.value })} />
+            <div className="nc-criteria">
+              <CompanyField value={ncCompany} onChange={setNcCompany} />
+              <CriteriaChips kind="industry" label="Industries"
+                             value={nc.industries}
+                             onChange={(v) => setNc({ ...nc, industries: v })}
+                             placeholder="Construction, Oil & Gas…" />
+              <CriteriaChips kind="equipment_type" label="Equipment types"
+                             value={nc.equipment_types}
+                             onChange={(v) => setNc({ ...nc, equipment_types: v })}
+                             placeholder="Excavator, Crane…" />
+            </div>
             <button className="plat-btn" type="submit" disabled={savingNew || !(nc.first_name.trim() || nc.last_name.trim() || nc.email.trim())}>
               {savingNew ? 'Creating…' : 'Create contact'}
             </button>

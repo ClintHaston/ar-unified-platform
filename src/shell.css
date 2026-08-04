@@ -482,6 +482,78 @@
 .dash-panel.dragging { opacity: 0.45; }
 .dash-panel.drag-over .panel { outline: 2px dashed var(--p-gold); outline-offset: 2px; }
 
+/* ── Structured buyer-need criteria: chip multi-selects ──
+   The picker never accepts free text — every chip is an option slug the
+   server will recognise. New options are an admin edit in Settings. */
+.cchips { position: relative; margin-bottom: 10px; }
+.cchips-label { display: block; font-size: 12px; color: var(--p-body); margin-bottom: 3px; }
+.cchips-box {
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center; cursor: text;
+  border: 1px solid var(--p-border); border-radius: 8px; background: var(--p-white);
+  padding: 5px 7px; min-height: 36px;
+}
+.cchips-box:focus-within { border-color: var(--p-gold); }
+.cchips-input {
+  border: none; outline: none; flex: 1; min-width: 110px; font-size: 13px;
+  background: transparent; color: var(--p-navy-dark);
+}
+.cchip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+  background: var(--p-cream); border: 1px solid var(--p-gold-deep);
+  color: var(--p-navy-dark); border-radius: 999px; padding: 2px 4px 2px 9px;
+}
+.cchip.static { padding: 2px 9px; }
+.cchip button {
+  background: none; border: none; cursor: pointer; color: var(--p-gold-text);
+  font-size: 11px; line-height: 1; padding: 2px 4px; border-radius: 999px;
+}
+.cchip button:hover { color: #B4432B; }
+.cchip-list { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.cchips-menu {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 40; max-height: 232px;
+  overflow-y: auto; background: var(--p-white); border: 1px solid var(--p-border);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(26, 43, 71, 0.14);
+  padding: 4px; margin-top: 3px;
+}
+.cchips-opt {
+  display: block; width: 100%; text-align: left; background: none;
+  border: none; border-radius: 6px; cursor: pointer; padding: 6px 8px;
+  font-size: 13px; color: var(--p-navy-dark);
+}
+.cchips-opt:hover { background: var(--p-row); }
+.cchips-empty { padding: 6px 8px; }
+
+/* Company link-or-create on the contact form. */
+.cf-wrap { position: relative; margin-bottom: 10px; }
+.cf-picked {
+  display: flex; align-items: center; gap: 8px; border: 1px solid var(--p-border);
+  border-radius: 8px; padding: 7px 9px; font-size: 13px; background: var(--p-white);
+}
+.cf-menu {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 40;
+  background: var(--p-white); border: 1px solid var(--p-border); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(26, 43, 71, 0.14); padding: 4px; margin-top: 3px;
+}
+.cf-opt {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  border-radius: 6px; cursor: pointer; padding: 6px 8px; font-size: 13px;
+  color: var(--p-navy-dark);
+}
+.cf-opt:hover { background: var(--p-row); }
+.cf-opt.create { color: var(--p-gold-text); font-weight: 600; }
+/* The dedupe warning stays put whether or not the menu is open: it is the
+   thing a rep most needs to see before saving. */
+.cf-dupe {
+  margin-top: 5px; font-size: 12px; color: var(--p-body);
+  background: var(--p-cream); border: 1px solid var(--p-gold-deep);
+  border-radius: 6px; padding: 5px 8px;
+}
+.nc-criteria { display: grid; gap: 6px; margin: 8px 0; max-width: 520px; }
+.legacy-note { color: var(--p-body); font-style: italic; }
+.seg-chips { min-width: 220px; }
+.seg-chips .cchips { margin-bottom: 0; }
+.seg-chips .cchips-label { display: none; }
+
 /* ── Chart colors picker (edit mode) ──
    Each scheme is shown as its own swatch strip: the name tells you nothing
    about what it does to your charts, the swatches tell you everything. */
@@ -840,3 +912,10 @@ tr:hover .edit-pencil, .edit-pencil:focus-visible { opacity: 1; }
   .ws-navitem:hover { transform: none; }
   .ws-pending::after { animation: none; }
 }
+
+/* Buyer-need criteria editor (Settings). Two lists side by side; each row is
+   a rename-in-place plus Retire. The stored slug is shown but never editable
+   — changing it would orphan every contact carrying it. */
+.cca-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 22px; }
+.cca-head { font-weight: 700; color: var(--p-navy-dark); margin-bottom: 2px; }
+.cca-slug { font-size: 11px; color: var(--p-blue-muted); }

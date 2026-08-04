@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type EmailLogRow, type SettingRow } from '../lib/api'
 import { UserManagement } from '../components/UserManagement'
+import { ContactCriteriaAdmin } from '../components/ContactCriteriaAdmin'
 
 // Step 3c-1: tab-level permission toggles retired with the legacy auth —
 // access is rep-vs-admin by role now. 3c-7 adds the Settings editor over
@@ -186,6 +187,8 @@ export function Admin() {
       </div>
 
       {error && <div className="note" style={{ color: '#B4432B' }}>{error}</div>}
+
+      <ContactCriteriaAdmin />
 
       <UserManagement />
     </div>

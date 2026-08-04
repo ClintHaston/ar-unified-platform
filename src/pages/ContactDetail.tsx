@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { CompanyField, type CompanySelection } from '../components/CompanyField'
+import { CriteriaChips, CriteriaChipList } from '../components/CriteriaChips'
 import { api, SALES_LEAD_STATUSES, type CallOutcome, type ConsignmentDoc, type ContactDetailResponse, type ContactType, type OwnerOption, type QuickLogAnchor, type SalesLeadStatus } from '../lib/api'
 import { AssigneePicker } from '../components/AssigneePicker'
 import { Mailto, Tel } from '../components/quicklog/Contactable'
@@ -80,7 +82,13 @@ export function ContactDetail() {
   const [error, setError] = useState('')
 
   const [editing, setEditing] = useState(false)
-  const [edit, setEdit] = useState({ first_name: '', last_name: '', email: '', phone: '', hunting_for: '' })
+  // hunting_for is absent on purpose: it is legacy and read-only now, shown
+  // below as "Legacy note" and never editable.
+  const [edit, setEdit] = useState({
+    first_name: '', last_name: '', email: '', phone: '',
+    industries: [] as string[], equipment_types: [] as string[],
+  })
+  const [editCompany, setEditCompany] = useState<CompanySelection>({ id: null, name: '' })
   const [savingEdit, setSavingEdit] = useState(false)
   const [savingType, setSavingType] = useState(false)
   const [savingLead, setSavingLead] = useState(false)
@@ -154,8 +162,10 @@ export function ContactDetail() {
       last_name: data.contact.last_name ?? '',
       email: data.contact.email ?? '',
       phone: data.contact.phone ?? '',
-      hunting_for: data.contact.hunting_for ?? '',
+      industries: data.contact.industries ?? [],
+      equipment_types: data.contact.equipment_types ?? [],
     })
+    setEditCompany({ id: data.contact.company_id, name: data.contact.company_name ?? '' })
     setEditing(true)
   }
 
@@ -169,7 +179,10 @@ export function ContactDetail() {
         last_name: edit.last_name.trim() || null,
         email: edit.email.trim() || null,
         phone: edit.phone.trim() || null,
-        hunting_for: edit.hunting_for.trim() || null,
+        company_id: editCompany.id,
+        company_name: editCompany.id ? null : (editCompany.name.trim() || null),
+        industries: edit.industries,
+        equipment_types: edit.equipment_types,
       })
       setEditing(false)
       load()
@@ -348,7 +361,15 @@ export function ContactDetail() {
                 </div>
                 <input className="plat-input" placeholder="Email" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} />
                 <input className="plat-input" placeholder="Phone" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} />
-                <textarea className="plat-input" rows={2} placeholder="Hunting for (feeds buyer-need matching)" value={edit.hunting_for} onChange={(e) => setEdit({ ...edit, hunting_for: e.target.value })} />
+                <CompanyField value={editCompany} onChange={setEditCompany} />
+                <CriteriaChips kind="industry" label="Industries"
+                               value={edit.industries}
+                               onChange={(v) => setEdit({ ...edit, industries: v })}
+                               placeholder="Construction, Oil & Gas…" />
+                <CriteriaChips kind="equipment_type" label="Equipment types"
+                               value={edit.equipment_types}
+                               onChange={(v) => setEdit({ ...edit, equipment_types: v })}
+                               placeholder="Excavator, Crane…" />
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="plat-btn" type="submit" disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save'}</button>
                   <button className="plat-btn ghost" type="button" onClick={() => setEditing(false)}>Cancel</button>
@@ -399,7 +420,20 @@ export function ContactDetail() {
                     ) : (contact.owner_name ?? 'Unassigned')}
                   </span>
                 </div>
-                <div className="fieldrow"><span>Hunting for</span><span>{contact.hunting_for ?? '—'}</span></div>
+                <div className="fieldrow"><span>Industries</span>
+                  <CriteriaChipList kind="industry" value={contact.industries ?? []} /></div>
+                <div className="fieldrow"><span>Equipment types</span>
+                  <CriteriaChipList kind="equipment_type" value={contact.equipment_types ?? []} /></div>
+                {/* Legacy free text. Shown ONLY when it holds something, and
+                    never editable — it was superseded by the two fields above.
+                    Hiding it when empty keeps a dead row off every one of the
+                    20,104 contacts that never had one. */}
+                {contact.hunting_for?.trim() && (
+                  <div className="fieldrow"><span>Legacy note</span>
+                    <span className="legacy-note" title="Superseded by Industries and Equipment types">
+                      {contact.hunting_for}
+                    </span></div>
+                )}
                 <div className="fieldrow"><span>Source</span><span>{contact.source}{contact.lead_status ? ` · ${contact.lead_status}` : ''}</span></div>
                 <div className="fieldrow"><span>Created</span><span>{when(contact.created_at)}</span></div>
                 <div className="fieldrow"><span>Record ID</span><span className="crecord-id">{contact.id}</span></div>
