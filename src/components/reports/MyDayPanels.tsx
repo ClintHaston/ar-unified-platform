@@ -56,11 +56,29 @@ function Delta({ now, prev, goodUp = true, label }: {
   )
 }
 
-function Hero({ data }: { data: MyKpis }) {
+/** First name, for a hero that greets people rather than addressing records. */
+export function firstName(name: string | null | undefined): string {
+  return (name ?? '').trim().split(/\s+/)[0] || ''
+}
+
+/** "Justin" -> "Justin's", "Chris" -> "Chris'". A possessive that reads wrong
+ *  is the kind of thing a rep notices every single morning. */
+export function possessive(name: string): string {
+  return name.endsWith('s') || name.endsWith('S') ? `${name}'` : `${name}'s`
+}
+
+// OWNER / VIEWER (2026-08-04). `owner` is set only when you are looking at
+// SOMEBODY ELSE's board — the server decides that (viewer_is_owner), the view
+// never infers it. When it is set the hero leads with whose day this is and
+// the greeting moves underneath, because the first question an admin opening a
+// rep's board has is "whose numbers are these?" and a headline that says
+// "Good morning, Clint" answers a different one.
+function Hero({ data, owner }: { data: MyKpis; owner?: string | null }) {
   const { user } = useAuth()
   const h = new Date().getHours()
   const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
-  const first = (user?.name ?? '').split(' ')[0] || 'there'
+  const first = firstName(user?.name) || 'there'
+  const ownerFirst = firstName(owner)
   const bits: string[] = []
   if (data.tasks_due_today > 0) {
     bits.push(`${data.tasks_due_today} task${data.tasks_due_today === 1 ? '' : 's'} due today`)
@@ -74,7 +92,17 @@ function Hero({ data }: { data: MyKpis }) {
     { weekday: 'long', month: 'long', day: 'numeric' })
   return (
     <div className="myday-hero">
-      <div className="myday-greet bebas">{greet}, {first}</div>
+      {ownerFirst ? (
+        <>
+          <div className="myday-greet bebas">{possessive(ownerFirst)} Day</div>
+          <div className="myday-viewing">
+            {greet}, {first} — you are looking at {possessive(ownerFirst)} numbers,
+            not your own.
+          </div>
+        </>
+      ) : (
+        <div className="myday-greet bebas">{greet}, {first}</div>
+      )}
       <div className="myday-sub">
         {today}{bits.length ? ' · ' + bits.join(' · ') : ' · a clean slate — go make some noise'}
       </div>
@@ -125,7 +153,7 @@ const METRIC_LABEL: Record<KpiMetric, string> = {
   stale_deals: 'Stale deals',
 }
 
-export function KpiRow({ data }: { data: MyKpis }) {
+export function KpiRow({ data, owner }: { data: MyKpis; owner?: string | null }) {
   const win = data.window_days
   const [drill, setDrill] = useState<KpiMetric | null>(null)
   const openC = useCountUp(data.open_pipeline_cents)
@@ -138,7 +166,7 @@ export function KpiRow({ data }: { data: MyKpis }) {
   const prior = `prior ${win}d`
   return (
     <div>
-      <Hero data={data} />
+      <Hero data={data} owner={owner} />
       <div className="kpi-row">
         <Card metric="open_pipeline" onOpen={setDrill} accent="gold">
           <Value>{money(openC)}</Value>

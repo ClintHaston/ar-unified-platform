@@ -1213,6 +1213,8 @@ export interface DashboardMeta {
   // regardless. Optional so a cached older payload degrades to read-only.
   can_edit?: boolean
   owner_id?: string
+  owner_name?: string | null
+  viewer_is_owner?: boolean
   visibility?: 'private' | 'team'
   system_key?: string | null
   // Which colour scheme this dashboard's SERIES charts draw with. Optional so
@@ -1242,7 +1244,23 @@ export interface DashboardRun {
   favorited: boolean
   panels: DashboardRunPanel[]
   chart_theme?: ChartThemeId
+  // WHOSE BOARD THIS IS. Server-decided and carried on the run itself, because
+  // the hero is drawn from the run response — learning it a request later
+  // would render the viewer's greeting and then swap it for the owner's name
+  // in front of them. Optional so an older cached payload degrades to the
+  // plain greeting rather than to "undefined's Day".
+  owner_id?: string
+  owner_name?: string | null
+  viewer_is_owner?: boolean
+  // Which rep's numbers actually ran. null = the whole book.
+  scope?: string | null
 }
+
+// The sentinel an admin sends for "the whole book". On someone else's personal
+// dashboard an omitted owner now means THAT PERSON, so "everyone" needs a word
+// of its own. A reserved word rather than a uuid, so it cannot collide with a
+// real owner id. Mirrors OWNER_ALL in routers/platform_dashboards.py.
+export const OWNER_ALL = 'all'
 
 export type SearchResultType = 'unit' | 'deal' | 'contact' | 'company'
 

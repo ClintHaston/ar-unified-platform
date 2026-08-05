@@ -983,6 +983,13 @@ input, select, textarea {
 .myday-hero { padding: 2px 4px 12px; }
 .myday-greet { font-size: 30px; letter-spacing: 0.04em; color: var(--p-navy-dark); line-height: 1; }
 .myday-sub { font-size: 13px; color: var(--p-body); margin-top: 4px; }
+/* The viewer greeting when the hero belongs to someone else. Deliberately
+   quieter than .myday-sub is loud — it is the answer to "and who am I?", which
+   nobody asked. What matters is the name above it. */
+.myday-viewing {
+  font-size: 12px; color: var(--p-body); margin-top: 5px;
+  border-left: 3px solid var(--p-gold); padding-left: 8px;
+}
 
 .kpi-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 2px 2px; position: relative; }
 /* A KPI card is a BUTTON since MYDAY_POLISH — it opens the records behind its

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Icon } from '../components/shell/icons'
-import { api, type DashboardRun, type DashboardPanel, type OwnerOption,
+import { api, OWNER_ALL, type DashboardRun, type DashboardPanel, type OwnerOption,
          type ReportFilters, type MyKpis, type ActivityFeedResult,
          type RunResult, type UpNextResult, type GoalResult,
          type PanelSize, type ChartThemeId } from '../lib/api'
@@ -10,7 +10,7 @@ import { ChartThemeContext, DEFAULT_CHART_THEME, schemeOf }
   from '../components/reports/charts/palette'
 import { ChartThemePicker } from '../components/reports/ChartThemePicker'
 import { ResultView } from '../components/reports/ResultView'
-import { KpiRow, ActivityFeed } from '../components/reports/MyDayPanels'
+import { KpiRow, ActivityFeed, firstName, possessive } from '../components/reports/MyDayPanels'
 import { UpNextPanel } from '../components/reports/UpNextPanel'
 import { GoalGauge } from '../components/reports/GoalGauge'
 import { PanelMenu } from '../components/reports/PanelMenu'
@@ -380,6 +380,28 @@ export function DashboardView() {
 
   const panels = useMemo(() => run?.panels ?? [], [run])
 
+  // ── Whose numbers are on screen (OWNER / VIEWER, 2026-08-04) ──────────────
+  // Read off `scope` — what the server ACTUALLY ran — rather than off the
+  // filter state, which is what was asked for. Those differ every time the
+  // server overrides the request (a rep is pinned to self; an admin opening
+  // someone's personal board is defaulted to that person), and the label has
+  // to describe the numbers being drawn, not the numbers being requested.
+  //
+  // null means "your own book, or the whole company's" — the two cases that
+  // need no label because the greeting already covers them.
+  const scopeName = useMemo(() => {
+    const scope = run?.scope
+    if (!scope || scope === user?.id) return null
+    if (scope === run?.owner_id) return run?.owner_name ?? null
+    return owners.find((o) => o.id === scope)?.name ?? null
+  }, [run, owners, user])
+
+  // Is the owner filter's empty value currently meaning "the owner" rather
+  // than "everyone"? Only then does the admin need a word for "everyone", and
+  // only then does the blank option deserve a name.
+  const pinnedToOwner = !!run && !run.viewer_is_owner
+                        && !!run.owner_id && run.scope === run.owner_id
+
   // Reps see dashboards now (2026-08-02 rep-dashboards build). The server
   // scopes every panel to the viewer, so the same dashboard shows a rep their
   // own book and an admin the whole one.
@@ -395,6 +417,14 @@ export function DashboardView() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Link to="/reports" className="back-link" style={{ marginRight: 4 }}>← Reports</Link>
           <h2 style={{ fontSize: 18, margin: 0, color: 'var(--p-navy-dark)' }}>{run?.name ?? 'Dashboard'}</h2>
+          {/* Said HERE as well as in the hero, because a dashboard need not
+              have a KPI panel — and a board of someone else's charts with no
+              hint whose they are is exactly the confusion this fixes. */}
+          {scopeName && (
+            <span className="pill gold" title="Every widget below is scoped to this person">
+              {possessive(firstName(scopeName))} numbers
+            </span>
+          )}
           <button className="ws-star" onClick={toggleFavorite} title={run?.favorited ? 'Unfavorite' : 'Favorite'}
                   aria-pressed={run?.favorited ? true : false}>
             <Icon name={run?.favorited ? 'star-filled' : 'star'} size={18} />
@@ -445,9 +475,16 @@ export function DashboardView() {
                        onChange={(r) => { setStart(r.start); setEnd(r.end) }}
                        onCustom={() => fromRef.current?.focus()} />
           {isAdmin ? (
-            <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 200 }}
+            <select className="plat-input" style={{ marginBottom: 0, width: 'auto', maxWidth: 220 }}
+                    aria-label="Whose numbers this dashboard shows"
                     value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-              <option value="">All reps</option>
+              {/* On someone else's personal board the blank value means THAT
+                  PERSON, so it says so — and "everyone" gets an explicit
+                  option, because silence no longer means it. */}
+              <option value="">
+                {pinnedToOwner ? `${run?.owner_name} (owner)` : 'All reps'}
+              </option>
+              {pinnedToOwner && <option value={OWNER_ALL}>All reps</option>}
               {owners.map((o) => <option key={o.id} value={o.id}>{o.is_active ? o.name : `${o.name} (inactive)`}</option>)}
             </select>
           ) : (
@@ -548,7 +585,7 @@ export function DashboardView() {
               {p.error ? (
                 <div className="panel"><div className="note">{p.error}</div></div>
               ) : kind === 'kpis' && p.result ? (
-                <KpiRow data={p.result as MyKpis} />
+                <KpiRow data={p.result as MyKpis} owner={scopeName} />
               ) : kind === 'activity_feed' && p.result ? (
                 <ActivityFeed data={p.result as ActivityFeedResult} />
               ) : kind === 'tasks' && p.result ? (
