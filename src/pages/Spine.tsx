@@ -9,15 +9,7 @@ import {
   forceSimulation, forceManyBody, forceLink, forceCollide, forceX, forceY,
 } from 'd3-force'
 import type { Simulation, SimulationNodeDatum } from 'd3-force'
-
-const BASE = import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
-
-// 2026-08-09 audit fix: /spine/health is now admin-gated server-side, so the
-// poll must carry the same bearer token the approvals calls already use.
-const spineAuth = (): Record<string, string> => {
-  const t = localStorage.getItem('ar_token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
+import { api } from '../lib/api'
 
 type CheckStatus = 'green' | 'amber' | 'red' | 'grey'
 
@@ -253,9 +245,9 @@ export function Spine() {
           setError(null)
           return
         }
-        const res = await fetch(`${BASE}/spine/health`, { headers: spineAuth() })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const body: SpineHealth = await res.json()
+        // 2026-08-09: through the platform api client — /spine/health is
+        // admin-gated and the old raw fetch carried a token key nothing sets.
+        const body = await api.spineHealth<SpineHealth>()
         if (!alive) return
         if (SIM) simBase = body
         setData(body)
@@ -431,16 +423,13 @@ export function Spine() {
   const [approvals, setApprovals] = useState<SpineApproval[]>([])
   const [actionMsg, setActionMsg] = useState<string | null>(null)
 
-  const authHeaders = (): Record<string, string> => {
-    const t = localStorage.getItem('ar_token')
-    return t ? { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' } : {}
-  }
-
+  // 2026-08-09: approvals now go through the platform api client too. The old
+  // authHeaders() read localStorage 'ar_token', which nothing in this app ever
+  // writes — so approve/reject from this screen had been silently 403ing.
   const loadApprovals = async () => {
     try {
-      const r = await fetch(`${BASE}/spine/approvals`, { headers: authHeaders() })
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      setApprovals(((await r.json()) as { approvals: SpineApproval[] }).approvals)
+      const body = await api.spineApprovals<{ approvals: SpineApproval[] }>()
+      setApprovals(body.approvals)
     } catch (e) {
       setActionMsg('Could not load approvals: ' + (e instanceof Error ? e.message : 'error'))
     }
@@ -449,11 +438,7 @@ export function Spine() {
   const decide = async (id: number, verb: 'approve' | 'reject') => {
     setActionMsg(null)
     try {
-      const r = await fetch(`${BASE}/spine/approvals/${id}/${verb}`, {
-        method: 'POST', headers: authHeaders(),
-      })
-      const body = await r.json()
-      if (!r.ok) throw new Error(body.detail ?? `HTTP ${r.status}`)
+      const body = await api.spineDecide<{ result: string }>(id, verb)
       setActionMsg(`#${id} ${verb}d: ${body.result}`)
       await loadApprovals()
     } catch (e) {

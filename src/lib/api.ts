@@ -2447,4 +2447,17 @@ export const api = {
   unitBuyerInterest: (unitId: string) =>
     request<{ unit_listed: boolean; unit_website_url: string | null; interest: UnitBuyerInterest[] }>(
       `/platform/units/${unitId}/buyer-interest`),
+
+  // ── Spine (2026-08-09 audit follow-up) ─────────────────────────────────
+  // The Spine screen used raw fetch with a legacy localStorage 'ar_token'
+  // that NOTHING in this app ever writes — so once /spine/health was
+  // admin-gated the map went dark, and the approvals panel had been
+  // silently 403ing all along. These route through request(), which holds
+  // the real in-memory token and does the single-flight refresh.
+  spineHealth: <T>() => request<T>('/spine/health'),
+
+  spineApprovals: <T>() => request<T>('/spine/approvals'),
+
+  spineDecide: <T>(id: number, verb: 'approve' | 'reject') =>
+    request<T>(`/spine/approvals/${id}/${verb}`, { method: 'POST' }),
 }
