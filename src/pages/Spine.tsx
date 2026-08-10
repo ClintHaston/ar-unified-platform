@@ -12,6 +12,13 @@ import type { Simulation, SimulationNodeDatum } from 'd3-force'
 
 const BASE = import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_URL || 'http://localhost:8000')
 
+// 2026-08-09 audit fix: /spine/health is now admin-gated server-side, so the
+// poll must carry the same bearer token the approvals calls already use.
+const spineAuth = (): Record<string, string> => {
+  const t = localStorage.getItem('ar_token')
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
 type CheckStatus = 'green' | 'amber' | 'red' | 'grey'
 
 interface SpineCheck {
@@ -246,7 +253,7 @@ export function Spine() {
           setError(null)
           return
         }
-        const res = await fetch(`${BASE}/spine/health`)
+        const res = await fetch(`${BASE}/spine/health`, { headers: spineAuth() })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const body: SpineHealth = await res.json()
         if (!alive) return

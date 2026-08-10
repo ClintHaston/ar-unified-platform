@@ -459,13 +459,18 @@ export function Contacts() {
               <option key={t} value={t}>{TYPE_LABEL[t]}</option>
             ))}
           </select>
-          <select className="plat-input" style={{ marginBottom: 0, maxWidth: 200 }} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-            <option value="">All owners</option>
-            <option value="none">Unassigned</option>
-            {owners.map((o) => (
-              <option key={o.id} value={o.id}>{ownerLabel(o)}</option>
-            ))}
-          </select>
+          {/* 2026-08-09 audit fix (P0 #4): reps see only their own book +
+              unassigned (enforced server-side); the top-bar owner filter is
+              admin-only since a rep has no other book to select. */}
+          {isAdmin && (
+            <select className="plat-input" style={{ marginBottom: 0, maxWidth: 200 }} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              <option value="">All owners</option>
+              <option value="none">Unassigned</option>
+              {owners.map((o) => (
+                <option key={o.id} value={o.id}>{ownerLabel(o)}</option>
+              ))}
+            </select>
+          )}
           {companyId && (
             <button className="plat-btn ghost" onClick={() => setSearchParams({})}>
               Company: {companyFilterName} ✕
@@ -625,10 +630,16 @@ export function Contacts() {
                         </select>
                       )}
                       {col.filter === 'owner' && (
+                        // 2026-08-09 audit fix (P0 #4): reps are server-scoped to
+                        // their own book + unassigned; the dropdown offers only
+                        // the lenses the server will accept. Admins keep all.
                         <select className="plat-input" value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-                          <option value="">All owners</option>
+                          <option value="">{isAdmin ? 'All owners' : 'My book'}</option>
                           <option value="none">Unassigned</option>
-                          {owners.map((o) => <option key={o.id} value={o.id}>{ownerLabel(o)}</option>)}
+                          {isAdmin
+                            ? owners.map((o) => <option key={o.id} value={o.id}>{ownerLabel(o)}</option>)
+                            : owners.filter((o) => o.id === user?.id)
+                                .map((o) => <option key={o.id} value={o.id}>Mine only</option>)}
                         </select>
                       )}
                     </td>
