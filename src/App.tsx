@@ -29,7 +29,6 @@ import { Deals } from './pages/Deals'
 import { Leads } from './pages/Leads'
 import { SalesCommand } from './pages/SalesCommand'
 import { Admin } from './pages/Admin'
-import { Spine } from './pages/Spine'
 import { Outbox } from './pages/Outbox'
 import { LeadApprovals } from './pages/LeadApprovals'
 import { Tasks } from './pages/Tasks'
@@ -89,7 +88,6 @@ export default function App() {
             <Route path="/admin" element={<AuthGuard adminOnly><Admin /></AuthGuard>} />
             <Route path="/outbox" element={<AuthGuard adminOnly><Outbox /></AuthGuard>} />
             <Route path="/lead-approvals" element={<AuthGuard adminOnly><LeadApprovals /></AuthGuard>} />
-            <Route path="/spine" element={<AuthGuard adminOnly><Spine /></AuthGuard>} />
           </Route>
 
           {/* The landing resolves the user's default dashboard, falling back to

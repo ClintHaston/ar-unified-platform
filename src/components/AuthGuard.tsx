@@ -8,7 +8,7 @@ interface Props {
 }
 
 // Rep-vs-admin routing (step 3c-1): every active user sees the tool tabs,
-// admins additionally see Admin and Spine. A user flagged
+// admins additionally see Admin. A user flagged
 // must_change_password is gated to the change-password screen first.
 export function AuthGuard({ children, adminOnly }: Props) {
   const { user, loading } = useAuth()

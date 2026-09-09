@@ -1,4 +1,14 @@
 /**
+ * RETIRED 2026-09-09, TAGGED FOR DELETION after the next release.
+ * The map moved to the Spine tab of the AR Reporting Dashboard
+ * (ar-reporting.vercel.app), which reads the same spine_health_results and
+ * spine_jobs tables through the reporting spine feed. This file is no longer
+ * routed or linked from the nav. /spine/health, /spine/health/history and
+ * /spine/health/run on the backend stay: the reporting feed and the runner
+ * read them. Delete this file and the d3-force dependency once the release
+ * after this one ships.
+ */
+/**
  * Spine.tsx - The living star map. Read-only view of the agentic OS spine.
  * Polls /spine/health every 5 seconds. Never the source of truth.
  * Layout is a d3-force physics web: stars repel, wires are springs,

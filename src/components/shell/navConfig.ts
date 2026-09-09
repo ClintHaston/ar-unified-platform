@@ -78,7 +78,6 @@ export const NAV: NavItem[] = [
         { label: 'HubSpot outbox', path: '/outbox', icon: 'outbox', adminOnly: true },
         { label: 'Lead approvals', path: '/lead-approvals', icon: 'approvals', adminOnly: true },
         { label: 'Commission report', path: '/commission', icon: 'reports', adminOnly: true },
-        { label: 'Spine', path: '/spine', icon: 'spine', adminOnly: true },
       ],
     },
   },

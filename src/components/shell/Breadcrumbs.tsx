@@ -28,7 +28,6 @@ const TOP: Record<string, string> = {
   '/admin': 'Team & settings',
   '/outbox': 'HubSpot outbox',
   '/lead-approvals': 'Lead approvals',
-  '/spine': 'Spine',
   '/change-password': 'Change password',
 }
 
